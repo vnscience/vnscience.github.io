@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Professional Countdown Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .timer-display {
+            font-family: 'Roboto Mono', monospace;
+        }
+        /* Smooth transitions for modal and timer screen */
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        .fade-out {
+            animation: fadeOut 0.3s ease-in forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+        /* Prevents ugly number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen">
+
+    <!-- Back to Home Button -->
+    <a style="z-index: 100;" href="https://vnscience.github.io" class="fixed top-4 left-4 bg-white text-slate-600 p-3 rounded-full shadow-lg hover:bg-slate-200 transition z-50" aria-label="Quay về trang chủ">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+    </a>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md transform transition-all fade-in">
+            <h1 class="text-3xl font-bold text-slate-800 text-center mb-2">Cài đặt đếm ngược</h1>
+            <p class="text-center text-slate-500 mb-8">Nhập khoảng thời gian bạn muốn.</p>
+
+            <div class="grid grid-cols-3 gap-4 mb-8 text-center">
+                <div>
+                    <label for="hours" class="text-sm font-medium text-slate-500">Giờ</label>
+                    <input id="hours" type="number" min="0" placeholder="00" class="w-full mt-1 p-3 text-center text-2xl font-semibold rounded-lg bg-slate-100 border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"/>
+                </div>
+                <div>
+                    <label for="minutes" class="text-sm font-medium text-slate-500">Phút</label>
+                    <input id="minutes" type="number" min="0" max="59" placeholder="15" class="w-full mt-1 p-3 text-center text-2xl font-semibold rounded-lg bg-slate-100 border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"/>
+                </div>
+                <div>
+                    <label for="seconds" class="text-sm font-medium text-slate-500">Giây</label>
+                    <input id="seconds" type="number" min="0" max="59" placeholder="30" class="w-full mt-1 p-3 text-center text-2xl font-semibold rounded-lg bg-slate-100 border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"/>
+                </div>
+            </div>
+
+            <div class="flex justify-center space-x-4 mb-4">
+                <button id="startBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-indigo-300">
+                    Bắt đầu đếm ngược
+                </button>
+            </div>
+            <div class="flex justify-center space-x-4">
+                &copy; <a href="https://vnscience.github.io" class="text-indigo-600 hover:underline">vnscience</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timer Screen -->
+    <div id="timerScreen" class="hidden fixed inset-0 bg-slate-900 w-full h-screen flex items-center justify-center flex-col text-white p-4 z-40">
+        <div class="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center mb-8">
+            <svg class="absolute w-full h-full" viewBox="0 0 100 100">
+                <circle class="text-slate-700" stroke-width="5" cx="50" cy="50" r="45" fill="transparent" stroke="currentColor"/>
+                <circle id="progressRing" class="text-indigo-500 transform -rotate-90 origin-center" stroke-width="5" cx="50" cy="50" r="45" fill="transparent" stroke="currentColor" style="stroke-dasharray: 283; stroke-dashoffset: 283;"/>
+            </svg>
+            <div id="countdownDisplay" class="timer-display text-5xl md:text-7xl font-medium z-10">00:00:00</div>
+        </div>
+
+        <div class="flex space-x-4 mb-6 z-10">
+            <button id="pauseBtn" class="w-28 bg-white/10 hover:bg-white/20 text-white py-3 rounded-full font-semibold transition-all duration-300">Tạm dừng</button>
+            <button id="stopBtn" class="w-28 bg-red-500/80 hover:bg-red-500 text-white py-3 rounded-full font-semibold transition-all duration-300">Dừng</button>
+        </div>
+
+        <div id="notification" class="hidden text-indigo-400 text-center font-bold text-2xl animate-pulse z-10">
+            ⏰ Hết giờ!
+        </div>
+    </div>
+    
+    <!-- How-to-use Modal -->
+    <div id="infoModal" class="hidden fixed inset-0 bg-black bg-opacity-60 items-center justify-center p-4 z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md transform transition-all fade-in">
+            <h2 class="text-2xl font-bold text-slate-800 text-center mb-4">Hướng dẫn sử dụng</h2>
+            <div class="text-slate-600 space-y-3 text-left">
+                <p><strong>1. Cài đặt thời gian:</strong> Nhập số giờ, phút, và giây bạn muốn đếm ngược vào các ô tương ứng.</p>
+                <p><strong>2. Bắt đầu:</strong> Nhấn nút "Bắt đầu đếm ngược" để khởi chạy.</p>
+                <p><strong>3. Tạm dừng/Tiếp tục:</strong> Trong khi đếm ngược, bạn có thể nhấn "Tạm dừng" và "Tiếp tục".</p>
+                <p><strong>4. Dừng lại:</strong> Nhấn "Dừng" để kết thúc hoàn toàn và quay về màn hình cài đặt.</p>
+                <p><strong>5. Thông báo:</strong> Khi hết giờ, một âm thanh thông báo sẽ phát ra.</p>
+            </div>
+            <div class="mt-8 text-center">
+                <button id="closeInfoBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-6 rounded-lg font-semibold transition-all duration-300">
+                    Đã hiểu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Button -->
+    <button id="infoBtn" class="fixed bottom-4 right-4 bg-white text-slate-600 p-3 rounded-full shadow-lg hover:bg-slate-200 transition z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+    </button>
+
+    <audio id="notificationSound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+
+    <script>
+        // DOM Elements
+        const settingsModal = document.getElementById('settingsModal');
+        const timerScreen = document.getElementById('timerScreen');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const hoursInput = document.getElementById('hours');
+        const minutesInput = document.getElementById('minutes');
+        const secondsInput = document.getElementById('seconds');
+        const countdownDisplay = document.getElementById('countdownDisplay');
+        const notification = document.getElementById('notification');
+        const notificationSound = document.getElementById('notificationSound');
+        const progressRing = document.getElementById('progressRing');
+        const infoBtn = document.getElementById('infoBtn');
+        const infoModal = document.getElementById('infoModal');
+        const closeInfoBtn = document.getElementById('closeInfoBtn');
+
+        // Circle progress calculation
+        const ringRadius = progressRing.r.baseVal.value;
+        const ringCircumference = 2 * Math.PI * ringRadius;
+
+        // Timer state variables
+        let timer;
+        let totalSeconds;
+        let initialTime;
+        let isPaused = false;
+        
+        progressRing.style.strokeDasharray = `${ringCircumference} ${ringCircumference}`;
+        progressRing.style.strokeDashoffset = ringCircumference;
+
+        function updateStartButtonState() {
+            const h = parseInt(hoursInput.value) || 0;
+            const m = parseInt(minutesInput.value) || 0;
+            const s = parseInt(secondsInput.value) || 0;
+            startBtn.disabled = (h * 3600 + m * 60 + s) <= 0;
+        }
+
+        [hoursInput, minutesInput, secondsInput].forEach(input => {
+            input.addEventListener('input', updateStartButtonState);
+        });
+        
+        window.onload = updateStartButtonState;
+
+        function formatTime(seconds) {
+            const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const secs = String(seconds % 60).padStart(2, '0');
+            return `${hrs}:${mins}:${secs}`;
+        }
+        
+        function setProgress(percent) {
+            const offset = ringCircumference - (percent / 100) * ringCircumference;
+            progressRing.style.strokeDashoffset = offset;
+        }
+
+        function startTimer() {
+            const h = parseInt(hoursInput.value) || 0;
+            const m = parseInt(minutesInput.value) || 0;
+            const s = parseInt(secondsInput.value) || 0;
+            totalSeconds = h * 3600 + m * 60 + s;
+            initialTime = totalSeconds;
+
+            if (totalSeconds <= 0) return;
+            
+            settingsModal.classList.add('fade-out');
+            setTimeout(() => settingsModal.style.display = 'none', 300);
+
+            timerScreen.classList.remove('hidden');
+            timerScreen.classList.add('fade-in');
+
+            resetTimerState();
+            countdownDisplay.textContent = formatTime(totalSeconds);
+            setProgress(100);
+
+            timer = setInterval(() => {
+                if (!isPaused) {
+                    totalSeconds--;
+                    countdownDisplay.textContent = formatTime(totalSeconds);
+                    const percentRemaining = (totalSeconds / initialTime) * 100;
+                    setProgress(percentRemaining);
+
+                    if (totalSeconds <= 0) {
+                        clearInterval(timer);
+                        notification.classList.remove('hidden');
+                        notificationSound.play();
+                        pauseBtn.disabled = true;
+                    }
+                }
+            }, 1000);
+        }
+
+        function resetTimerState() {
+            clearInterval(timer);
+            notification.classList.add('hidden');
+            notificationSound.pause();
+            notificationSound.currentTime = 0;
+            pauseBtn.textContent = "Tạm dừng";
+            pauseBtn.disabled = false;
+            isPaused = false;
+        }
+
+        function stopTimer() {
+            resetTimerState();
+            
+            timerScreen.classList.add('fade-out');
+            setTimeout(() => {
+                timerScreen.classList.add('hidden');
+                timerScreen.classList.remove('fade-out');
+            }, 300);
+
+            settingsModal.style.display = 'flex';
+            settingsModal.classList.remove('fade-out');
+            settingsModal.classList.add('fade-in');
+            updateStartButtonState();
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', startTimer);
+
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? "Tiếp tục" : "Tạm dừng";
+        });
+
+        stopBtn.addEventListener('click', stopTimer);
+
+        // Info Modal Listeners
+        infoBtn.addEventListener('click', () => {
+            infoModal.classList.remove('hidden');
+            infoModal.classList.add('flex');
+        });
+
+        closeInfoBtn.addEventListener('click', () => {
+            infoModal.classList.add('hidden');
+            infoModal.classList.remove('flex');
+        });
+    </script>
+</body>
+</html>

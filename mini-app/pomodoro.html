@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.5s ease;
+        }
+        .timer-display {
+            font-size: clamp(5rem, 20vw, 10rem);
+            line-height: 1;
+        }
+        /* Modal styles */
+        #settings-modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #settings-modal:not(.hidden) {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body id="app-body" class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+
+    <!-- Main Content -->
+    <div class="flex flex-col items-center justify-center w-full min-h-screen p-4 md:p-8">
+
+        <!-- Task Input -->
+        <div class="w-full max-w-md mb-4">
+            <input type="text" id="task-input" placeholder="What are you working on?" class="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 text-center text-xl focus:outline-none focus:border-indigo-500 transition-colors">
+        </div>
+
+        <!-- Session Indicator -->
+        <div id="session-indicator" class="mb-4">
+            <span id="session-type" class="text-2xl md:text-3xl font-bold tracking-wider uppercase px-4 py-2 rounded-full transition-colors duration-500">Work</span>
+        </div>
+
+        <!-- Timer Display -->
+        <div id="timer" class="timer-display font-bold my-6">
+            25:00
+        </div>
+
+        <!-- Controls -->
+        <div id="controls" class="flex justify-center items-center space-x-4 mb-6">
+            <button id="start-pause-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full text-lg md:text-xl transition-all duration-300 transform hover:scale-105 shadow-lg">
+                Start
+            </button>
+            <button id="reset-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold p-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+        </div>
+
+        <!-- Productivity Tracking -->
+        <div id="tracking-info" class="text-gray-400 text-center space-y-2">
+            <p>Goal: <span id="goal-tracker" class="font-bold text-white">0 / 8</span> Pomodoros</p>
+            <p>Next long break in <span id="long-break-tracker" class="font-bold text-white">4</span> sessions</p>
+        </div>
+        
+        <!-- History Log -->
+        <div class="w-full max-w-md mt-8">
+            <h3 class="text-lg font-bold text-center mb-2">Today's Log</h3>
+            <div id="history-log" class="bg-gray-800 rounded-lg p-3 h-32 overflow-y-auto space-y-1 text-sm">
+                <!-- Log entries will be added here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Settings Button -->
+    <button id="settings-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h2 class="text-2xl font-bold mb-4 text-center">Settings</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="work-duration" class="block text-sm font-medium text-gray-300">Work Duration (min)</label>
+                    <input type="number" id="work-duration" value="25" class="mt-1 w-full bg-gray-700 rounded-md border-gray-600 text-white p-2">
+                </div>
+                <div>
+                    <label for="short-break-duration" class="block text-sm font-medium text-gray-300">Short Break (min)</label>
+                    <input type="number" id="short-break-duration" value="5" class="mt-1 w-full bg-gray-700 rounded-md border-gray-600 text-white p-2">
+                </div>
+                <div>
+                    <label for="long-break-duration" class="block text-sm font-medium text-gray-300">Long Break (min)</label>
+                    <input type="number" id="long-break-duration" value="15" class="mt-1 w-full bg-gray-700 rounded-md border-gray-600 text-white p-2">
+                </div>
+                 <div>
+                    <label for="sessions-goal" class="block text-sm font-medium text-gray-300">Daily Goal (Pomodoros)</label>
+                    <input type="number" id="sessions-goal" value="8" class="mt-1 w-full bg-gray-700 rounded-md border-gray-600 text-white p-2">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="close-settings-btn" class="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">Cancel</button>
+                <button id="save-settings-btn" class="px-4 py-2 bg-indigo-600 rounded-md hover:bg-indigo-500 transition-colors">Save</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // DOM Elements
+        const timerDisplay = document.getElementById('timer');
+        const startPauseBtn = document.getElementById('start-pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const sessionTypeDisplay = document.getElementById('session-type');
+        const appBody = document.getElementById('app-body');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const taskInput = document.getElementById('task-input');
+        const goalTracker = document.getElementById('goal-tracker');
+        const longBreakTracker = document.getElementById('long-break-tracker');
+        const historyLog = document.getElementById('history-log');
+
+        // Timer Settings
+        let settings = {
+            work: 25,
+            shortBreak: 5,
+            longBreak: 15,
+            dailyGoal: 8,
+            sessionsForLongBreak: 4,
+        };
+
+        // Timer State
+        let timerInterval = null;
+        let isRunning = false;
+        let currentSessionType = 'work'; // 'work', 'shortBreak', 'longBreak'
+        let timeRemaining = settings.work * 60;
+        let workSessionsCompleted = 0;
+        let history = [];
+
+        // Audio setup with Tone.js
+        const synth = new Tone.Synth().toDestination();
+
+        // --- Functions ---
+        
+        function updateDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            document.title = `${timerDisplay.textContent} - ${currentSessionType}`;
+        }
+
+        function updateSessionUI() {
+            appBody.className = 'flex items-center justify-center min-h-screen transition-colors duration-500'; // reset classes
+            switch(currentSessionType) {
+                case 'shortBreak':
+                    sessionTypeDisplay.textContent = 'Short Break';
+                    sessionTypeDisplay.className = 'text-2xl md:text-3xl font-bold tracking-wider uppercase px-4 py-2 rounded-full transition-colors duration-500 bg-green-500 text-gray-900';
+                    appBody.classList.add('bg-green-900', 'text-white');
+                    break;
+                case 'longBreak':
+                    sessionTypeDisplay.textContent = 'Long Break';
+                    sessionTypeDisplay.className = 'text-2xl md:text-3xl font-bold tracking-wider uppercase px-4 py-2 rounded-full transition-colors duration-500 bg-blue-500 text-white';
+                    appBody.classList.add('bg-blue-900', 'text-white');
+                    break;
+                default: // 'work'
+                    sessionTypeDisplay.textContent = 'Work';
+                    sessionTypeDisplay.className = 'text-2xl md:text-3xl font-bold tracking-wider uppercase px-4 py-2 rounded-full transition-colors duration-500 bg-indigo-500 text-white';
+                    appBody.classList.add('bg-gray-900', 'text-white');
+                    break;
+            }
+        }
+        
+        function updateTrackingUI() {
+            goalTracker.textContent = `${workSessionsCompleted} / ${settings.dailyGoal}`;
+            const remainingForLongBreak = settings.sessionsForLongBreak - (workSessionsCompleted % settings.sessionsForLongBreak);
+            longBreakTracker.textContent = (workSessionsCompleted > 0 && remainingForLongBreak === settings.sessionsForLongBreak) ? settings.sessionsForLongBreak : remainingForLongBreak;
+        }
+
+        function toggleTimer() {
+            if (isRunning) pauseTimer();
+            else startTimer();
+        }
+
+        function startTimer() {
+            isRunning = true;
+            startPauseBtn.textContent = 'Pause';
+            startPauseBtn.classList.replace('bg-indigo-600', 'bg-yellow-500');
+            startPauseBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-yellow-600');
+
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateDisplay();
+                if (timeRemaining < 0) {
+                    clearInterval(timerInterval);
+                    switchSession();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            startPauseBtn.textContent = 'Start';
+            startPauseBtn.classList.replace('bg-yellow-500', 'bg-indigo-600');
+            startPauseBtn.classList.replace('hover:bg-yellow-600', 'hover:bg-indigo-700');
+        }
+
+        function switchSession() {
+            const previousSession = currentSessionType;
+            // Play sound and show notification
+            try {
+                Tone.start();
+                synth.triggerAttackRelease("C5", "0.5");
+                showNotification(`${sessionTypeDisplay.textContent} Over!`, `Time for your ${previousSession === 'work' ? 'break' : 'next session'}.`);
+            } catch(e) { console.error("Audio/Notification error:", e); }
+
+            if (previousSession === 'work') {
+                workSessionsCompleted++;
+                logHistory();
+                if (workSessionsCompleted % settings.sessionsForLongBreak === 0) {
+                    currentSessionType = 'longBreak';
+                    timeRemaining = settings.longBreak * 60;
+                } else {
+                    currentSessionType = 'shortBreak';
+                    timeRemaining = settings.shortBreak * 60;
+                }
+            } else {
+                currentSessionType = 'work';
+                timeRemaining = settings.work * 60;
+            }
+            
+            updateAllUI();
+            startTimer();
+        }
+
+        function resetTimer(full = false) {
+            pauseTimer();
+            if (full) {
+                currentSessionType = 'work';
+                workSessionsCompleted = 0;
+                history = [];
+                historyLog.innerHTML = '';
+            }
+            timeRemaining = settings[currentSessionType] * 60;
+            updateAllUI();
+        }
+        
+        function updateAllUI() {
+            updateDisplay();
+            updateSessionUI();
+            updateTrackingUI();
+        }
+        
+        function logHistory() {
+            const task = taskInput.value.trim() || "Un-named task";
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            history.unshift({ task, timestamp });
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'flex justify-between items-center bg-gray-700 p-1 rounded';
+            logEntry.innerHTML = `<span>${task}</span><span class="text-gray-400">${timestamp}</span>`;
+            historyLog.prepend(logEntry);
+            
+            taskInput.value = '';
+        }
+        
+        // --- Settings Modal ---
+        function openSettings() {
+            document.getElementById('work-duration').value = settings.work;
+            document.getElementById('short-break-duration').value = settings.shortBreak;
+            document.getElementById('long-break-duration').value = settings.longBreak;
+            document.getElementById('sessions-goal').value = settings.dailyGoal;
+            settingsModal.classList.remove('hidden');
+            setTimeout(() => settingsModal.querySelector('.modal-content').classList.replace('scale-95', 'scale-100'), 10);
+        }
+        
+        function closeSettings() {
+            settingsModal.querySelector('.modal-content').classList.replace('scale-100', 'scale-95');
+            setTimeout(() => settingsModal.classList.add('hidden'), 300);
+        }
+
+        function saveSettings() {
+            settings.work = parseInt(document.getElementById('work-duration').value) || 25;
+            settings.shortBreak = parseInt(document.getElementById('short-break-duration').value) || 5;
+            settings.longBreak = parseInt(document.getElementById('long-break-duration').value) || 15;
+            settings.dailyGoal = parseInt(document.getElementById('sessions-goal').value) || 8;
+            closeSettings();
+            resetTimer(true);
+        }
+
+        // --- Notifications ---
+        function showNotification(title, body) {
+            if (Notification.permission === 'granted') {
+                new Notification(title, { body });
+            }
+        }
+        
+        // --- Event Listeners ---
+        startPauseBtn.addEventListener('click', toggleTimer);
+        resetBtn.addEventListener('click', () => resetTimer(true));
+        settingsBtn.addEventListener('click', openSettings);
+        closeSettingsBtn.addEventListener('click', closeSettings);
+        saveSettingsBtn.addEventListener('click', saveSettings);
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName.toLowerCase() === 'input') return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleTimer();
+            }
+        });
+
+        // --- Initial Setup ---
+        window.onload = () => {
+            if ('Notification' in window && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+            updateAllUI();
+        };
+    </script>
+</body>
+</html>
