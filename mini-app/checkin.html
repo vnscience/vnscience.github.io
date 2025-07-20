@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Điểm danh bằng Barcode</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 p-6">
+  <div class="max-w-xl mx-auto">
+    <h1 class="text-2xl font-bold text-center mb-6">📷 Điểm danh sinh viên bằng Barcode</h1>
+
+    <div id="scanner" class="w-full h-64 bg-gray-300 rounded mb-4"></div>
+    <p id="result" class="text-center text-green-600 font-semibold text-lg"></p>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbyD2GGgpnVGg74SDmylrYRU35-N8297-97uPTycDBXodY56w-mXCKN5IkNMcnAB1p9L7A/exec"; // Thay bằng Apps Script thực tế
+
+    async function getPublicIP() {
+      const res = await fetch("https://api.ipify.org?format=json");
+      const data = await res.json();
+      return data.ip;
+    }
+
+    function sendAttendance(mssv, ip) {
+      fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mssv, ip })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("result").textContent = `✅ MSSV ${mssv} điểm danh lúc ${new Date(data.time).toLocaleTimeString()}`;
+      })
+      .catch(() => {
+        document.getElementById("result").textContent = "❌ Gửi dữ liệu điểm danh thất bại.";
+      });
+    }
+
+    Quagga.init({
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: document.querySelector('#scanner'),
+        constraints: {
+          facingMode: "environment"
+        }
+      },
+      decoder: {
+        readers: ["code_128_reader", "code_39_reader"]
+      }
+    }, function (err) {
+      if (err) {
+        console.error(err);
+        document.getElementById("result").textContent = "❌ Không thể khởi động camera.";
+        return;
+      }
+      Quagga.start();
+    });
+
+    Quagga.onDetected(function (result) {
+      const code = result.codeResult.code;
+    //   if (!/^20\d{6}$/.test(code)) {
+    //     document.getElementById("result").textContent = `❌ Mã không hợp lệ: ${code}`;
+    //     return;
+    //   }
+      Quagga.stop();
+      getPublicIP().then(ip => sendAttendance(code, ip));
+    });
+  </script>
+</body>
+</html>
