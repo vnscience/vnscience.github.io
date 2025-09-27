@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lấy Tọa Độ với OpenStreetMap & Leaflet</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: calc(100% - 80px); /* Chiều cao bản đồ trừ đi phần control */
+        }
+        .control-panel {
+            padding: 10px;
+            background: #f2f2f2;
+            height: 80px;
+            box-sizing: border-box;
+        }
+        #search-box {
+            padding: 5px;
+            width: 300px;
+        }
+        #results {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="control-panel">
+    <input type="text" id="search-box" placeholder="Nhập địa chỉ để tìm kiếm...">
+    <button onclick="searchLocation()">Tìm kiếm</button>
+    <div id="results">Nhấp vào bản đồ để lấy tọa độ.</div>
+</div>
+<div id="map"></div>
+
+<script>
+    // 1. KHỞI TẠO BẢN ĐỒ
+    // Tọa độ mặc định (TP. Hồ Chí Minh) và mức zoom
+    var map = L.map('map').setView([10.7769, 106.7009], 13);
+
+    // 2. THÊM LỚP BẢN ĐỒ NỀN (TILE LAYER)
+    // Sử dụng bản đồ từ OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // 3. TẠO MỘT MARKER (ĐIỂM ĐÁNH DẤU)
+    var marker = L.marker([10.7769, 106.7009]).addTo(map)
+        .bindPopup('Một điểm trên bản đồ.')
+        .openPopup();
+
+    // 4. BẮT SỰ KIỆN CLICK TRÊN BẢN ĐỒ
+    function onMapClick(e) {
+        // Lấy kinh độ, vĩ độ từ sự kiện click
+        var lat = e.latlng.lat.toFixed(6); // Làm tròn đến 6 chữ số thập phân
+        var lng = e.latlng.lng.toFixed(6);
+
+        // Cập nhật vị trí của marker
+        marker
+            .setLatLng(e.latlng)
+            .setPopupContent("Tọa độ: " + lat + ", " + lng)
+            .openPopup();
+
+        // Hiển thị tọa độ trong phần control
+        document.getElementById('results').innerText = 'Vĩ độ: ' + lat + ' | Kinh độ: ' + lng;
+    }
+
+    map.on('click', onMapClick);
+
+    // 5. CHỨC NĂNG TÌM KIẾM ĐỊA CHỈ
+    async function searchLocation() {
+        var query = document.getElementById('search-box').value;
+        if (query.length < 3) {
+            alert('Vui lòng nhập ít nhất 3 ký tự để tìm kiếm.');
+            return;
+        }
+
+        // Sử dụng API Nominatim miễn phí của OpenStreetMap để tìm kiếm
+        var url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                var firstResult = data[0];
+                var lat = parseFloat(firstResult.lat);
+                var lon = parseFloat(firstResult.lon);
+
+                // Di chuyển bản đồ và marker đến vị trí tìm được
+                map.setView([lat, lon], 15);
+                marker.setLatLng([lat, lon])
+                    .setPopupContent(firstResult.display_name)
+                    .openPopup();
+                
+                document.getElementById('results').innerText = 'Vĩ độ: ' + lat.toFixed(6) + ' | Kinh độ: ' + lon.toFixed(6);
+            } else {
+                alert('Không tìm thấy địa điểm.');
+            }
+        } catch (error) {
+            console.error('Lỗi khi tìm kiếm:', error);
+            alert('Đã xảy ra lỗi khi tìm kiếm địa điểm.');
+        }
+    }
+    
+    // Cho phép nhấn Enter trong ô tìm kiếm
+    document.getElementById('search-box').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchLocation();
+        }
+    });
+
+</script>
+
+</body>
+</html>
