@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Voice Translator App (Streaming)</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải thư viện Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; 
+        }
+        .main-card {
+            box-shadow: 0 20px 40px -10px rgba(49, 46, 129, 0.2), 0 0 15px rgba(0, 0, 0, 0.05);
+        }
+        .pulsing-dot {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .transcript-box {
+            /* Tăng chiều cao tối đa để hiển thị rõ ràng hơn */
+            max-height: 35vh; 
+            min-height: 15vh;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            padding: 1rem; /* Thêm padding để văn bản không dính vào mép */
+        }
+        /* Loại bỏ khoảng cách dòng mặc định (space-y-3) và đảm bảo văn bản liên tục */
+        .continuous-text {
+            white-space: pre-wrap; /* Giữ các khoảng trắng và ngắt dòng (nếu có, mặc dù chúng ta sẽ dùng dấu cách) */
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app-container" class="w-full max-w-4xl bg-white main-card rounded-3xl p-6 md:p-10">
+        
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-2 text-center flex items-center justify-center">
+            <span class="material-icons text-indigo-600 text-4xl mr-3">mic_chat</span>
+            Dịch Hội Thoại TRỰC TIẾP (Streaming)
+        </h1>
+
+        <!-- Trạng thái ứng dụng -->
+        <div class="mb-8 p-4 rounded-xl text-center font-semibold transition-colors" id="status-box">
+            Sẵn sàng.
+        </div>
+
+        <!-- Cài đặt ngôn ngữ -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="p-4 bg-indigo-50 rounded-xl shadow-inner">
+                <label for="source-lang" class="block text-sm font-bold text-indigo-700 mb-2">1. Ngôn ngữ Nguồn (Nói)</label>
+                <select id="source-lang" class="w-full p-3 border border-indigo-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                    <option value="vi">🇻🇳 Tiếng Việt</option>
+                    <option value="en" selected>🇺🇸 Tiếng Anh</option>
+                    <option value="fr">🇫🇷 Tiếng Pháp</option>
+                    <option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
+                    <option value="ja">🇯🇵 Tiếng Nhật</option>
+                    <option value="ko">🇰🇷 Tiếng Hàn</option>
+                </select>
+            </div>
+
+            <div class="p-4 bg-green-50 rounded-xl shadow-inner">
+                <label for="target-lang" class="block text-sm font-bold text-green-700 mb-2">2. Ngôn ngữ Đích (Dịch)</label>
+                <select id="target-lang" class="w-full p-3 border border-green-300 rounded-lg bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
+                    <option value="vi" selected>🇻🇳 Tiếng Việt</option>
+                    <option value="en">🇺🇸 Tiếng Anh</option>
+                    <option value="fr">🇫🇷 Tiếng Pháp</option>
+                    <option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
+                    <option value="ja">🇯🇵 Tiếng Nhật</option>
+                    <option value="ko">🇰🇷 Tiếng Hàn</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Nút Bắt đầu/Dừng -->
+        <div class="text-center mb-10">
+            <button id="start-btn" onclick="toggleListening()" class="flex items-center justify-center mx-auto text-white font-bold py-4 px-10 rounded-full transition duration-300 shadow-xl hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-700">
+                <span class="material-icons mr-2 text-3xl" id="mic-icon">play_arrow</span>
+                <span id="btn-text">BẮT ĐẦU DỊCH</span>
+            </button>
+        </div>
+
+        <!-- KHU VỰC HIỂN THỊ STREAMING -->
+        <div class="grid grid-cols-1 gap-6"> 
+            
+            <!-- Văn bản Nguồn (Phần trên) -->
+            <div class="bg-white rounded-xl border-2 border-indigo-200 shadow-lg">
+                <h3 class="font-bold text-indigo-700 p-5 pb-3 flex items-center text-xl border-b border-indigo-100">
+                    <span class="material-icons mr-2 text-3xl">record_voice_over</span>
+                    Văn Bản Đã Nghe (Nguồn)
+                </h3>
+                <div id="source-transcript" class="transcript-box text-gray-800 text-lg font-semibold bg-indigo-50/50">
+                    <!-- CONTINOUS STREAM CONTAINER -->
+                    <span id="source-continuous-text" class="continuous-text"></span>
+                    <!-- Draft Text -->
+                    <p id="source-interim" class="text-gray-500 italic text-base pt-2"></p>
+                </div>
+            </div>
+
+            <!-- Văn bản Đích (Dịch - Phần dưới) -->
+            <div class="bg-white rounded-xl border-2 border-green-200 shadow-lg">
+                <h3 class="font-bold text-green-700 p-5 pb-3 flex items-center text-xl border-b border-green-100">
+                    <span class="material-icons mr-2 text-3xl">language</span>
+                    Bản Dịch (Đích)
+                </h3>
+                <div id="target-text" class="transcript-box text-gray-800 text-lg font-bold bg-green-50/50">
+                    <!-- CONTINOUS STREAM CONTAINER -->
+                    <span id="target-continuous-text" class="continuous-text"></span>
+                </div>
+            </div>
+        </div>
+        <div id="error-message" class="hidden mt-6 p-4 bg-red-100 text-red-700 rounded-lg font-medium"></div>
+    </div>
+
+    <script type="module">
+        // --- Cấu hình và Biến Toàn cục ---
+        
+        let recognition = null;
+        let isListening = false;
+        
+        // --- DOM Elements ---
+        const startBtn = document.getElementById('start-btn');
+        const btnText = document.getElementById('btn-text');
+        const micIcon = document.getElementById('mic-icon');
+        const statusBox = document.getElementById('status-box');
+        const sourceLangSelect = document.getElementById('source-lang');
+        const targetLangSelect = document.getElementById('target-lang');
+        // Lấy các element mới để chứa luồng văn bản liên tục
+        const sourceContinuousTextEl = document.getElementById('source-continuous-text');
+        const targetContinuousTextEl = document.getElementById('target-continuous-text');
+        const sourceInterimEl = document.getElementById('source-interim');
+        const targetTextContainerEl = document.getElementById('target-text');
+        const errorEl = document.getElementById('error-message');
+        
+        // --- Helper Functions ---
+
+        /** Hiển thị thông báo trạng thái */
+        function updateStatus(message, type = 'info') {
+            statusBox.textContent = message.replace('Error: ', '');
+            statusBox.className = 'mb-8 p-4 rounded-xl text-center font-semibold transition-colors';
+            errorEl.classList.add('hidden');
+            
+            if (type === 'listening') {
+                statusBox.classList.add('bg-red-100', 'text-red-700');
+                statusBox.innerHTML = `<span class="pulsing-dot inline-block w-3 h-3 bg-red-500 rounded-full mr-2"></span> ĐANG LẮNG NGHE (STREAMING)...`;
+            } else if (type === 'translating') {
+                statusBox.classList.add('bg-yellow-100', 'text-yellow-700');
+                statusBox.innerHTML = `<span class="material-icons animate-spin mr-2">bolt</span> ĐANG DỊCH NGAY LẬP TỨC...`;
+            } else if (type === 'ready') {
+                statusBox.classList.add('bg-blue-100', 'text-blue-700');
+            } else if (type === 'error') {
+                statusBox.classList.add('bg-red-100', 'text-red-700');
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+            }
+        }
+        
+        // --- FAST TRANSLATE LOGIC (Public API) ---
+        async function fastTranslateText(sourceText, sourceLang, targetLang) {
+            // Sử dụng dịch vụ công cộng cho tốc độ nhanh nhất
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(sourceText)}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Dịch vụ dịch thuật không khả dụng (${response.status})`);
+                }
+                const data = await response.json();
+                
+                if (data && data[0] && data[0].length > 0) {
+                    let translatedText = '';
+                    // Nối tất cả các phần dịch (từng câu) lại với nhau
+                    data[0].forEach(segment => {
+                        translatedText += segment[0];
+                    });
+                    return translatedText.trim();
+                } else {
+                    throw new Error("Không nhận được văn bản dịch.");
+                }
+
+            } catch (error) {
+                console.error("Lỗi khi gọi API dịch thuật nhanh:", error);
+                throw new Error(`Lỗi dịch thuật nhanh: ${error.message}`);
+            }
+        }
+
+        /** Xử lý Segment và Dịch ngay lập tức */
+        async function translateSegment(textSegment) {
+            
+            if (textSegment.length === 0) return;
+
+            // 1. Thêm nội dung đã hoàn tất (segment) vào luồng liên tục
+            sourceContinuousTextEl.textContent += textSegment + ' ';
+            sourceContinuousTextEl.parentElement.scrollTop = sourceContinuousTextEl.parentElement.scrollHeight;
+            sourceInterimEl.textContent = ''; // Xóa kết quả tạm thời sau khi có final segment
+
+            try {
+                const sourceLangCode = sourceLangSelect.value;
+                const targetLangCode = targetLangSelect.value;
+                
+                updateStatus('Đang dịch...', 'translating');
+
+                const translatedText = await fastTranslateText(textSegment, sourceLangCode, targetLangCode);
+                
+                // 2. Thêm nội dung dịch vào luồng liên tục
+                targetContinuousTextEl.textContent += translatedText + ' ';
+                targetTextContainerEl.scrollTop = targetTextContainerEl.scrollHeight;
+
+                // 3. Khôi phục trạng thái lắng nghe
+                if (isListening) {
+                    updateStatus('Đang lắng nghe (STREAMING)...', 'listening');
+                }
+
+            } catch (error) {
+                console.error(error);
+                // Hiển thị lỗi cho người dùng nhưng vẫn cố gắng tiếp tục nghe
+                updateStatus(`Lỗi dịch: ${error.message}`, 'error');
+                if (isListening) {
+                     // Sau 2s, khôi phục lại trạng thái lắng nghe trên giao diện
+                     setTimeout(() => updateStatus('Đang lắng nghe (STREAMING)...', 'listening'), 2000);
+                }
+            }
+        }
+
+
+        // --- Speech Recognition Logic ---
+        
+        function setupRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                updateStatus("Trình duyệt không hỗ trợ Web Speech Recognition API.", 'error');
+                startBtn.disabled = true;
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; 
+            recognition.interimResults = true; 
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                isListening = true;
+                // Xóa nội dung cũ khi bắt đầu
+                sourceContinuousTextEl.textContent = '';
+                targetContinuousTextEl.textContent = '';
+                sourceInterimEl.textContent = '';
+                
+                micIcon.textContent = 'stop';
+                btnText.textContent = 'DỪNG DỊCH';
+                startBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                startBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                updateStatus('Đang lắng nghe (STREAMING)...', 'listening');
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micIcon.textContent = 'play_arrow';
+                btnText.textContent = 'BẮT ĐẦU DỊCH';
+                startBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                startBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                updateStatus('Đã dừng. Sẵn sàng bắt đầu.', 'ready');
+            };
+
+            recognition.onresult = (event) => {
+                let currentInterim = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const result = event.results[i];
+                    
+                    if (result.isFinal) {
+                        const finalSegment = result[0].transcript.trim();
+                        
+                        // Gọi dịch ngay lập tức với segment cuối cùng đã nhận dạng được
+                        translateSegment(finalSegment);
+                        
+                    } else {
+                        // Cập nhật kết quả tạm thời
+                        currentInterim += result[0].transcript;
+                    }
+                }
+
+                // Hiển thị văn bản tạm thời (draft)
+                if (currentInterim.length > 0) {
+                    sourceInterimEl.textContent = `... ${currentInterim}`;
+                    // Cuộn đến cuối khung nghe (sourceContinuousTextEl.parentElement)
+                    sourceContinuousTextEl.parentElement.scrollTop = sourceContinuousTextEl.parentElement.scrollHeight;
+                } else {
+                    sourceInterimEl.textContent = '';
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                if (isListening && (event.error === 'no-speech' || event.error === 'network')) {
+                     updateStatus(`Lỗi: ${event.error}. Tự động khởi động lại...`, 'error');
+                     setTimeout(() => recognition.start(), 500);
+                } else {
+                    recognition.stop();
+                    updateStatus(`Lỗi nhận dạng giọng nói nghiêm trọng: ${event.error}`, 'error');
+                }
+            };
+        }
+
+        function startRecognition() {
+            // Web Speech API cần mã ngôn ngữ dạng 'en-US'
+            const sourceLangCode = sourceLangSelect.value + '-' + sourceLangSelect.value.toUpperCase();
+            recognition.lang = sourceLangCode;
+            try {
+                recognition.start();
+            } catch (e) {
+                if (e.name !== 'InvalidStateError') {
+                    updateStatus(`Không thể bắt đầu nhận dạng: ${e.message}`, 'error');
+                }
+            }
+        }
+
+        // --- Global Controller ---
+
+        window.toggleListening = function() {
+            if (!recognition) {
+                updateStatus("Hệ thống chưa sẵn sàng. Vui lòng thử lại.", 'error');
+                return;
+            }
+
+            if (isListening) {
+                recognition.stop();
+            } else {
+                startRecognition();
+            }
+        };
+
+        // Khởi tạo ứng dụng khi cửa sổ tải xong
+        window.onload = function() {
+            setupRecognition();
+            updateStatus('Chọn ngôn ngữ và nhấn BẮT ĐẦU DỊCH.', 'ready');
+        };
+    </script>
+</body>
+</html>
