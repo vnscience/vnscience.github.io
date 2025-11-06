@@ -47,6 +47,7 @@
             <span class="material-icons text-indigo-600 text-4xl mr-3">mic_chat</span>
             Dịch Hội Thoại TRỰC TIẾP (Streaming)
         </h1>
+        <p class="text-center text-gray-500 mb-6">Chế độ tối ưu cho cuộc họp</p>
 
         <!-- Trạng thái ứng dụng -->
         <div class="mb-8 p-4 rounded-xl text-center font-semibold transition-colors" id="status-box">
@@ -58,24 +59,26 @@
             <div class="p-4 bg-indigo-50 rounded-xl shadow-inner">
                 <label for="source-lang" class="block text-sm font-bold text-indigo-700 mb-2">1. Ngôn ngữ Nguồn (Nói)</label>
                 <select id="source-lang" class="w-full p-3 border border-indigo-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                    <option value="vi">🇻🇳 Tiếng Việt</option>
-                    <option value="en" selected>🇺🇸 Tiếng Anh</option>
-                    <option value="fr">🇫🇷 Tiếng Pháp</option>
-                    <option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
-                    <option value="ja">🇯🇵 Tiếng Nhật</option>
-                    <option value="ko">🇰🇷 Tiếng Hàn</option>
+                    <option value="vi-VN">🇻🇳 Tiếng Việt</option>
+                    <option value="en-US" selected>🇺🇸 Tiếng Anh</option>
+                    <option value="zh-CN">🇨🇳 Tiếng Trung (Giản thể)</option>
+                    <option value="fr-FR">🇫🇷 Tiếng Pháp</option>
+                    <option value="es-ES">🇪🇸 Tiếng Tây Ban Nha</option>
+                    <option value="ja-JP">🇯🇵 Tiếng Nhật</option>
+                    <option value="ko-KR">🇰🇷 Tiếng Hàn</option>
                 </select>
             </div>
 
             <div class="p-4 bg-green-50 rounded-xl shadow-inner">
                 <label for="target-lang" class="block text-sm font-bold text-green-700 mb-2">2. Ngôn ngữ Đích (Dịch)</label>
                 <select id="target-lang" class="w-full p-3 border border-green-300 rounded-lg bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
-                    <option value="vi" selected>🇻🇳 Tiếng Việt</option>
-                    <option value="en">🇺🇸 Tiếng Anh</option>
-                    <option value="fr">🇫🇷 Tiếng Pháp</option>
-                    <option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
-                    <option value="ja">🇯🇵 Tiếng Nhật</option>
-                    <option value="ko">🇰🇷 Tiếng Hàn</option>
+                    <option value="vi-VN" selected>🇻🇳 Tiếng Việt</option>
+                    <option value="en-US">🇺🇸 Tiếng Anh</option>
+                    <option value="zh-CN">🇨🇳 Tiếng Trung (Giản thể)</option>
+                    <option value="fr-FR">🇫🇷 Tiếng Pháp</option>
+                    <option value="es-ES">🇪🇸 Tiếng Tây Ban Nha</option>
+                    <option value="ja-JP">🇯🇵 Tiếng Nhật</option>
+                    <option value="ko-KR">🇰🇷 Tiếng Hàn</option>
                 </select>
             </div>
         </div>
@@ -142,6 +145,11 @@
         
         // --- Helper Functions ---
 
+        /** Trích xuất mã ngôn ngữ ISO 639-1 (ví dụ: 'en' từ 'en-US') */
+        function getBaseLangCode(fullCode) {
+            return fullCode.split('-')[0];
+        }
+
         /** Hiển thị thông báo trạng thái */
         function updateStatus(message, type = 'info') {
             statusBox.textContent = message.replace('Error: ', '');
@@ -164,8 +172,11 @@
         }
         
         // --- FAST TRANSLATE LOGIC (Public API) ---
-        async function fastTranslateText(sourceText, sourceLang, targetLang) {
-            // Sử dụng dịch vụ công cộng cho tốc độ nhanh nhất
+        async function fastTranslateText(sourceText, sourceLangFullCode, targetLangFullCode) {
+            // Sử dụng mã ISO 639-1 (hai chữ cái) cho API dịch thuật nhanh
+            const sourceLang = getBaseLangCode(sourceLangFullCode);
+            const targetLang = getBaseLangCode(targetLangFullCode);
+
             const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(sourceText)}`;
 
             try {
@@ -203,12 +214,12 @@
             sourceInterimEl.textContent = ''; // Xóa kết quả tạm thời sau khi có final segment
 
             try {
-                const sourceLangCode = sourceLangSelect.value;
-                const targetLangCode = targetLangSelect.value;
+                const sourceLangFullCode = sourceLangSelect.value;
+                const targetLangFullCode = targetLangSelect.value;
                 
                 updateStatus('Đang dịch...', 'translating');
 
-                const translatedText = await fastTranslateText(textSegment, sourceLangCode, targetLangCode);
+                const translatedText = await fastTranslateText(textSegment, sourceLangFullCode, targetLangFullCode);
                 
                 // 2. Thêm nội dung dịch vào luồng liên tục
                 targetContinuousTextEl.textContent += translatedText + ' ';
@@ -310,9 +321,8 @@
         }
 
         function startRecognition() {
-            // Web Speech API cần mã ngôn ngữ dạng 'en-US'
-            const sourceLangCode = sourceLangSelect.value + '-' + sourceLangSelect.value.toUpperCase();
-            recognition.lang = sourceLangCode;
+            // Sử dụng mã ngôn ngữ BCP-47 (ví dụ: 'en-US', 'zh-CN') trực tiếp từ giá trị select
+            recognition.lang = sourceLangSelect.value;
             try {
                 recognition.start();
             } catch (e) {
