@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ Xử lý Chuỗi Đa năng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 1);
+            border: 1px solid #e2e8f0;
+        }
+        .checkbox-card:shadow-inner {
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="min-h-screen py-6 px-4 sm:px-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="mb-6 text-center">
+            <h1 class="text-3xl font-extrabold text-slate-900 mb-1">
+                Xử lý Chuỗi Đa năng
+            </h1>
+            <p class="text-slate-500">Chọn nhiều tùy chọn để áp dụng cùng lúc vào văn bản của bạn.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left: Input Area (5 columns) -->
+            <div class="lg:col-span-5 flex flex-col space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-bold text-slate-700 uppercase tracking-tight">Văn bản đầu vào</label>
+                    <span id="input-stats" class="text-xs text-slate-400">0 ký tự | 0 dòng</span>
+                </div>
+                <textarea 
+                    id="input-text"
+                    class="w-full h-[500px] p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition shadow-sm resize-none text-slate-800 bg-white"
+                    placeholder="Dán danh sách tại đây..."></textarea>
+                <div class="flex space-x-2">
+                    <button onclick="clearAll()" class="flex-1 py-2 text-sm bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold rounded-lg transition">Xóa trắng</button>
+                    <button onclick="pasteFromClipboard()" class="flex-1 py-2 text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg transition border border-indigo-100">Dán văn bản</button>
+                </div>
+            </div>
+
+            <!-- Middle: Controls (3 columns) -->
+            <div class="lg:col-span-2 flex flex-col space-y-4">
+                <div class="glass-panel p-4 rounded-xl shadow-sm">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Tùy chọn xử lý</h2>
+                    
+                    <div class="space-y-3" id="options-container">
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" value="trim" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition">Xóa khoảng trắng thừa</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" value="removeEmpty" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition">Bỏ dòng trống</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" value="removeAccents" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition">Loại bỏ dấu VN</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" value="removeDuplicates" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition">Xóa dòng trùng</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group border-t pt-3 mt-3">
+                            <input type="checkbox" value="sort" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition">Sắp xếp A-Z</span>
+                        </label>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t">
+                        <h3 class="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Định dạng chữ</h3>
+                        <select id="case-option" class="w-full text-sm p-2 border border-slate-200 rounded-md outline-none bg-slate-50 focus:border-indigo-500">
+                            <option value="none">Giữ nguyên</option>
+                            <option value="uppercase">IN HOA TOÀN BỘ</option>
+                            <option value="lowercase">in thường toàn bộ</option>
+                            <option value="capitalize">Viết Hoa Chữ Đầu</option>
+                        </select>
+                    </div>
+
+                    <button 
+                        onclick="runPipeline()" 
+                        class="w-full mt-6 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all transform active:scale-95 flex items-center justify-center space-x-2">
+                        <span>XỬ LÝ NGAY</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Output Area (4 columns) -->
+            <div class="lg:col-span-5 flex flex-col space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-bold text-slate-700 uppercase tracking-tight">Kết quả</label>
+                    <div id="copy-status" class="text-xs font-bold text-indigo-600 opacity-0 transition-opacity uppercase">Đã sao chép!</div>
+                </div>
+                <textarea 
+                    id="output-text"
+                    readonly
+                    class="w-full h-[500px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 shadow-inner resize-none outline-none font-medium"
+                    placeholder="Kết quả sẽ xuất hiện ở đây..."></textarea>
+                <button 
+                    onclick="copyToClipboard()"
+                    class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-lg transition flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    <span>Sao chép kết quả</span>
+                </button>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-slate-400 text-xs">
+            Công cụ chạy hoàn toàn trên trình duyệt (Offline Mode) • Không lưu trữ dữ liệu cá nhân.
+        </footer>
+    </div>
+
+    <script>
+        const inputArea = document.getElementById('input-text');
+        const outputArea = document.getElementById('output-text');
+        const inputStats = document.getElementById('input-stats');
+        const copyStatus = document.getElementById('copy-status');
+
+        inputArea.addEventListener('input', updateStats);
+
+        function updateStats() {
+            const text = inputArea.value;
+            const lines = text ? text.split('\n').filter(line => line.trim() !== '').length : 0;
+            inputStats.textContent = `${text.length} ký tự | ${lines} dòng thực tế`;
+        }
+
+        function clearAll() {
+            inputArea.value = '';
+            outputArea.value = '';
+            updateStats();
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                inputArea.value = text;
+                updateStats();
+            } catch (err) {
+                console.error("Lỗi paste:", err);
+            }
+        }
+
+        function removeVietnameseTones(str) {
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+            str = str.replace(/đ/g, "d");
+            str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+            str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+            str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+            str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+            str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+            str = str.replace(/Ỳ|Ý|Ạ|Ỷ|Ỹ/g, "Y");
+            str = str.replace(/Đ/g, "D");
+            str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, ""); 
+            str = str.replace(/\u02C6|\u0306|\u031B/g, ""); 
+            return str;
+        }
+
+        function runPipeline() {
+            let text = inputArea.value;
+            if (!text) return;
+
+            // Lấy danh sách các options đã chọn
+            const checkboxes = document.querySelectorAll('#options-container input[type="checkbox"]:checked');
+            const selectedOptions = Array.from(checkboxes).map(cb => cb.value);
+            const caseValue = document.getElementById('case-option').value;
+
+            let lines = text.split('\n');
+
+            // 1. Xóa khoảng trắng (nếu chọn)
+            if (selectedOptions.includes('trim')) {
+                lines = lines.map(l => l.trim().replace(/\s+/g, ' '));
+            }
+
+            // 2. Loại bỏ dòng trống (nếu chọn)
+            if (selectedOptions.includes('removeEmpty')) {
+                lines = lines.filter(l => l.trim() !== '');
+            }
+
+            // 3. Loại bỏ trùng lặp (nếu chọn)
+            if (selectedOptions.includes('removeDuplicates')) {
+                lines = [...new Set(lines)];
+            }
+
+            // 4. Bỏ dấu tiếng Việt (nếu chọn)
+            if (selectedOptions.includes('removeAccents')) {
+                lines = lines.map(l => removeVietnameseTones(l));
+            }
+
+            // 5. Chuyển đổi Case
+            if (caseValue === 'uppercase') {
+                lines = lines.map(l => l.toUpperCase());
+            } else if (caseValue === 'lowercase') {
+                lines = lines.map(l => l.toLowerCase());
+            } else if (caseValue === 'capitalize') {
+                lines = lines.map(l => {
+                    return l.toLowerCase().replace(/(^|\s)\S/g, char => char.toUpperCase());
+                });
+            }
+
+            // 6. Sắp xếp (nếu chọn)
+            if (selectedOptions.includes('sort')) {
+                lines.sort((a, b) => a.localeCompare(b, 'vi'));
+            }
+
+            outputArea.value = lines.join('\n');
+            
+            // Hiệu ứng nhẹ báo hiệu đã xử lý xong
+            outputArea.classList.add('ring-2', 'ring-indigo-400');
+            setTimeout(() => outputArea.classList.remove('ring-2', 'ring-indigo-400'), 500);
+        }
+
+        function copyToClipboard() {
+            const text = outputArea.value;
+            if (!text) return;
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                copyStatus.style.opacity = '1';
+                setTimeout(() => copyStatus.style.opacity = '0', 2000);
+            } catch (err) {
+                console.error('Lỗi khi sao chép', err);
+            }
+            document.body.removeChild(textarea);
+        }
+    </script>
+</body>
+</html>
