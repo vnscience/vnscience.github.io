@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Transcribe Pro - Bilingual</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+    <nav class="p-6 max-w-5xl mx-auto flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                <i class="fas fa-wave-square"></i>
+            </div>
+            <span class="font-extrabold text-xl tracking-tight">AI Transcribe <span class="text-indigo-600">Pro</span></span>
+        </div>
+        
+        <div class="flex items-center space-x-1 bg-white border border-slate-200 rounded-full p-1 shadow-sm">
+            <button id="lang-vi" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white">VN</button>
+            <button id="lang-en" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all text-slate-500 hover:bg-slate-100">EN</button>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <div class="text-center mb-10">
+            <h1 id="ui-title" class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Chuyển đổi âm thanh thông minh</h1>
+            <p id="ui-subtitle" class="text-slate-500 max-w-xl mx-auto">Tự động tạo văn bản từ file audio bằng AI Whisper - Xử lý ngay trên máy của bạn.</p>
+        </div>
+
+        <div class="bg-white rounded-[2rem] shadow-xl border border-slate-100 p-6 md:p-10">
+            
+            <div id="model-status" class="mb-8 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center">
+                <div id="status-spinner" class="animate-spin mr-3 text-amber-600"><i class="fas fa-circle-notch"></i></div>
+                <span id="ui-status" class="text-amber-800 font-semibold text-sm">Đang khởi tạo AI...</span>
+            </div>
+
+            <div id="settings-area" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-slate-50 p-6 rounded-2xl">
+                <div>
+                    <label id="ui-label-lang" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ngôn ngữ audio:</label>
+                    <select id="audio-language" class="w-full p-3 rounded-xl border-slate-200 bg-white font-medium outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="vietnamese">Tiếng Việt 🇻🇳</option>
+                        <option value="english">English 🇺🇸</option>
+                        <option value="japanese">Japanese 🇯🇵</option>
+                        <option value="chinese">Chinese 🇨🇳</option>
+                        <option value="auto">Auto Detect</option>
+                    </select>
+                </div>
+                <div class="flex items-end text-xs text-slate-400 italic">
+                    <p id="ui-privacy-note">Xử lý Offline hoàn toàn, đảm bảo tính riêng tư cho file của bạn.</p>
+                </div>
+            </div>
+
+            <div id="upload-zone" class="hidden">
+                <label class="group flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/30 transition-all">
+                    <div class="flex flex-col items-center justify-center py-10">
+                        <i class="fas fa-cloud-arrow-up text-3xl text-slate-300 mb-4 group-hover:text-indigo-500 transition-colors"></i>
+                        <p id="ui-upload-text" class="text-lg font-bold text-slate-700">Chọn hoặc kéo thả file</p>
+                        <p id="ui-upload-sub" class="text-sm text-slate-400">MP3, WAV, M4A... (Hỗ trợ file dài)</p>
+                    </div>
+                    <input id="audio-file" type="file" class="hidden" accept="audio/*" />
+                </label>
+            </div>
+
+            <div id="progress-area" class="hidden mt-8">
+                <div class="flex justify-between items-center mb-3 text-sm font-bold text-indigo-700">
+                    <span id="ui-processing">Đang xử lý...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
+                    <div id="progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div id="result-area" class="hidden mt-10 space-y-4 animate-in fade-in duration-500">
+                <div class="flex justify-between items-center">
+                    <h3 id="ui-result-title" class="text-lg font-bold">Văn bản trích xuất:</h3>
+                    <button id="copy-btn" class="px-5 py-2 bg-slate-900 text-white rounded-xl hover:bg-black transition-all text-sm font-bold">
+                        <i class="far fa-copy mr-2"></i> <span id="ui-copy-btn">Sao chép</span>
+                    </button>
+                </div>
+                <div id="output-text" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 leading-relaxed min-h-[300px] text-lg"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 1. Hệ thống Ngôn ngữ
+        const translations = {
+            vi: {
+                title: "Chuyển đổi âm thanh thông minh",
+                subtitle: "Tự động tạo văn bản từ file audio bằng AI Whisper - Xử lý ngay trên máy của bạn.",
+                status_loading: "Đang tải mô hình AI (vui lòng đợi)...",
+                status_ready: "Sẵn sàng xử lý!",
+                label_lang: "Ngôn ngữ audio:",
+                privacy_note: "Xử lý Offline hoàn toàn, đảm bảo tính riêng tư cho file của bạn.",
+                upload_text: "Chọn hoặc kéo thả file",
+                upload_sub: "Hỗ trợ MP3, WAV, M4A... (Hỗ trợ file dài)",
+                processing: "AI đang làm việc...",
+                result_title: "Văn bản trích xuất:",
+                copy_btn: "Sao chép",
+                copied: "Đã chép!",
+                error: "Có lỗi xảy ra."
+            },
+            en: {
+                title: "Smart Audio Transcriber",
+                subtitle: "Automatically transcribe audio to text using AI Whisper - All processed locally on your device.",
+                status_loading: "Loading AI model (please wait)...",
+                status_ready: "System Ready!",
+                label_lang: "Audio Language:",
+                privacy_note: "Fully Offline processing. Your files never leave your device.",
+                upload_text: "Choose or drag & drop file",
+                upload_sub: "MP3, WAV, M4A... (Long files supported)",
+                processing: "AI is processing...",
+                result_title: "Transcription Result:",
+                copy_btn: "Copy text",
+                copied: "Copied!",
+                error: "An error occurred."
+            }
+        };
+
+        let currentLang = 'vi';
+        let modelReady = false;
+
+        function updateUI() {
+            const t = translations[currentLang];
+            document.getElementById('ui-title').innerText = t.title;
+            document.getElementById('ui-subtitle').innerText = t.subtitle;
+            document.getElementById('ui-label-lang').innerText = t.label_lang;
+            document.getElementById('ui-privacy-note').innerText = t.privacy_note;
+            document.getElementById('ui-upload-text').innerText = t.upload_text;
+            document.getElementById('ui-upload-sub').innerText = t.upload_sub;
+            document.getElementById('ui-processing').innerText = t.processing;
+            document.getElementById('ui-result-title').innerText = t.result_title;
+            document.getElementById('ui-copy-btn').innerText = t.copy_btn;
+            
+            if (!modelReady) {
+                document.getElementById('ui-status').innerText = t.status_loading;
+            } else {
+                document.getElementById('ui-status').innerText = t.status_ready;
+            }
+
+            document.getElementById('lang-vi').className = currentLang === 'vi' ? "px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white" : "px-4 py-1.5 rounded-full text-xs font-bold transition-all text-slate-500 hover:bg-slate-100";
+            document.getElementById('lang-en').className = currentLang === 'en' ? "px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white" : "px-4 py-1.5 rounded-full text-xs font-bold transition-all text-slate-500 hover:bg-slate-100";
+        }
+
+        document.getElementById('lang-vi').onclick = () => { currentLang = 'vi'; updateUI(); };
+        document.getElementById('lang-en').onclick = () => { currentLang = 'en'; updateUI(); };
+
+        // 2. Worker & Logic
+        const worker = new Worker('worker.js', { type: 'module' });
+
+        worker.onmessage = (e) => {
+            const { type, progress, text } = e.data;
+            if (type === 'load') {
+                document.getElementById('ui-status').innerText = `${currentLang === 'vi' ? 'Đang tải' : 'Loading'}: ${Math.round(progress)}%`;
+            } else if (type === 'ready') {
+                modelReady = true;
+                document.getElementById('model-status').className = "mb-8 p-4 rounded-2xl bg-green-50 border border-green-100 flex items-center";
+                document.getElementById('status-spinner').classList.add('hidden');
+                document.getElementById('settings-area').classList.remove('hidden');
+                document.getElementById('upload-zone').classList.remove('hidden');
+                updateUI();
+            } else if (type === 'update') {
+                document.getElementById('progress-bar').style.width = `${progress}%`;
+                document.getElementById('progress-percent').innerText = `${progress}%`;
+            } else if (type === 'complete') {
+                document.getElementById('output-text').innerText = text;
+                document.getElementById('result-area').classList.remove('hidden');
+                document.getElementById('progress-area').classList.add('hidden');
+                document.getElementById('upload-zone').classList.remove('opacity-30', 'pointer-events-none');
+            }
+        };
+
+        document.getElementById('audio-file').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('progress-area').classList.remove('hidden');
+            document.getElementById('result-area').classList.add('hidden');
+            document.getElementById('upload-zone').classList.add('opacity-30', 'pointer-events-none');
+
+            const audioContext = new AudioContext({ sampleRate: 16000 });
+            const arrayBuffer = await file.arrayBuffer();
+            const decodedAudio = await audioContext.decodeAudioData(arrayBuffer);
+            const audioData = decodedAudio.getChannelData(0);
+
+            worker.postMessage({
+                audio: audioData,
+                language: document.getElementById('audio-language').value
+            });
+        };
+
+        document.getElementById('copy-btn').onclick = () => {
+            navigator.clipboard.writeText(document.getElementById('output-text').innerText);
+            const btnSpan = document.getElementById('ui-copy-btn');
+            btnSpan.innerText = translations[currentLang].copied;
+            setTimeout(() => btnSpan.innerText = translations[currentLang].copy_btn, 2000);
+        };
+
+        updateUI();
+    </script>
+</body>
+</html>
