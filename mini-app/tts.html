@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Text-to-Speech Pro - Conversation Fix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card { background: rgba(255, 255, 255, 1); border: 1px solid #e2e8f0; }
+        .speaker-tag { @apply px-2 py-1 rounded-md text-[10px] font-bold uppercase mr-2 mb-2 inline-block; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-900">
+
+    <!-- Navbar -->
+    <nav class="p-6 max-w-5xl mx-auto flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                <i class="fas fa-people-arrows"></i>
+            </div>
+            <span class="font-extrabold text-xl tracking-tight text-slate-800">AI TTS <span class="text-indigo-600 font-light">Pro</span></span>
+        </div>
+        
+        <div class="flex items-center space-x-1 bg-white border border-slate-200 rounded-full p-1 shadow-sm">
+            <button id="lang-vi" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white">VN</button>
+            <button id="lang-en" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all text-slate-500 hover:bg-slate-100">EN</button>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-6">
+        <div class="text-center mb-8">
+            <h1 id="ui-title" class="text-4xl font-extrabold text-slate-900 mb-4 leading-tight">Đối thoại đa giọng đọc</h1>
+            <p id="ui-subtitle" class="text-slate-500 max-w-xl mx-auto italic">Gán giọng đọc Nam/Nữ riêng biệt cho từng nhân vật trong kịch bản.</p>
+        </div>
+
+        <div class="glass-card rounded-[2.5rem] shadow-2xl p-6 md:p-10 border-0">
+            
+            <!-- Voice Selection Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Speaker 1 Config -->
+                <div class="p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100">
+                    <label class="block text-xs font-black text-indigo-600 uppercase tracking-widest mb-3 flex justify-between">
+                        <span><i class="fas fa-venus mr-1"></i> <span id="ui-label-sp1">Giọng đọc 1</span></span>
+                        <span class="text-[9px] bg-indigo-200 px-2 py-0.5 rounded text-indigo-700">Tên đầu tiên</span>
+                    </label>
+                    <select id="voice-select-1" class="w-full p-3.5 rounded-2xl border-white bg-white shadow-sm font-semibold outline-none focus:ring-4 focus:ring-indigo-100">
+                        <optgroup label="Giọng Nữ (Female)">
+                            <option value="Kore" selected>Kore - Trầm ấm</option>
+                            <option value="Aoede">Aoede - Trong trẻo</option>
+                            <option value="Erinome">Erinome - Truyền cảm</option>
+                        </optgroup>
+                        <optgroup label="Giọng Nam (Male)">
+                            <option value="Zephyr">Zephyr - Mạnh mẽ</option>
+                            <option value="Charon">Charon - Trầm sâu</option>
+                            <option value="Fenrir">Fenrir - Hiện đại</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Speaker 2 Config -->
+                <div class="p-5 bg-rose-50/50 rounded-3xl border border-rose-100">
+                    <label class="block text-xs font-black text-rose-600 uppercase tracking-widest mb-3 flex justify-between">
+                        <span><i class="fas fa-mars mr-1"></i> <span id="ui-label-sp2">Giọng đọc 2</span></span>
+                        <span class="text-[9px] bg-rose-200 px-2 py-0.5 rounded text-rose-700">Tên thứ hai</span>
+                    </label>
+                    <select id="voice-select-2" class="w-full p-3.5 rounded-2xl border-white bg-white shadow-sm font-semibold outline-none focus:ring-4 focus:ring-rose-100">
+                        <optgroup label="Giọng Nam (Male)">
+                            <option value="Zephyr" selected>Zephyr - Mạnh mẽ</option>
+                            <option value="Charon">Charon - Trầm sâu</option>
+                            <option value="Fenrir">Fenrir - Hiện đại</option>
+                        </optgroup>
+                        <optgroup label="Giọng Nữ (Female)">
+                            <option value="Kore">Kore - Trầm ấm</option>
+                            <option value="Aoede">Aoede - Trong trẻo</option>
+                            <option value="Erinome">Erinome - Truyền cảm</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-3">
+                    <label id="ui-label-text" class="text-sm font-bold text-slate-700 flex items-center">
+                        <i class="fas fa-scroll mr-2 text-indigo-500"></i> Kịch bản (Tên: Nội dung)
+                    </label>
+                    <div id="detected-speakers" class="flex flex-wrap justify-end">
+                        <!-- Detected names will appear here -->
+                    </div>
+                </div>
+                <textarea id="tts-input" rows="8" class="w-full p-6 rounded-[2rem] border-slate-100 bg-slate-50 text-slate-700 font-medium focus:ring-4 focus:ring-indigo-100 outline-none transition-all resize-none text-lg shadow-inner" 
+                    placeholder="Lan: Chào anh Nam, lâu rồi không gặp.&#10;Nam: Chào Lan, bài nghiên cứu của bạn sao rồi?"></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col md:flex-row gap-4">
+                <button id="generate-btn" class="flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center">
+                    <i class="fas fa-play-circle mr-2 text-2xl"></i> <span id="ui-btn-generate">Tạo hội thoại ngay</span>
+                </button>
+                <button id="clear-btn" class="flex-1 py-5 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-all">
+                    <i class="fas fa-undo mr-2"></i> <span id="ui-btn-clear">Xóa kịch bản</span>
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="hidden mt-8 flex flex-col items-center justify-center animate-pulse">
+                <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                <p id="ui-processing" class="text-indigo-600 font-bold">AI đang gán giọng đọc cho từng nhân vật...</p>
+            </div>
+
+            <!-- Audio Output -->
+            <div id="audio-output" class="hidden mt-10 p-8 bg-white border-2 border-indigo-50 rounded-[2.5rem] shadow-inner animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-black text-slate-800 flex items-center text-xl">
+                        <i class="fas fa-volume-high mr-3 text-indigo-600"></i> <span id="ui-result-title">Kết quả hội thoại:</span>
+                    </h3>
+                    <a id="download-link" href="#" download="conversation.wav" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all">
+                        <i class="fas fa-cloud-download-alt mr-2"></i> <span id="ui-download-btn">Tải về (.wav)</span>
+                    </a>
+                </div>
+                <audio id="audio-player" controls class="w-full h-14"></audio>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; 
+        
+        const translations = {
+            vi: {
+                title: "Đối thoại đa giọng đọc",
+                subtitle: "Gán giọng đọc Nam/Nữ riêng biệt cho từng nhân vật trong kịch bản.",
+                label_sp1: "Giọng đọc 1",
+                label_sp2: "Giọng đọc 2",
+                label_text: "Kịch bản (Tên: Nội dung)",
+                btn_generate: "Tạo hội thoại ngay",
+                btn_clear: "Xóa kịch bản",
+                processing: "AI đang gán giọng đọc cho từng nhân vật...",
+                result_title: "Kết quả hội thoại:",
+                download_btn: "Tải về (.wav)",
+                error_api: "Lỗi kết nối AI. Vui lòng thử lại.",
+                error_format: "Hãy dùng định dạng 'Tên: Lời thoại'. Ví dụ: 'Lan: Xin chào'.",
+                empty_text: "Vui lòng nhập kịch bản hội thoại!"
+            },
+            en: {
+                title: "AI Dialogue Studio",
+                subtitle: "Assign distinct Male/Female voices to each character in your script.",
+                label_sp1: "Voice 1",
+                label_sp2: "Voice 2",
+                label_text: "Script (Name: Dialogue)",
+                btn_generate: "Generate Dialogue",
+                btn_clear: "Clear Script",
+                processing: "AI is assigning voices to characters...",
+                result_title: "Conversation Result:",
+                download_btn: "Download (.wav)",
+                error_api: "AI connection error. Please try again.",
+                error_format: "Please use 'Name: Text' format. Example: 'John: Hello'.",
+                empty_text: "Please enter your dialogue script!"
+            }
+        };
+
+        let currentLang = 'vi';
+
+        function updateUI() {
+            const t = translations[currentLang];
+            document.getElementById('ui-title').innerText = t.title;
+            document.getElementById('ui-subtitle').innerText = t.subtitle;
+            document.getElementById('ui-label-sp1').innerText = t.label_sp1;
+            document.getElementById('ui-label-sp2').innerText = t.label_sp2;
+            document.getElementById('ui-label-text').innerHTML = `<i class="fas fa-scroll mr-2 text-indigo-500"></i> ${t.label_text}`;
+            document.getElementById('ui-btn-generate').innerText = t.btn_generate;
+            document.getElementById('ui-btn-clear').innerText = t.btn_clear;
+            document.getElementById('ui-processing').innerText = t.processing;
+            document.getElementById('ui-result-title').innerText = t.result_title;
+            document.getElementById('ui-download-btn').innerText = t.download_btn;
+
+            document.getElementById('lang-vi').className = currentLang === 'vi' ? "px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white" : "px-4 py-1.5 rounded-full text-xs font-bold transition-all text-slate-500 hover:bg-slate-100";
+            document.getElementById('lang-en').className = currentLang === 'en' ? "px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white" : "px-4 py-1.5 rounded-full text-xs font-bold transition-all text-slate-500 hover:bg-slate-100";
+        }
+
+        document.getElementById('lang-vi').onclick = () => { currentLang = 'vi'; updateUI(); };
+        document.getElementById('lang-en').onclick = () => { currentLang = 'en'; updateUI(); };
+
+        // Real-time speaker detection
+        document.getElementById('tts-input').oninput = (e) => {
+            const text = e.target.value;
+            const lines = text.split('\n');
+            const speakerNames = [...new Set(lines.map(l => l.match(/^([^:]+):/)?.[1]?.trim()).filter(n => n))];
+            
+            const container = document.getElementById('detected-speakers');
+            container.innerHTML = "";
+            speakerNames.forEach((name, idx) => {
+                const span = document.createElement('span');
+                span.className = `speaker-tag ${idx === 0 ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`;
+                span.innerText = name;
+                container.appendChild(span);
+            });
+        };
+
+        function encodeWAV(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+            const writeString = (view, offset, string) => {
+                for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+            };
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+            let offset = 44;
+            for (let i = 0; i < samples.length; i++, offset += 2) {
+                let s = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        async function fetchWithRetry(url, payload, retries = 5, delay = 1000) {
+            let lastError;
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    if (response.ok) return data;
+                    lastError = data.error?.message || response.statusText;
+                } catch (e) { lastError = e.message; }
+                if (i < retries - 1) await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+            }
+            throw new Error(lastError);
+        }
+
+        document.getElementById('generate-btn').onclick = async () => {
+            const textInput = document.getElementById('tts-input').value.trim();
+            const voice1 = document.getElementById('voice-select-1').value;
+            const voice2 = document.getElementById('voice-select-2').value;
+            const generateBtn = document.getElementById('generate-btn');
+            
+            if (!textInput) {
+                alert(translations[currentLang].empty_text);
+                return;
+            }
+
+            // Extract speakers
+            const lines = textInput.split('\n').filter(l => l.trim() !== '');
+            const speakerNames = [...new Set(lines.map(l => l.match(/^([^:]+):/)?.[1]?.trim()).filter(n => n))];
+
+            if (speakerNames.length === 0) {
+                alert(translations[currentLang].error_format);
+                return;
+            }
+
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50');
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('audio-output').classList.add('hidden');
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            
+            // Map every unique speaker to one of the two selected voices
+            const speakerConfigs = speakerNames.map((name, index) => ({
+                speaker: name,
+                voiceConfig: {
+                    prebuiltVoiceConfig: {
+                        voiceName: index === 0 ? voice1 : voice2 // First name gets Voice 1, all others Voice 2
+                    }
+                }
+            }));
+
+            const payload = {
+                contents: [{ parts: [{ text: textInput }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            multiSpeakerVoiceConfig: {
+                                speakerVoiceConfigs: speakerConfigs
+                            }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            try {
+                const result = await fetchWithRetry(url, payload);
+                const parts = result?.candidates?.[0]?.content?.parts || [];
+                const audioPart = parts.find(p => p.inlineData);
+                
+                if (!audioPart || !audioPart.inlineData?.data) {
+                    throw new Error("No audio data returned by AI.");
+                }
+
+                const base64Data = audioPart.inlineData.data;
+                const sampleRate = parseInt(audioPart.inlineData.mimeType.match(/rate=(\d+)/)?.[1] || "24000");
+
+                const binaryString = atob(base64Data);
+                const bytes = new Int16Array(binaryString.length / 2);
+                for (let i = 0; i < binaryString.length; i += 2) {
+                    bytes[i / 2] = (binaryString.charCodeAt(i + 1) << 8) | binaryString.charCodeAt(i);
+                }
+
+                const floatSamples = new Float32Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) floatSamples[i] = bytes[i] / 32768.0;
+
+                const wavBlob = encodeWAV(floatSamples, sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+
+                const player = document.getElementById('audio-player');
+                player.src = audioUrl;
+                document.getElementById('download-link').href = audioUrl;
+                document.getElementById('audio-output').classList.remove('hidden');
+                player.play();
+
+            } catch (err) {
+                console.error(err);
+                alert(translations[currentLang].error_api + "\n" + err.message);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50');
+                document.getElementById('loading-state').classList.add('hidden');
+            }
+        };
+
+        document.getElementById('clear-btn').onclick = () => {
+            document.getElementById('tts-input').value = "";
+            document.getElementById('detected-speakers').innerHTML = "";
+            document.getElementById('audio-output').classList.add('hidden');
+        };
+
+        updateUI();
+    </script>
+</body>
+</html>
