@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Tính thuế TNCN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+
+<div class="max-w-4xl mx-auto mt-10 bg-white shadow-xl rounded-2xl p-6">
+
+    <h1 class="text-2xl font-bold mb-6 text-center text-blue-600">
+        Công cụ tính thuế TNCN
+    </h1>
+
+    <!-- ===== Nguồn thu ===== -->
+    <div class="mb-6">
+        <h2 class="font-semibold mb-2">Nguồn thu nhập</h2>
+        <div id="incomeList" class="space-y-2"></div>
+
+        <button onclick="addIncome()" 
+            class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg">
+            + Thêm nguồn thu
+        </button>
+    </div>
+
+    <!-- ===== Giảm trừ ===== -->
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        <div>
+            <label class="text-sm">Giảm trừ gia cảnh</label>
+            <input type="text" id="giamtru" value="132.000.000"
+                oninput="formatInput(this)"
+                class="w-full border rounded-lg p-2 text-right">
+        </div>
+
+        <div>
+            <label class="text-sm">Bảo hiểm</label>
+            <input type="text" id="baohiem" value="0"
+                oninput="formatInput(this)"
+                class="w-full border rounded-lg p-2 text-right">
+        </div>
+    </div>
+
+    <!-- ===== Thuế đã nộp ===== -->
+    <div class="mb-6">
+        <label class="text-sm">Thuế đã nộp</label>
+        <input type="text" id="thuedanop" value="0"
+            oninput="formatInput(this)"
+            class="w-full border rounded-lg p-2 text-right">
+    </div>
+
+    <!-- Button -->
+    <div class="text-center">
+        <button onclick="tinhThue()"
+            class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl text-lg">
+            Tính thuế
+        </button>
+    </div>
+
+    <!-- Result -->
+    <div id="ketqua" class="mt-6 p-4 bg-gray-50 rounded-xl text-sm"></div>
+
+</div>
+
+<script>
+// ===== FORMAT =====
+function formatVND(n) {
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND'
+    }).format(n);
+}
+
+function parseNumber(str) {
+    return Number((str || "").replace(/\D/g, "")) || 0;
+}
+
+function formatInput(el) {
+    let value = parseNumber(el.value);
+    el.value = value ? value.toLocaleString('vi-VN') : "";
+}
+
+// ===== Dynamic income =====
+function addIncome(name = "", value = 0) {
+    const div = document.createElement("div");
+    div.className = "flex gap-2";
+
+    div.innerHTML = `
+        <input type="text" placeholder="Tên nguồn thu"
+            value="${name}"
+            class="w-1/2 border rounded-lg p-2">
+
+        <input type="text" placeholder="Số tiền"
+            value="${value}"
+            oninput="formatInput(this)"
+            class="w-1/2 border rounded-lg p-2 text-right">
+
+        <button onclick="this.parentElement.remove()"
+            class="bg-red-500 text-white px-3 rounded-lg">X</button>
+    `;
+
+    document.getElementById("incomeList").appendChild(div);
+}
+
+// Init
+addIncome("Thu nhập chính", 0);
+
+// ===== Thuế lũy tiến + chi tiết =====
+function tinhThueChiTiet(tn) {
+    let bac = [
+        { limit: 960000000, rate: 0.35 },
+        { limit: 624000000, rate: 0.30 },
+        { limit: 384000000, rate: 0.25 },
+        { limit: 216000000, rate: 0.20 },
+        { limit: 120000000, rate: 0.15 },
+        { limit: 60000000,  rate: 0.10 },
+        { limit: 0,         rate: 0.05 }
+    ];
+
+    let result = [];
+    let thue = 0;
+
+    for (let i = 0; i < bac.length; i++) {
+        if (tn > bac[i].limit) {
+            let taxable = tn - bac[i].limit;
+            let tax = taxable * bac[i].rate;
+
+            result.push({
+                rate: bac[i].rate,
+                taxable: taxable,
+                tax: tax
+            });
+
+            thue += tax;
+            tn = bac[i].limit;
+        }
+    }
+
+    return { thue, result };
+}
+
+// ===== Main =====
+function tinhThue() {
+    let rows = document.querySelectorAll("#incomeList > div");
+    let tongThu = 0;
+
+    rows.forEach(row => {
+        let val = parseNumber(row.children[1].value);
+        tongThu += val;
+    });
+
+    let giamTru = parseNumber(giamtru.value) + parseNumber(baohiem.value);
+    let thuNhapTinhThue = Math.max(0, tongThu - giamTru);
+
+    let { thue, result } = tinhThueChiTiet(thuNhapTinhThue);
+    let conLai = thue - parseNumber(thuedanop.value);
+
+    let rowsHTML = result.map(r => `
+        <tr class="border-t">
+            <td class="py-1">${r.rate * 100}%</td>
+            <td class="text-right">${formatVND(r.taxable)}</td>
+            <td class="text-right">${formatVND(Math.round(r.tax))}</td>
+        </tr>
+    `).join("");
+
+    document.getElementById("ketqua").innerHTML = `
+        <div class="space-y-3">
+
+            <div><b>Tổng thu nhập:</b> ${formatVND(tongThu)}</div>
+            <div><b>Thu nhập tính thuế:</b> ${formatVND(thuNhapTinhThue)}</div>
+
+            <div class="text-blue-600 font-semibold">
+                Thuế phải nộp: ${formatVND(Math.round(thue))}
+            </div>
+
+            <div class="${conLai > 0 ? 'text-red-500' : 'text-green-600'} font-semibold">
+                ${conLai > 0 ? 'Còn phải nộp:' : 'Được hoàn:'}
+                ${formatVND(Math.abs(Math.round(conLai)))}
+            </div>
+
+            <div class="mt-4">
+                <div class="font-semibold mb-1">Chi tiết theo bậc thuế</div>
+                <table class="w-full text-sm border rounded-lg overflow-hidden">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2">Thuế suất</th>
+                            <th class="text-right p-2">Thu nhập chịu thuế</th>
+                            <th class="text-right p-2">Thuế</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHTML}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    `;
+}
+</script>
+
+</body>
+</html>
