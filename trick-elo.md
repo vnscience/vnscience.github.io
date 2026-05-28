@@ -1,4 +1,5 @@
 ### tự động chọn 100 cho tất cả các ô <select> có class ratinginput
+
 ```js
 allow pasting
 
