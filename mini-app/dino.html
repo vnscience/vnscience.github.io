@@ -841,7 +841,7 @@
                 this.fpsInterval = 0;
 
                 // Physics Environment
-                this.gravity = 1.12; 
+                this.gravity = 0.95; 
                 this.speed = 6.5; 
                 this.maxSpeed = 18;
                 this.distance = 0;
@@ -1629,7 +1629,7 @@
                 if (this.isGrounded || this.jumpCount < maxAllowed) {
                     audio.playSfx('jump');
                     
-                    const upwardVelocity = -16.2 - (this.jumpUpFactor * 2.0);
+                    const upwardVelocity = -15.5 - (this.jumpUpFactor * 2.2);
                     this.vy = upwardVelocity;
                     this.isGrounded = false;
                     this.isSliding = false;
@@ -1791,76 +1791,131 @@
                     ctx.stroke();
                 }
 
-                // 2. Vector Draw stylish Dinosaur Body using skin colors
-                ctx.fillStyle = this.skin.color;
-                ctx.strokeStyle = this.skin.secondary;
-                ctx.lineWidth = 2;
-
                 const drawY = this.isSliding ? this.y + 25 : this.y;
                 const drawH = this.isSliding ? this.h - 25 : this.h;
 
+                // Tạo màu Gradient sành điệu cho phần thân
+                const bodyGrad = ctx.createLinearGradient(this.x, drawY, this.x + this.w, drawY + drawH);
+                bodyGrad.addColorStop(0, this.skin.color);
+                bodyGrad.addColorStop(1, this.skin.secondary);
+
+                ctx.fillStyle = bodyGrad;
+                ctx.strokeStyle = this.skin.secondary;
+                ctx.lineWidth = 2.5;
+
+                // Thêm hiệu ứng phát sáng nhẹ (glow) cho khủng long cyber
+                ctx.shadowColor = this.skin.color;
+                ctx.shadowBlur = 15;
+
                 ctx.beginPath();
                 if (this.isSliding) {
-                    // Ducking/sliding horizontal dino path
+                    // Vẽ dáng trượt nằm ngang sành điệu
                     ctx.roundRect(this.x, drawY, this.w + 12, drawH, [10, 20, 10, 10]);
                     ctx.fill();
                     ctx.stroke();
 
-                    // Little Cyber Eye visor
+                    // Đường vẽ mạch nano phát sáng khi trượt
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 10, drawY + drawH/2);
+                    ctx.lineTo(this.x + this.w, drawY + drawH/2);
+                    ctx.stroke();
+
+                    // Kính ngắm visor khi trượt
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(this.x + this.w + 2, drawY + 8, 6, 4);
+                    ctx.fillRect(this.x + this.w + 2, drawY + 8, 8, 4);
                 } else {
-                    // Upright running T-Rex paths
+                    // Vẽ tư thế chạy đứng tiêu chuẩn
                     ctx.roundRect(this.x, drawY, this.w, drawH, [15, 15, 5, 5]);
                     ctx.fill();
                     ctx.stroke();
 
-                    // Dinosaur Head/snout structure
+                    // Đầu và hàm của Dinosaur
                     ctx.beginPath();
                     ctx.roundRect(this.x + 20, drawY, 38, 25, [10, 10, 2, 2]);
-                    ctx.fillStyle = this.skin.color;
+                    ctx.fillStyle = bodyGrad;
                     ctx.fill();
                     ctx.stroke();
 
-                    // Cyber Visor Eye
-                    ctx.fillStyle = this.skin.id === 'fury' ? '#ef4444' : '#00ffff';
-                    ctx.fillRect(this.x + 40, drawY + 5, 12, 4);
+                    // Vẽ thêm Gai Lưng Neon (Spinal Plates) sành điệu phát sáng!
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 8;
+                    for (let i = 0; i < 3; i++) {
+                        const spX = this.x - 2;
+                        const spY = drawY + 12 + i * 14;
+                        ctx.beginPath();
+                        ctx.moveTo(spX, spY);
+                        ctx.lineTo(spX - 8, spY + 6);
+                        ctx.lineTo(spX, spY + 12);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
 
-                    // Running Leg Animation lines
+                    // Kính ngắm Cyber Visor phản quang sang xịn mịn
+                    ctx.fillStyle = this.skin.id === 'fury' ? '#ef4444' : '#00ffff';
+                    ctx.shadowColor = ctx.fillStyle;
+                    ctx.shadowBlur = 12;
+                    ctx.fillRect(this.x + 40, drawY + 5, 12, 5);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(this.x + 44, drawY + 5, 4, 5); // Ánh sáng kính ngắm
+
+                    // Vẽ hoa văn vi mạch điện tử (circuit lines) trên thân khủng long
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 10, drawY + 30);
+                    ctx.lineTo(this.x + 25, drawY + 45);
+                    ctx.lineTo(this.x + 25, drawY + 55);
+                    ctx.stroke();
+
+                    // Chân nhân vật chạy chuyển động linh hoạt
                     ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 3.5;
+                    ctx.shadowBlur = 0; // Tắt shadow cho chân tránh bị nhòe khi di chuyển nhanh
+
                     if (this.isGrounded) {
                         if (this.animFrame % 2 === 0) {
-                            // Leg 1 Down
+                            // Chân 1 chạm đất
                             ctx.beginPath();
                             ctx.moveTo(this.x + 15, drawY + drawH);
                             ctx.lineTo(this.x + 10, drawY + drawH + 12);
                             ctx.stroke();
-                            // Leg 2 Back
+                            // Chân 2 gập về sau
                             ctx.beginPath();
                             ctx.moveTo(this.x + 35, drawY + drawH);
                             ctx.lineTo(this.x + 42, drawY + drawH + 8);
                             ctx.stroke();
                         } else {
-                            // Leg 1 Back
+                            // Chân 1 gập về sau
                             ctx.beginPath();
                             ctx.moveTo(this.x + 15, drawY + drawH);
                             ctx.lineTo(this.x + 8, drawY + drawH + 8);
                             ctx.stroke();
-                            // Leg 2 Down
+                            // Chân 2 chạm đất
                             ctx.beginPath();
                             ctx.moveTo(this.x + 35, drawY + drawH);
                             ctx.lineTo(this.x + 38, drawY + drawH + 12);
                             ctx.stroke();
                         }
                     } else {
-                        // Flying tuck legs animation jump
+                        // Tư thế nhảy co chân kết hợp với Lửa Động Cơ Phản Lực từ giày!
                         ctx.beginPath();
                         ctx.moveTo(this.x + 15, drawY + drawH);
                         ctx.lineTo(this.x + 22, drawY + drawH + 5);
                         ctx.moveTo(this.x + 35, drawY + drawH);
                         ctx.lineTo(this.x + 42, drawY + drawH + 5);
                         ctx.stroke();
+
+                        // Lửa phản lực neon dưới giày khi đang bay nhảy
+                        ctx.fillStyle = '#f43f5e';
+                        ctx.shadowColor = '#f43f5e';
+                        ctx.shadowBlur = 12;
+                        ctx.beginPath();
+                        ctx.arc(this.x + 18, drawY + drawH + 8, 4, 0, Math.PI * 2);
+                        ctx.arc(this.x + 38, drawY + drawH + 8, 4, 0, Math.PI * 2);
+                        ctx.fill();
                     }
                 }
 
