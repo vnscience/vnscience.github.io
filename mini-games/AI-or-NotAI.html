@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI or Not AI? Classroom Game</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brandBlue: '#3b82f6',
+            brandGreen: '#10b981',
+            brandDark: '#0f172a',
+            brandLight: '#f8fafc',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    /* Confetti Animation classes */
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      opacity: 0.8;
+      pointer-events: none;
+      animation: fall linear forwards;
+    }
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(360deg);
+      }
+    }
+    /* Pulse glow effect */
+    .pulse-glow-ai {
+      animation: pulse-ai 2s infinite;
+    }
+    .pulse-glow-human {
+      animation: pulse-human 2s infinite;
+    }
+    @keyframes pulse-ai {
+      0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+      50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
+    }
+    @keyframes pulse-human {
+      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.8); }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden relative">
+
+  <!-- Confetti Container -->
+  <div id="confetti-container" class="absolute inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+  <!-- Header -->
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl text-white shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-robot text-xl animate-bounce"></i>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-blue-600 to-indigo-500 dark:from-blue-400 dark:to-indigo-300 bg-clip-text text-transparent">
+            AI or Not AI?
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Classroom Edition</p>
+        </div>
+      </div>
+
+      <!-- Controls & Quick Stats -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Presentation/Fullscreen Toggle -->
+        <button id="fullscreen-btn" onclick="toggleFullscreen()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition" title="Toggle Fullscreen">
+          <i class="fa-solid fa-expand text-lg"></i>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="sound-btn" onclick="toggleSound()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition" title="Toggle Sound Effects">
+          <i id="sound-icon" class="fa-solid fa-volume-high text-lg"></i>
+        </button>
+
+        <!-- Light/Dark Mode Switcher -->
+        <button onclick="toggleDarkMode()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition" title="Toggle Dark/Light Mode">
+          <i class="fa-solid fa-circle-half-stroke text-lg"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace / Container -->
+  <main class="flex-grow flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 min-h-[500px] flex flex-col justify-between">
+
+      <!-- ================= WELCOME SCREEN ================= -->
+      <div id="welcome-screen" class="p-6 sm:p-10 text-center flex flex-col items-center justify-center gap-6 flex-grow">
+        <div class="relative inline-block">
+          <span class="absolute -top-1 -right-1 flex h-4 w-4">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
+          </span>
+          <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-800 p-6 rounded-3xl border border-blue-100 dark:border-slate-700">
+            <i class="fa-solid fa-mask-human text-6xl text-blue-600 dark:text-blue-400"></i>
+            <span class="text-4xl mx-3 font-semibold text-slate-400 dark:text-slate-600">vs</span>
+            <i class="fa-solid fa-microchip text-6xl text-indigo-600 dark:text-indigo-400"></i>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+            Can You Spot <br class="hidden sm:inline" /> What is <span class="text-blue-500 underline decoration-indigo-500">AI Generated</span>?
+          </h2>
+          <p class="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            Test your detective eyes, critical thinking, and listening skills in this interactive media challenge. Play solo or assemble up to 4 teams for classroom action!
+          </p>
+        </div>
+
+        <!-- Mode Select Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-4">
+          <!-- Solo Mode Card -->
+          <button id="mode-solo-card" onclick="selectMode('solo')" class="group relative text-left p-5 rounded-2xl border-2 border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 hover:scale-[1.02] transition-all">
+            <div class="flex items-center justify-between mb-2">
+              <span class="inline-block p-2 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-400">
+                <i class="fa-solid fa-user text-xl"></i>
+              </span>
+              <span class="text-xs font-bold uppercase bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full">Classic</span>
+            </div>
+            <h4 class="font-bold text-lg text-slate-900 dark:text-white">Solo Detective</h4>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Play individually, test your instincts, and beat your highest streak.</p>
+          </button>
+
+          <!-- Team Mode Card -->
+          <button id="mode-team-card" onclick="selectMode('team')" class="group relative text-left p-5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 hover:scale-[1.02] transition-all">
+            <div class="flex items-center justify-between mb-2">
+              <span class="inline-block p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <i class="fa-solid fa-people-group text-xl"></i>
+              </span>
+              <span class="text-xs font-bold uppercase bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200 px-2 py-0.5 rounded-full">Group play</span>
+            </div>
+            <h4 class="font-bold text-lg text-slate-900 dark:text-white">Classroom Team Mode</h4>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Split into up to 4 teams. Takes turns, registers team scores, and updates real-time Leaderboards!</p>
+          </button>
+        </div>
+
+        <!-- Team Setup (Hidden by default until Mode selected) -->
+        <div id="team-setup-area" class="w-full max-w-2xl bg-indigo-50/50 dark:bg-indigo-950/20 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 hidden animate-fadeIn">
+          <h4 class="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 justify-center">
+            <i class="fa-solid fa-gears text-indigo-500"></i> Setup Classroom Teams
+          </h4>
+          <div class="flex flex-wrap justify-center gap-3">
+            <button onclick="setTeamCount(2)" id="team-btn-2" class="px-4 py-2 rounded-xl font-bold bg-white dark:bg-slate-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-sm transition">
+              2 Teams
+            </button>
+            <button onclick="setTeamCount(3)" id="team-btn-3" class="px-4 py-2 rounded-xl font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-500 transition">
+              3 Teams
+            </button>
+            <button onclick="setTeamCount(4)" id="team-btn-4" class="px-4 py-2 rounded-xl font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-500 transition">
+              4 Teams
+            </button>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4" id="team-names-inputs">
+            <!-- Dynamic Inputs will load here -->
+          </div>
+        </div>
+
+        <!-- Start Button -->
+        <button id="start-game-btn" onclick="startGame()" class="mt-4 px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-2xl text-xl shadow-lg shadow-blue-500/30 active:scale-95 transition-all w-full max-w-xs flex items-center justify-center gap-3">
+          Launch Game <i class="fa-solid fa-play"></i>
+        </button>
+      </div>
+
+
+      <!-- ================= GAMEPLAY SCREEN ================= -->
+      <div id="gameplay-screen" class="hidden flex-col flex-grow">
+        <!-- Top Metadata Panel -->
+        <div class="bg-slate-50 dark:bg-slate-900/60 p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between">
+          <!-- Question Counter -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Progress</span>
+            <span id="current-round-indicator" class="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-bold">1 / 10</span>
+          </div>
+
+          <!-- Dynamic Team / Turn Indicator -->
+          <div id="turn-indicator" class="hidden items-center gap-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-full border border-indigo-500/20">
+            <i class="fa-solid fa-flag text-sm animate-pulse"></i>
+            <span id="active-team-name" class="font-bold text-sm">Team A Turn!</span>
+          </div>
+
+          <!-- Countdown Timer -->
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-stopwatch text-rose-500 animate-spin" style="animation-duration: 3s"></i>
+            <div class="w-24 bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden relative">
+              <div id="timer-bar" class="bg-rose-500 h-full w-full transition-all duration-1000"></div>
+            </div>
+            <span id="timer-label" class="text-rose-500 font-extrabold text-sm w-6">15s</span>
+          </div>
+        </div>
+
+        <!-- Question Viewports -->
+        <div class="p-6 flex-grow flex flex-col md:flex-row gap-6 items-stretch justify-center min-h-[300px]">
+          <!-- Media Showcase Box -->
+          <div class="w-full md:w-1/2 flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 relative min-h-[250px] overflow-hidden">
+            
+            <div id="media-loading-placeholder" class="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-900 z-10 transition">
+              <div class="text-center">
+                <i class="fa-solid fa-spinner animate-spin text-3xl text-indigo-500 mb-2"></i>
+                <p class="text-sm text-slate-500">Analyzing signals...</p>
+              </div>
+            </div>
+
+            <div id="media-content-holder" class="w-full h-full flex items-center justify-center">
+              <!-- Content gets injected dynamically here -->
+            </div>
+          </div>
+
+          <!-- Question Interaction Panel -->
+          <div class="w-full md:w-1/2 flex flex-col justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span id="media-type-badge" class="px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-xs font-bold uppercase tracking-wide">
+                  Text
+                </span>
+                <span class="text-xs text-slate-400">Media Specimen</span>
+              </div>
+              <h3 id="media-title" class="text-lg font-bold text-slate-900 dark:text-white mb-2">Can you classify this sample?</h3>
+              <p id="media-short-prompt" class="text-sm text-slate-500 dark:text-slate-400">Read, view, or listen to the specimen carefully, then cast your classroom verdict.</p>
+            </div>
+
+            <!-- Choice Actions -->
+            <div id="choice-buttons-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button id="btn-choice-ai" onclick="submitAnswer('AI')" class="group relative bg-blue-600 hover:bg-blue-700 text-white p-5 rounded-2xl flex flex-col items-center justify-center gap-2 transition duration-200 active:scale-95 shadow-md hover:shadow-lg shadow-blue-500/20 border border-blue-500">
+                <i class="fa-solid fa-robot text-3xl"></i>
+                <span class="font-bold text-lg tracking-wide">AI Generated</span>
+                <span class="text-xs text-blue-100 opacity-80">Synth / Synthetic</span>
+              </button>
+
+              <button id="btn-choice-human" onclick="submitAnswer('Human')" class="group relative bg-emerald-600 hover:bg-emerald-700 text-white p-5 rounded-2xl flex flex-col items-center justify-center gap-2 transition duration-200 active:scale-95 shadow-md hover:shadow-lg shadow-emerald-500/20 border border-emerald-500">
+                <i class="fa-solid fa-fingerprint text-3xl"></i>
+                <span class="font-bold text-lg tracking-wide">Human Created</span>
+                <span class="text-xs text-emerald-100 opacity-80">Organic / Genuine</span>
+              </button>
+            </div>
+
+            <!-- Reveal & Explanation Drawer -->
+            <div id="explanation-drawer" class="hidden bg-slate-100 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200 dark:border-slate-700 animate-slideUp">
+              <div class="flex items-center gap-2.5 mb-2">
+                <span id="result-badge" class="px-2 py-0.5 rounded-lg text-xs font-bold uppercase">Correct</span>
+                <span id="verdict-banner" class="font-bold text-sm text-slate-900 dark:text-white">This was Human-Made</span>
+              </div>
+              <p id="explanation-text" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-2">
+                AI text tends to use repetitive words and extremely polished sentences.
+              </p>
+              <div class="bg-yellow-500/10 border border-yellow-500/20 p-2.5 rounded-lg flex items-start gap-2">
+                <i class="fa-solid fa-lightbulb text-yellow-500 mt-0.5 text-xs"></i>
+                <div>
+                  <span class="text-[10px] uppercase font-bold text-yellow-600 dark:text-yellow-400 block">Pro Clue / Artifact Spotter</span>
+                  <p id="clue-text" class="text-[11px] text-slate-700 dark:text-slate-300">Look for repetitive patterns.</p>
+                </div>
+              </div>
+              
+              <button onclick="nextRound()" class="w-full mt-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-extrabold py-2 px-4 rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2">
+                Next Item <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Solo Quick Score & Streak Trackers -->
+        <div id="solo-scoreboard-footer" class="px-6 py-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="text-sm"><i class="fa-solid fa-trophy text-amber-500 mr-1.5"></i>Score: <strong id="solo-score" class="font-black text-lg text-slate-900 dark:text-white">0</strong></span>
+            <!-- Current Streak Indicator -->
+            <div id="streak-indicator" class="flex items-center gap-1 text-slate-400">
+              <i class="fa-solid fa-fire text-slate-300 dark:text-slate-700"></i>
+              <span class="text-xs font-semibold">Streak: <strong id="streak-count" class="font-bold">0</strong></span>
+            </div>
+          </div>
+          <!-- Streak bonus milestones visual -->
+          <div class="flex gap-1.5">
+            <span id="milestone-3" class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" title="Streak of 3 Milestone"></span>
+            <span id="milestone-5" class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" title="Streak of 5 Milestone"></span>
+          </div>
+        </div>
+
+        <!-- Classroom Team Scoreboard Footer -->
+        <div id="team-scoreboard-footer" class="hidden px-6 py-3 bg-indigo-50/20 dark:bg-slate-900/80 border-t border-indigo-100 dark:border-slate-800">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center" id="team-live-grid">
+            <!-- Populated dynamically: Team Cards with scores -->
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= SUMMARY / RESULTS SCREEN ================= -->
+      <div id="results-screen" class="hidden p-6 sm:p-10 flex-col items-center justify-center gap-6 flex-grow">
+        <div class="text-center">
+          <div id="trophy-container" class="relative inline-block mb-3">
+            <div class="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 blur opacity-75"></div>
+            <div class="relative bg-amber-500 text-white rounded-full p-5 shadow-lg">
+              <i id="award-icon" class="fa-solid fa-trophy text-5xl"></i>
+            </div>
+          </div>
+          <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white mb-1">Challenge Completed!</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Here's how your classroom did</p>
+        </div>
+
+        <!-- Score Results Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+          <!-- Final Score / Badge -->
+          <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 text-center flex flex-col justify-center items-center">
+            <span class="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Your Classification Badge</span>
+            <h3 id="final-badge-title" class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">AI Detective 🕵️‍♂️</h3>
+            <p id="final-badge-text" class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">Absolute expert! You have a golden instinct for synthetic details.</p>
+
+            <div class="flex gap-4 mt-4 w-full justify-center">
+              <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-xl text-center">
+                <span class="text-[10px] text-slate-400 block font-bold uppercase">Accuracy</span>
+                <strong id="final-accuracy" class="text-xl font-extrabold text-slate-800 dark:text-slate-200">90%</strong>
+              </div>
+              <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-xl text-center">
+                <span class="text-[10px] text-slate-400 block font-bold uppercase">Score</span>
+                <strong id="final-total-score" class="text-xl font-extrabold text-slate-800 dark:text-slate-200">120 pts</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Classroom Team Final Leaderboard -->
+          <div id="classroom-final-leaderboard" class="p-5 rounded-2xl bg-indigo-50/50 dark:bg-slate-950/50 border border-indigo-100 dark:border-indigo-900/60 flex flex-col justify-center">
+            <h4 class="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-ranking-star text-indigo-500"></i> Final Leaderboard
+            </h4>
+            <div id="final-leaderboard-list" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- EDUCATIONAL SUMMARY SLIDE -->
+        <div class="w-full max-w-2xl bg-gradient-to-r from-blue-600/5 to-indigo-600/5 border border-blue-500/20 rounded-2xl p-5 text-left">
+          <h4 class="font-extrabold text-blue-600 dark:text-blue-400 flex items-center gap-2 mb-3">
+            <i class="fa-solid fa-graduation-cap"></i> Educational Takeaway for Classrooms
+          </h4>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 mt-0.5"><i class="fa-solid fa-circle-check"></i></span>
+              <span><strong>Evolving Capabilities:</strong> Generative AI models are improving daily. They can effortlessly produce high-fidelity imagery, videos, original music, speech, and written essays.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 mt-0.5"><i class="fa-solid fa-circle-check"></i></span>
+              <span><strong>Detection Skills:</strong> Human brains are finding it increasingly difficult to detect synthetic media. Relying purely on "looks" or "vibe" is no longer foolproof.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 mt-0.5"><i class="fa-solid fa-circle-check"></i></span>
+              <span><strong>Critical Verification:</strong> Learn to look for metadata, verify sources, inspect original publications, and ask: "Who stands to benefit from me believing this media?"</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="flex flex-wrap gap-3 justify-center">
+          <button onclick="resetGame()" class="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:opacity-95 transition-all flex items-center gap-2">
+            <i class="fa-solid fa-arrow-rotate-right"></i> Play Again
+          </button>
+          <button onclick="showWelcomeScreen()" class="px-6 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition-all flex items-center gap-2">
+            <i class="fa-solid fa-house"></i> Main Menu
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="text-center py-4 text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-900 bg-white/50 dark:bg-slate-950/50">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between px-4 gap-2">
+      <p>&copy; 2026 AI or Not AI? — Classroom Interactive Game</p>
+      <div class="flex gap-4">
+        <a href="#" onclick="showQuickGuide()" class="hover:underline hover:text-slate-600 dark:hover:text-slate-400">Game Guide</a>
+        <span>&middot;</span>
+        <a href="#" onclick="alert('Instructional Tip: Project this on your screen, divide your classroom into teams, and let each team designate a spokesperson to announce their choice before submitting!')" class="hover:underline hover:text-slate-600 dark:hover:text-slate-400">Classroom Best Practices</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Simple Guide Modal -->
+  <div id="guide-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl animate-scaleUp">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-black text-xl text-slate-900 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-circle-question text-blue-500"></i> Game Instructions
+        </h3>
+        <button onclick="hideQuickGuide()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+        <p><strong>1. Welcome Screen:</strong> Pick solo challenge or configure classroom team play (2-4 teams).</p>
+        <p><strong>2. Specimen Display:</strong> Listen to voice synthesis, analyze generated artwork, look closely at photography, or spot structural logic in text and computer code.</p>
+        <p><strong>3. Group Verdict:</strong> Have teams collaborate! Once you select <span class="text-blue-500">AI Generated</span> or <span class="text-emerald-500">Human Created</span>, the explanation reveals itself.</p>
+        <p><strong>4. Quick Timers:</strong> Complete each task within the 15-second clock window to register full points.</p>
+      </div>
+      <button onclick="hideQuickGuide()" class="mt-6 w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:opacity-95 transition">
+        Let's Go!
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript and Database Layer -->
+  <script>
+    // --- SAMPLE QUESTION DATASET ---
+    // Includes images, SVG mockups, generated poems, custom code snippets, synth voices (Web Audio), and artwork cues.
+    const questionsDataset = [
+      {
+        id: 1,
+        type: "Artwork",
+        source: "AI",
+        mediaType: "svg",
+        title: "Portrait of a Lady in a Golden Gown",
+        // Beautiful inline SVG showing an artistic rendering with AI-like stylized neon elements
+        content: `
+          <svg viewBox="0 0 200 200" class="w-full h-full max-h-[220px] rounded-xl bg-slate-950">
+            <defs>
+              <linearGradient id="neonGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#ec4899" />
+                <stop offset="50%" style="stop-color:#8b5cf6" />
+                <stop offset="100%" style="stop-color:#3b82f6" />
+              </linearGradient>
+            </defs>
+            <circle cx="100" cy="90" r="45" fill="url(#neonGlow)" opacity="0.8" />
+            <path d="M50,160 Q100,100 150,160 Z" fill="#fbbf24" opacity="0.9" />
+            <!-- Clue: Unnatural symmetry and neon artifact elements floating -->
+            <circle cx="85" cy="85" r="5" fill="#fff" />
+            <circle cx="115" cy="85" r="5" fill="#fff" />
+            <!-- Glitched structural artifact - extra floating ring -->
+            <ellipse cx="100" cy="90" rx="60" ry="15" fill="none" stroke="#22d3ee" stroke-width="2" stroke-dasharray="4 2" />
+          </svg>
+        `,
+        explanation: "AI generators are highly likely to render perfect glowing symmetry mixed with nonsensical physical structures, like the floating rings and neon dust here.",
+        clue: "Spot the impossible geometric alignment and floating cosmic rings framing the subject."
+      },
+      {
+        id: 2,
+        type: "Photograph",
+        source: "Human",
+        mediaType: "image-url",
+        title: "Raindrops on Autumn Leaf",
+        content: `
+          <div class="text-center p-2">
+            <img src="https://images.unsplash.com/photo-1508556497405-ed7dcd94acfc?auto=format&fit=crop&w=500&q=80" alt="Autumn leaf" class="max-h-[200px] object-cover rounded-xl shadow mx-auto" onerror="this.src='https://via.placeholder.com/400x300?text=Autumn+Leaf+Photo'" />
+            <span class="text-[10px] text-slate-400 block mt-1">High-fidelity macro photo capture</span>
+          </div>
+        `,
+        explanation: "This photograph is human-made. High-contrast macro lenses, realistic dust specks, and complex translucent behavior of natural leaf veins are extremely hard to replicate correctly.",
+        clue: "Inspect the micro-scratches and minor leaf damage. AI models usually smooth out imperfections."
+      },
+      {
+        id: 3,
+        type: "Text Paragraph",
+        source: "AI",
+        mediaType: "text",
+        title: "Brief Reflection on Digital Sunset",
+        content: `
+          <div class="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs sm:text-sm font-serif italic text-slate-700 dark:text-slate-300 leading-relaxed border-l-4 border-blue-500">
+            "As the golden, luminescent sun descends gently below the horizon, painting a tapestry of vivid shades across the quiet sky, one is reminded of the profound beauty inherent in nature's eternal cycles. It is a testament to the exquisite harmony that exists when we take a moment to pause, reflect, and appreciate the endless canvas of existence."
+          </div>
+        `,
+        explanation: "This paragraph was generated by ChatGPT. The prose is overly formulaic, using cliché adjectives like 'luminescent sun', 'tapestry of vivid shades', and ending on a generic moral reflection.",
+        clue: "Watch out for wordiness, lack of distinct voice, and overly balanced, neat paragraphs."
+      },
+      {
+        id: 4,
+        type: "Music / Audio",
+        source: "AI",
+        mediaType: "audio-synth",
+        title: "Synthetic Synth Wave Theme",
+        content: `
+          <div class="text-center p-4">
+            <button onclick="playSynthBeat()" class="w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg transition active:scale-95 mx-auto">
+              <i class="fa-solid fa-play text-2xl"></i>
+            </button>
+            <span class="text-xs text-slate-400 block mt-2">Click to Play Beat (Synth Audio Sample)</span>
+          </div>
+        `,
+        explanation: "This synth audio clip is generated entirely via Web Audio API, mimicking fully synthetic beats generated by tools like Suno or Udio.",
+        clue: "Listen to the mathematically perfect tempo with zero natural human variations or acoustic breaths."
+      },
+      {
+        id: 5,
+        type: "Voice Recording",
+        source: "AI",
+        mediaType: "voice-cloned",
+        title: "Synthesized Smart-Home Assistant Voice",
+        content: `
+          <div class="text-center p-4">
+            <button onclick="speakSynthesizedText()" class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg transition active:scale-95 mx-auto">
+              <i class="fa-solid fa-volume-high text-2xl"></i>
+            </button>
+            <span class="text-xs text-slate-400 block mt-2">Click to Hear Sample (Cloned Voice)</span>
+          </div>
+        `,
+        explanation: "This speech cloned synthesis (via the text-to-speech module) features synthetic flat-inflection parameters mimicking an automated caller.",
+        clue: "Pay attention to words that blend together without logical human pauses or breaths between sentences."
+      },
+      {
+        id: 6,
+        type: "Artwork",
+        source: "Human",
+        mediaType: "svg",
+        title: "Abstract Hand Sketch",
+        content: `
+          <svg viewBox="0 0 200 200" class="w-full h-full max-h-[220px] rounded-xl bg-amber-50">
+            <!-- Sketch Paper Grid -->
+            <path d="M0,40 L200,40 M0,80 L200,80 M0,120 L200,120 M0,160 L200,160" stroke="#cbd5e1" stroke-width="0.5" />
+            <!-- Hand drawing: Imperfect fingers, realistic human errors -->
+            <path d="M60,150 L60,110 Q58,95 62,90 L68,110 L70,80 Q73,70 78,80 L80,110 L84,75 Q88,68 93,75 L92,110 L96,82 Q100,75 104,82 L101,118 L114,115 Q125,120 120,135 L100,150 Z" fill="none" stroke="#334155" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            <!-- Erased pencil lines indicators (Authentic drawing marks) -->
+            <path d="M55,115 L62,112 M73,115 L78,112 M85,118 L92,115" stroke="#94a3b8" stroke-width="1" opacity="0.5" />
+            <text x="10" y="190" fill="#64748b" font-family="monospace" font-size="9">STUDY_HAND_SKETCH_03.RAW</text>
+          </svg>
+        `,
+        explanation: "This is a human-made sketch study. Note the logical structure of 5 fingers, realistic joint positioning, and erasable construction lines on the grid paper.",
+        clue: "AI generators notoriously struggle with hands, often adding extra fingers or blending them into continuous blobs."
+      },
+      {
+        id: 7,
+        type: "Text Paragraph",
+        source: "Human",
+        mediaType: "text",
+        title: "A Fragment of Personal Memoir",
+        content: `
+          <div class="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs sm:text-sm font-sans text-slate-700 dark:text-slate-300 leading-relaxed border-l-4 border-emerald-500">
+            "We were eating cold, half-melted Popsicles behind the rusty tool shed, listening to the drone of the highway. Sarah had sticky blue syrup dripping onto her scuffed canvas sneakers, and she didn't even care. The air smelled of hot pine needles and gasoline."
+          </div>
+        `,
+        explanation: "This text snippet was written by a human writer. It is packed with specific sensory details ('sticky blue syrup on scuffed sneakers', 'hot pine needles and gasoline') that create raw personal memories.",
+        clue: "Human writing features highly specific, weirdly authentic sensory triggers instead of generalized descriptions."
+      },
+      {
+        id: 8,
+        type: "Photograph",
+        source: "AI",
+        mediaType: "image-url",
+        title: "Perfect Golden Retriever Puppy",
+        content: `
+          <div class="text-center p-2">
+            <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=500&q=80" alt="Fluffy Dog" class="max-h-[200px] object-cover rounded-xl shadow mx-auto" onerror="this.src='https://via.placeholder.com/400x300?text=Synth+Puppy+Photo'" />
+            <span class="text-[10px] text-slate-400 block mt-1">Perfect gloss and studio lighting</span>
+          </div>
+        `,
+        explanation: "AI generators love creating hyper-cute, ultra-glossy animals with absolutely no stray hairs or natural dust. This sample serves to test if you notice unrealistic fur patterns.",
+        clue: "Observe the hair flows. In AI photography, background elements often merge into fur, and eyes are perfectly round and glinting."
+      }
+    ];
+
+    // --- GAME STATE ---
+    let gameMode = 'solo'; // 'solo' or 'team'
+    let numTeams = 2;
+    let teamNames = ["Team Alpha", "Team Beta", "Team Charlie", "Team Delta"];
+    let teamScores = [0, 0, 0, 0];
+    let teamStreaks = [0, 0, 0, 0];
+    let currentTurnIndex = 0; // Which team's turn is it
+    
+    let currentQuestionIndex = 0;
+    let shuffledQuestions = [];
+    let soloScore = 0;
+    let soloStreak = 0;
+    let correctCount = 0;
+    let totalRoundsPlayed = 10; // Play 10 rounds max or cap to length
+    
+    let timerInterval = null;
+    let timeLeft = 15;
+    const TIME_LIMIT = 15;
+    let isSoundEnabled = true;
+
+    // --- SOUND EFFECTS (Web Audio API - Dynamic Synth) ---
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playSynthSound(freq, type, duration, volume = 0.1) {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(volume, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {
+        console.warn("Sound playback failed due to interaction constraints.", e);
+      }
+    }
+
+    function playCorrectSound() {
+      playSynthSound(523.25, 'sine', 0.1, 0.15); // C5
+      setTimeout(() => playSynthSound(659.25, 'sine', 0.25, 0.15), 100); // E5
+    }
+
+    function playIncorrectSound() {
+      playSynthSound(220, 'triangle', 0.3, 0.2); // A3
+    }
+
+    function playTimerWarning() {
+      playSynthSound(880, 'sine', 0.05, 0.05); // High beep
+    }
+
+    // Interactive Audio Sample generator (Question Type 4)
+    function playSynthBeat() {
+      try {
+        const ctx = getAudioContext();
+        let time = ctx.currentTime;
+        // Simple synth pattern: Kick and Synth stab
+        for (let i = 0; i < 4; i++) {
+          // Kick
+          const oscKick = ctx.createOscillator();
+          const gainKick = ctx.createGain();
+          oscKick.frequency.setValueAtTime(150, time);
+          oscKick.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+          gainKick.gain.setValueAtTime(0.2, time);
+          gainKick.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
+          oscKick.connect(gainKick);
+          gainKick.connect(ctx.destination);
+          oscKick.start(time);
+          oscKick.stop(time + 0.2);
+
+          // Synth Hat
+          const oscHat = ctx.createOscillator();
+          const gainHat = ctx.createGain();
+          oscHat.type = 'sawtooth';
+          oscHat.frequency.setValueAtTime(600, time + 0.25);
+          gainHat.gain.setValueAtTime(0.05, time + 0.25);
+          gainHat.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+          oscHat.connect(gainHat);
+          gainHat.connect(ctx.destination);
+          oscHat.start(time + 0.25);
+          oscHat.stop(time + 0.4);
+
+          time += 0.5;
+        }
+      } catch (e) {
+        console.warn("Synthesizer error", e);
+      }
+    }
+
+    // Text to Speech clone simulator (Question Type 5)
+    function speakSynthesizedText() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance("Welcome human user. I am synthetic prototype unit nine. Do I sound real to you?");
+        utterance.rate = 0.95;
+        utterance.pitch = 1.05;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        alert("Text to Speech is not supported on this platform.");
+      }
+    }
+
+    // --- FULLSCREEN CAPABILITY ---
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.warn(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // --- THEME / DARK MODE ---
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+      } else {
+        html.classList.add('dark');
+      }
+    }
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      const icon = document.getElementById('sound-icon');
+      if (isSoundEnabled) {
+        icon.className = "fa-solid fa-volume-high text-lg";
+      } else {
+        icon.className = "fa-solid fa-volume-xmark text-lg text-rose-500";
+      }
+    }
+
+    // --- GAME SELECTION & PRE-START LAYOUT ---
+    function selectMode(mode) {
+      gameMode = mode;
+      const soloCard = document.getElementById('mode-solo-card');
+      const teamCard = document.getElementById('mode-team-card');
+      const teamSetup = document.getElementById('team-setup-area');
+
+      if (mode === 'solo') {
+        soloCard.classList.add('border-blue-500', 'bg-blue-50/50', 'dark:bg-blue-950/20');
+        soloCard.classList.remove('border-slate-200', 'dark:border-slate-800');
+        teamCard.classList.remove('border-indigo-500', 'bg-indigo-50/50', 'dark:bg-indigo-950/20');
+        teamCard.classList.add('border-slate-200', 'dark:border-slate-800');
+        teamSetup.classList.add('hidden');
+      } else {
+        teamCard.classList.add('border-indigo-500', 'bg-indigo-50/50', 'dark:bg-indigo-950/20');
+        teamCard.classList.remove('border-slate-200', 'dark:border-slate-800');
+        soloCard.classList.remove('border-blue-500', 'bg-blue-50/50', 'dark:bg-blue-950/20');
+        soloCard.classList.add('border-slate-200', 'dark:border-slate-800');
+        teamSetup.classList.remove('hidden');
+        setTeamCount(numTeams);
+      }
+    }
+
+    function setTeamCount(count) {
+      numTeams = count;
+      // Style buttons
+      for (let i = 2; i <= 4; i++) {
+        const btn = document.getElementById(`team-btn-${i}`);
+        if (i === count) {
+          btn.className = "px-4 py-2 rounded-xl font-bold bg-white dark:bg-slate-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-sm transition";
+        } else {
+          btn.className = "px-4 py-2 rounded-xl font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-500 transition";
+        }
+      }
+
+      // Populate input names
+      const container = document.getElementById('team-names-inputs');
+      container.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        container.innerHTML += `
+          <div>
+            <label class="text-[10px] uppercase font-bold text-slate-400">Team ${i+1}</label>
+            <input type="text" id="team-input-${i}" value="${teamNames[i]}" onchange="updateTeamName(${i}, this.value)" class="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-indigo-500" />
+          </div>
+        `;
+      }
+    }
+
+    function updateTeamName(index, val) {
+      if (val.trim() !== '') {
+        teamNames[index] = val.trim();
+      }
+    }
+
+    // --- GAME INITIATION ---
+    function startGame() {
+      // Setup Sound context if needed
+      getAudioContext();
+
+      // Reset states
+      currentQuestionIndex = 0;
+      soloScore = 0;
+      soloStreak = 0;
+      correctCount = 0;
+      teamScores = [0, 0, 0, 0];
+      teamStreaks = [0, 0, 0, 0];
+      currentTurnIndex = 0;
+
+      // Shuffle dataset
+      shuffledQuestions = [...questionsDataset].sort(() => Math.random() - 0.5);
+      totalRoundsPlayed = Math.min(shuffledQuestions.length, 10);
+
+      // DOM adjustments
+      document.getElementById('welcome-screen').classList.add('hidden');
+      document.getElementById('gameplay-screen').classList.remove('hidden');
+      document.getElementById('gameplay-screen').classList.add('flex');
+      document.getElementById('results-screen').classList.add('hidden');
+
+      if (gameMode === 'solo') {
+        document.getElementById('solo-scoreboard-footer').classList.remove('hidden');
+        document.getElementById('team-scoreboard-footer').classList.add('hidden');
+        document.getElementById('turn-indicator').classList.add('hidden');
+      } else {
+        document.getElementById('solo-scoreboard-footer').classList.add('hidden');
+        document.getElementById('team-scoreboard-footer').classList.remove('hidden');
+        document.getElementById('turn-indicator').classList.remove('hidden');
+        renderTeamScores();
+      }
+
+      loadRound();
+    }
+
+    // --- SCOREBOARDS RENDERING ---
+    function renderTeamScores() {
+      const liveGrid = document.getElementById('team-live-grid');
+      liveGrid.innerHTML = '';
+      for (let i = 0; i < numTeams; i++) {
+        const isCurrentTurn = (i === currentTurnIndex);
+        liveGrid.innerHTML += `
+          <div class="p-2.5 rounded-xl border ${isCurrentTurn ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'} text-center transition-all">
+            <span class="text-[10px] uppercase font-bold block truncate ${isCurrentTurn ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}">${teamNames[i]}</span>
+            <strong class="text-lg font-black text-slate-800 dark:text-slate-100">${teamScores[i]} <span class="text-xs font-normal">pts</span></strong>
+            <div class="text-[9px] text-slate-400 mt-0.5">Streak: ${teamStreaks[i]}</div>
+          </div>
+        `;
+      }
+      
+      // Update turn indicator banner
+      document.getElementById('active-team-name').textContent = `${teamNames[currentTurnIndex]}'s Choice!`;
+    }
+
+    // --- ROUND LOADER ---
+    function loadRound() {
+      // Clear timers
+      clearInterval(timerInterval);
+      timeLeft = TIME_LIMIT;
+      updateTimerUI();
+
+      // Dynamically highlight who is currently active and answering *before* they respond
+      updateVisualScores();
+
+      // Transition Placeholder
+      const placeholder = document.getElementById('media-loading-placeholder');
+      placeholder.classList.remove('hidden');
+      placeholder.classList.add('flex');
+
+      // Setup round specs
+      const currentItem = shuffledQuestions[currentQuestionIndex];
+      document.getElementById('current-round-indicator').textContent = `${currentQuestionIndex + 1} / ${totalRoundsPlayed}`;
+
+      // Set badging & text metadata
+      document.getElementById('media-type-badge').textContent = currentItem.type;
+      document.getElementById('media-title').textContent = currentItem.title;
+
+      // Populate showcase
+      const contentHolder = document.getElementById('media-content-holder');
+      contentHolder.innerHTML = currentItem.content;
+
+      // Enable interaction buttons
+      document.getElementById('choice-buttons-container').classList.remove('hidden');
+      document.getElementById('choice-buttons-container').classList.add('grid');
+      document.getElementById('explanation-drawer').classList.add('hidden');
+
+      // Dismiss image skeleton/spinner once content fully mounts
+      setTimeout(() => {
+        placeholder.classList.add('hidden');
+        placeholder.classList.remove('flex');
+        startTimer();
+      }, 700);
+    }
+
+    // --- COUNTDOWN TIMERS ---
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerUI();
+
+        if (timeLeft <= 4 && timeLeft > 0) {
+          playTimerWarning();
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleTimeout();
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI() {
+      const percentage = (timeLeft / TIME_LIMIT) * 100;
+      const bar = document.getElementById('timer-bar');
+      const label = document.getElementById('timer-label');
+
+      bar.style.width = `${percentage}%`;
+      label.textContent = `${timeLeft}s`;
+
+      if (timeLeft <= 5) {
+        bar.className = "bg-rose-500 h-full w-full transition-all duration-1000";
+        label.className = "text-rose-500 font-extrabold text-sm w-6 animate-pulse";
+      } else {
+        bar.className = "bg-blue-500 h-full w-full transition-all duration-1000";
+        label.className = "text-slate-500 dark:text-slate-400 font-extrabold text-sm w-6";
+      }
+    }
+
+    function handleTimeout() {
+      // Highlight timeout with generic negative scoring
+      submitAnswer('Timeout');
+    }
+
+    // --- ANSWER VERIFICATION ---
+    function submitAnswer(chosenOption) {
+      clearInterval(timerInterval);
+      const currentItem = shuffledQuestions[currentQuestionIndex];
+      const isCorrect = (chosenOption.toLowerCase() === currentItem.source.toLowerCase());
+
+      // Play Sound
+      if (isCorrect) {
+        playCorrectSound();
+        spawnConfetti();
+      } else {
+        playIncorrectSound();
+      }
+
+      // Score processing
+      let pointsAwarded = 0;
+      if (isCorrect) {
+        pointsAwarded = 10;
+        correctCount++;
+
+        // Add to streaks
+        if (gameMode === 'solo') {
+          soloStreak++;
+          soloScore += pointsAwarded;
+
+          // Check streak bonus
+          if (soloStreak === 3) {
+            soloScore += 10;
+            pointsAwarded += 10;
+            triggerStreakAlert(3);
+          } else if (soloStreak === 5) {
+            soloScore += 20;
+            pointsAwarded += 20;
+            triggerStreakAlert(5);
+          }
+        } else {
+          // Team Mode
+          teamStreaks[currentTurnIndex]++;
+          teamScores[currentTurnIndex] += pointsAwarded;
+
+          // Check streak bonus
+          if (teamStreaks[currentTurnIndex] === 3) {
+            teamScores[currentTurnIndex] += 10;
+            pointsAwarded += 10;
+            triggerStreakAlert(3);
+          } else if (teamStreaks[currentTurnIndex] === 5) {
+            teamScores[currentTurnIndex] += 20;
+            pointsAwarded += 20;
+            triggerStreakAlert(5);
+          }
+        }
+      } else {
+        // Reset streak
+        if (gameMode === 'solo') {
+          soloStreak = 0;
+        } else {
+          teamStreaks[currentTurnIndex] = 0;
+        }
+      }
+
+      // Update Screen stats (retains highlight on active team that answered)
+      updateVisualScores();
+
+      // Lock buttons
+      document.getElementById('choice-buttons-container').classList.add('hidden');
+      document.getElementById('choice-buttons-container').classList.remove('grid');
+
+      // Populate Explanation Drawer
+      const resultBadge = document.getElementById('result-badge');
+      const verdictBanner = document.getElementById('verdict-banner');
+      const explanationText = document.getElementById('explanation-text');
+      const clueText = document.getElementById('clue-text');
+      const drawer = document.getElementById('explanation-drawer');
+
+      if (isCorrect) {
+        resultBadge.className = "px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-emerald-500 text-white animate-bounce";
+        resultBadge.textContent = `Correct! +${pointsAwarded} pts`;
+      } else {
+        resultBadge.className = "px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-rose-500 text-white";
+        resultBadge.textContent = chosenOption === 'Timeout' ? 'Time Out! 0 pts' : 'Incorrect! 0 pts';
+      }
+
+      verdictBanner.textContent = `Verdict: This is ${currentItem.source === 'AI' ? 'AI Generated' : 'Human Created'}`;
+      explanationText.textContent = currentItem.explanation;
+      clueText.textContent = currentItem.clue;
+
+      drawer.classList.remove('hidden');
+    }
+
+    function updateVisualScores() {
+      if (gameMode === 'solo') {
+        document.getElementById('solo-score').textContent = soloScore;
+        document.getElementById('streak-count').textContent = soloStreak;
+
+        // Milestones
+        const m3 = document.getElementById('milestone-3');
+        const m5 = document.getElementById('milestone-5');
+        m3.className = `w-2.5 h-2.5 rounded-full ${soloStreak >= 3 ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'}`;
+        m5.className = `w-2.5 h-2.5 rounded-full ${soloStreak >= 5 ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'}`;
+      } else {
+        renderTeamScores();
+      }
+    }
+
+    function triggerStreakAlert(streakCount) {
+      // Quick, beautiful transient banner for classroom hype
+      const notice = document.createElement('div');
+      notice.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-yellow-500 text-slate-950 font-black px-6 py-3 rounded-full text-sm shadow-xl z-50 flex items-center gap-2 animate-bounce";
+      notice.innerHTML = `<i class="fa-solid fa-fire text-lg"></i> STREAK MULTIPLIER! ${streakCount} in a row!`;
+      document.body.appendChild(notice);
+      setTimeout(() => notice.remove(), 2500);
+    }
+
+    // --- CONFETTI ANIMATION ENGINE ---
+    function spawnConfetti() {
+      const container = document.getElementById('confetti-container');
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+      for (let i = 0; i < 40; i++) {
+        const conf = document.createElement('div');
+        conf.className = 'confetti';
+        conf.style.left = `${Math.random() * 100}vw`;
+        conf.style.top = `-10px`;
+        conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        conf.style.animationDuration = `${Math.random() * 2 + 1.5}s`;
+        conf.style.transform = `scale(${Math.random() * 0.8 + 0.5})`;
+        container.appendChild(conf);
+
+        setTimeout(() => conf.remove(), 3500);
+      }
+    }
+
+    // --- NEXT ITEM NAVIGATION ---
+    function nextRound() {
+      currentQuestionIndex++;
+
+      // Cycle team turns only AFTER answering and moving to the next question
+      if (gameMode === 'team') {
+        currentTurnIndex = (currentTurnIndex + 1) % numTeams;
+      }
+
+      if (currentQuestionIndex < totalRoundsPlayed) {
+        loadRound();
+      } else {
+        showResults();
+      }
+    }
+
+    // --- FINAL RESULTS COMPILATION ---
+    function showResults() {
+      document.getElementById('gameplay-screen').classList.add('hidden');
+      document.getElementById('gameplay-screen').classList.remove('flex');
+      document.getElementById('results-screen').classList.remove('hidden');
+      document.getElementById('results-screen').classList.add('flex');
+
+      // Final classification score calculate
+      const accuracy = Math.round((correctCount / totalRoundsPlayed) * 100);
+      document.getElementById('final-accuracy').textContent = `${accuracy}%`;
+
+      let badgeTitle = "";
+      let badgeDesc = "";
+      let trophyIcon = "fa-trophy";
+
+      if (accuracy >= 90) {
+        badgeTitle = "AI Detective 🕵️‍♂️";
+        badgeDesc = "Legendary sight! You spot artificial traces perfectly.";
+        trophyIcon = "fa-award";
+      } else if (accuracy >= 70) {
+        badgeTitle = "AI Expert 🤖";
+        badgeDesc = "Excellent skill. You have highly advanced media validation instinct.";
+        trophyIcon = "fa-trophy";
+      } else if (accuracy >= 50) {
+        badgeTitle = "AI Learner 🎓";
+        badgeDesc = "Solid effort! Keep sharpening your tools to look for synthetic oddities.";
+        trophyIcon = "fa-medal";
+      } else {
+        badgeTitle = "AI Rookie 🌱";
+        badgeDesc = "Great experience. Check clues closely next time!";
+        trophyIcon = "fa-seedling";
+      }
+
+      document.getElementById('final-badge-title').textContent = badgeTitle;
+      document.getElementById('final-badge-text').textContent = badgeDesc;
+      document.getElementById('award-icon').className = `fa-solid ${trophyIcon} text-5xl`;
+
+      if (gameMode === 'solo') {
+        document.getElementById('final-total-score').textContent = `${soloScore} pts`;
+        document.getElementById('classroom-final-leaderboard').classList.add('hidden');
+      } else {
+        document.getElementById('final-total-score').textContent = `${teamScores[0]} pts`;
+        document.getElementById('classroom-final-leaderboard').classList.remove('hidden');
+
+        // Render Classroom Leaderboard
+        const leaderboardList = document.getElementById('final-leaderboard-list');
+        leaderboardList.innerHTML = '';
+
+        // Build array of team objects
+        const resultsArray = [];
+        for (let i = 0; i < numTeams; i++) {
+          resultsArray.push({ name: teamNames[i], score: teamScores[i] });
+        }
+        // Sort teams descending
+        resultsArray.sort((a, b) => b.score - a.score);
+
+        resultsArray.forEach((item, index) => {
+          let rankColor = "text-slate-500";
+          if (index === 0) rankColor = "text-amber-500 font-extrabold";
+          if (index === 1) rankColor = "text-slate-400 font-bold";
+
+          leaderboardList.innerHTML += `
+            <div class="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+              <span class="text-xs ${rankColor}">#${index + 1} ${item.name}</span>
+              <strong class="text-xs text-slate-800 dark:text-slate-200">${item.score} pts</strong>
+            </div>
+          `;
+        });
+      }
+    }
+
+    // --- NAVIGATION HELPERS ---
+    function showWelcomeScreen() {
+      document.getElementById('welcome-screen').classList.remove('hidden');
+      document.getElementById('gameplay-screen').classList.add('hidden');
+      document.getElementById('results-screen').classList.add('hidden');
+    }
+
+    function resetGame() {
+      startGame();
+    }
+
+    // --- INSTRUCTION MODAL ---
+    function showQuickGuide() {
+      document.getElementById('guide-modal').classList.remove('hidden');
+    }
+
+    // --- DISMISS GUIDE ---
+    function hideQuickGuide() {
+      document.getElementById('guide-modal').classList.add('hidden');
+    }
+
+    // Init Theme & Mode
+    selectMode('solo');
+  </script>
+</body>
+</html>
