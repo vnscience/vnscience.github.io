@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banker's Safety Algorithm</title>
+    <!-- Tailwind CSS for high fidelity minimal UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        code, pre, .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar to keep layout premium and minimal */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-[#1e293b] h-screen overflow-hidden flex flex-col antialiased">
+
+    <!-- Compact Header Section -->
+    <header class="bg-white border-b border-slate-200/80 shrink-0 h-14 shadow-sm z-10">
+        <div class="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-indigo-600 text-white p-1.5 rounded-lg font-bold text-xs tracking-wide shadow-sm">OS</div>
+                <div>
+                    <h1 class="font-extrabold text-slate-800 text-sm sm:text-base leading-tight" id="header-title">Banker's Safety Algorithm</h1>
+                    <p class="text-[10px] text-slate-500" id="header-subtitle">Interactive Teaching Assistant & Sandbox</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- Language Switcher -->
+                <button onclick="toggleLanguage()" class="px-3 py-1 border border-slate-200 hover:border-indigo-600 rounded-lg text-[11px] font-bold text-slate-700 hover:text-indigo-600 transition flex items-center space-x-1 bg-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3.5 h-3.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 0-3.827-5.802" />
+                    </svg>
+                    <span id="lang-btn-text">Tiếng Việt</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area: Locked Viewport Layout for Laptops -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden min-h-0">
+        
+        <!-- Left Side: Configuration & Dynamic Matrices Workspaces -->
+        <section class="lg:col-span-5 flex flex-col space-y-3 min-h-0 h-full">
+            
+            <!-- Setup & Controller Card -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm shrink-0">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 mb-3 border-b border-slate-100 gap-2">
+                    <h2 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                        <span id="section-config-title">Data Configuration</span>
+                    </h2>
+                    
+                    <!-- Preset Selectors -->
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="loadSamplePreset('safe')" class="px-2 py-0.5 text-[10px] font-bold rounded border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition" id="btn-load-safe">
+                            Load Safe Case
+                        </button>
+                        <button onclick="loadSamplePreset('unsafe')" class="px-2 py-0.5 text-[10px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition" id="btn-load-unsafe">
+                            Load Unsafe Case
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input Dimension Type and Mode Config -->
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button id="tab-quick" onclick="setInputMode('quick')" class="py-1 text-[11px] font-bold rounded-md transition border border-indigo-600 bg-indigo-50 text-indigo-700">
+                        Quick Raw Text
+                    </button>
+                    <button id="tab-edit" onclick="setInputMode('edit')" class="py-1 text-[11px] font-bold rounded-md transition border border-transparent bg-slate-50 text-slate-600 hover:bg-slate-100">
+                        Spreadsheet Grid
+                    </button>
+                </div>
+
+                <!-- Toggle Input Type: MAX vs NEED (CORE REQUIREMENT) -->
+                <div class="bg-slate-50 border border-slate-200/60 p-2 rounded-lg flex items-center justify-between mb-3 text-xs">
+                    <span class="font-bold text-slate-700" id="lbl-matrix-selection-title">Matrix Input Mode:</span>
+                    <div class="flex bg-white border border-slate-200 rounded-md p-0.5 shadow-sm">
+                        <button onclick="setMatrixInputType('need')" id="mode-btn-need" class="px-3 py-0.5 text-[10px] font-bold rounded transition-colors bg-indigo-600 text-white shadow-sm">
+                            Need Matrix
+                        </button>
+                        <button onclick="setMatrixInputType('max')" id="mode-btn-max" class="px-3 py-0.5 text-[10px] font-bold rounded transition-colors text-slate-500 hover:text-slate-800">
+                            Max Matrix
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Paste Fields -->
+                <div id="quick-mode-inputs" class="space-y-2.5">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-alloc-input">Allocation Matrix</label>
+                            <textarea id="raw-alloc" rows="4" class="w-full text-[11px] font-mono p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition" placeholder="e.g.&#10;0,1,0&#10;2,0,0"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-need-max-input">Need Matrix</label>
+                            <textarea id="raw-need-max" rows="4" class="w-full text-[11px] font-mono p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition" placeholder="e.g.&#10;7,4,3&#10;1,2,2"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-2 items-center">
+                        <div class="col-span-2">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5 uppercase tracking-wide" id="lbl-avail-input">Available Vector</label>
+                            <input type="text" id="raw-avail" class="w-full text-[11px] font-mono px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50" placeholder="e.g. 3,3,2">
+                        </div>
+                        <div class="pt-4">
+                            <button onclick="parseAndGenerateFromText()" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] transition uppercase tracking-wide shadow-sm" id="btn-generate-tables">
+                                Generate Bảng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sandbox Controls -->
+                <div id="edit-mode-controls" class="hidden grid grid-cols-4 gap-1.5">
+                    <button onclick="addProcessRow()" class="py-1 border border-slate-200 text-slate-700 rounded-md text-[10px] font-bold hover:bg-slate-50 transition flex items-center justify-center space-x-0.5">
+                        <span>+</span> <span id="btn-add-p">Add P</span>
+                    </button>
+                    <button onclick="removeProcessRow()" class="py-1 border border-slate-200 text-slate-700 rounded-md text-[10px] font-bold hover:bg-slate-50 transition flex items-center justify-center space-x-0.5">
+                        <span>-</span> <span id="btn-rem-p">Rem P</span>
+                    </button>
+                    <button onclick="addResourceColumn()" class="py-1 border border-slate-200 text-slate-700 rounded-md text-[10px] font-bold hover:bg-slate-50 transition flex items-center justify-center space-x-0.5">
+                        <span>+</span> <span id="btn-add-r">Add R</span>
+                    </button>
+                    <button onclick="removeResourceColumn()" class="py-1 border border-slate-200 text-slate-700 rounded-md text-[10px] font-bold hover:bg-slate-50 transition flex items-center justify-center space-x-0.5">
+                        <span>-</span> <span id="btn-rem-r">Rem R</span>
+                    </button>
+                </div>
+
+                <!-- Validation Error Area -->
+                <div id="validation-error" class="hidden mt-2 p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[10px] flex items-start space-x-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 mt-0.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                    <span id="error-text">Inconsistent parameters</span>
+                </div>
+            </div>
+
+            <!-- Spreadsheet Grid Matrix Workspace Card -->
+            <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+                    <h3 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                        <span id="section-matrices-title">Live Matrix Workspace</span>
+                    </h3>
+                    <span class="text-[9px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full font-bold" id="sandbox-badge">Interactive Editable</span>
+                </div>
+
+                <!-- Matrix description -->
+                <p class="text-[10px] text-slate-400 my-1.5" id="warning-editor">Chỉnh sửa trực tiếp số liệu tại các ô phía dưới.</p>
+
+                <!-- Core Matrix Workspace Table with internal scroll -->
+                <div class="overflow-auto flex-1 border border-slate-100 rounded-lg min-h-0 mb-3 bg-slate-50/50">
+                    <table class="min-w-full divide-y divide-slate-100 text-[11px] text-center" id="matrix-table">
+                        <!-- Loaded dynamically -->
+                    </table>
+                </div>
+
+                <!-- Available Init Container -->
+                <div class="border-t border-slate-100 pt-2 shrink-0">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide" id="lbl-available-title">Available Vector (Current Work Init)</label>
+                        <span class="text-[9px] text-emerald-600 font-bold font-mono" id="mode-display-formula"></span>
+                    </div>
+                    <div class="overflow-x-auto border border-slate-100 rounded-lg">
+                        <table class="min-w-full divide-y divide-slate-100 text-[11px] text-center" id="available-table">
+                            <!-- Loaded dynamically -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Side: Learning Tracer step explanations, controls, and dynamic solver execution route -->
+        <section class="lg:col-span-7 flex flex-col space-y-3 min-h-0 h-full">
+            
+            <!-- Controls card for Safety Check Solver -->
+            <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm shrink-0">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5">
+                            <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                            <span id="section-controls-title">Safety Check Controller</span>
+                        </h2>
+                        <p class="text-[10px] text-slate-500" id="section-controls-desc">Trigger algorithm steps and navigate trace sequence</p>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="startSolving()" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] transition uppercase tracking-wide shadow-sm" id="btn-start-solve">
+                            Solve / Start Trace
+                        </button>
+                        <button onclick="resetSolver()" class="px-3 py-1.5 border border-slate-200 text-slate-700 font-bold rounded-lg text-[10px] hover:bg-slate-50 transition uppercase tracking-wide" id="btn-reset">
+                            Reset All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Trace Control Progress Map (Loaded only if solving) -->
+                <div id="trace-controls" class="hidden mt-3 pt-2 border-t border-slate-100 flex flex-col space-y-2">
+                    
+                    <!-- Playback Row -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                        <div class="flex items-center space-x-1">
+                            <button onclick="prevStep()" id="btn-prev" class="p-1 border border-slate-200 rounded hover:bg-white hover:text-indigo-600 text-slate-500 transition disabled:opacity-40 disabled:hover:bg-transparent" title="Previous Step">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                            <button onclick="toggleAutoPlay()" id="btn-play" class="p-1 border border-slate-200 rounded hover:bg-white hover:text-indigo-600 text-slate-500 transition flex items-center space-x-1 font-bold text-[10px] px-2" title="Auto Play">
+                                <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                </svg>
+                                <span id="lbl-play">Auto Play</span>
+                            </button>
+                            <button onclick="nextStep()" id="btn-next" class="p-1 border border-slate-200 rounded hover:bg-white hover:text-indigo-600 text-slate-500 transition disabled:opacity-40 disabled:hover:bg-transparent" title="Next Step">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Speeds selection -->
+                        <div class="flex items-center space-x-1">
+                            <span class="text-[9px] uppercase font-bold text-slate-400" id="lbl-speed">Speed:</span>
+                            <button onclick="setPlaySpeed(2000)" id="speed-slow" class="px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition">0.5x</button>
+                            <button onclick="setPlaySpeed(1000)" id="speed-normal" class="px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition">1.0x</button>
+                            <button onclick="setPlaySpeed(400)" id="speed-fast" class="px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition">2.5x</button>
+                        </div>
+
+                        <!-- Trace toggler -->
+                        <div>
+                            <button onclick="toggleViewMode()" id="btn-toggle-view" class="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 rounded text-[10px] font-bold text-slate-700 transition">
+                                Show Full Trace
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Step bar timeline -->
+                    <div class="flex items-center justify-between text-[10px] mt-1">
+                        <span class="text-slate-400 font-bold" id="lbl-trace-progress">Trace Route:</span>
+                        <span class="font-extrabold text-indigo-600" id="trace-step-text">Step 0 of 0</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1 items-center max-h-16 overflow-y-auto" id="step-timeline-dots">
+                        <!-- Clickable step beads loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trace solver step execution viewport -->
+            <div class="flex-1 flex flex-col justify-between min-h-0" id="solving-viewport">
+                
+                <!-- Welcome instruction box -->
+                <div id="welcome-viewport" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col items-center justify-center text-center space-y-3 flex-1">
+                    <div class="bg-indigo-50 border border-indigo-100 text-indigo-600 p-3 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm" id="lbl-welcome-title">Ready to Learn?</h3>
+                        <p class="text-[11px] text-slate-500 max-w-sm mx-auto mt-0.5" id="lbl-welcome-desc">Cấu hình ma trận đầu vào của đề bài (Need hoặc Max) ở phía bên trái, sau đó chọn Bắt đầu để hệ thống hỗ trợ giải thích từng bước.</p>
+                    </div>
+                </div>
+
+                <!-- Single Step trace visual display container -->
+                <div id="step-by-step-viewport" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between flex-1 min-h-0 overflow-y-auto gap-3">
+                    
+                    <!-- Trace step Header -->
+                    <div class="flex justify-between items-start border-b border-slate-100 pb-2 shrink-0">
+                        <div>
+                            <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider" id="active-step-num">Step 1</span>
+                            <h3 class="font-extrabold text-slate-800 text-sm leading-tight" id="active-step-title">Initializing State</h3>
+                        </div>
+                        <div id="active-step-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold shadow-sm uppercase border">
+                            Initialize
+                        </div>
+                    </div>
+
+                    <!-- Work status row tracker -->
+                    <div class="bg-blue-50/75 border border-blue-100 rounded-lg p-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
+                        <div class="space-y-0.5">
+                            <span class="text-[9px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                                <span id="lbl-work-vec">Work Vector</span>
+                            </span>
+                            <p class="text-[10px] text-blue-600" id="lbl-work-desc">Vectơ tài nguyên mô phỏng lượng sẵn có hiện thời.</p>
+                        </div>
+                        <div class="flex gap-1 justify-center items-center font-bold text-[11px] text-blue-700 font-mono" id="active-work-vector">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Detailed comparison list -->
+                    <div id="comparison-section" class="space-y-1.5 min-h-0 flex-1 overflow-y-auto">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-indigo-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                            </svg>
+                            <span id="lbl-analysis">Comparison Detail (Need &le; Work)</span>
+                        </h4>
+
+                        <div class="overflow-x-auto border border-slate-100 rounded-lg bg-slate-50">
+                            <table class="min-w-full divide-y divide-slate-100 text-[11px]">
+                                <thead class="bg-slate-100 text-slate-500 font-bold">
+                                    <tr class="text-center">
+                                        <th class="px-2 py-1 text-left uppercase text-[9px]" id="th-res">Resource</th>
+                                        <th class="px-2 py-1 uppercase text-[9px]" id="th-pneed">Process Need</th>
+                                        <th class="px-2 py-1 text-[9px]">Check</th>
+                                        <th class="px-2 py-1 uppercase text-[9px]" id="th-cwork">Current Work</th>
+                                        <th class="px-2 py-1 uppercase text-[9px]" id="th-check-res">Result</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 bg-white font-mono" id="comparison-rows">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Process release math visualizer equation block -->
+                    <div id="step-release-equation" class="hidden bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 shrink-0">
+                        <span class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider" id="lbl-release-equation">Resource Release Formula (Work = Work + Allocation)</span>
+                        
+                        <div class="flex items-center justify-center gap-2 py-1 text-center font-mono text-[11px] text-emerald-800">
+                            <div class="bg-white border border-emerald-200 px-2 py-1 rounded shadow-sm">
+                                <span class="block text-[7px] text-emerald-500 uppercase font-sans font-bold" id="lbl-old-work">Old Work</span>
+                                <span id="eq-old-work" class="font-bold">[7, 4, 2]</span>
+                            </div>
+                            <div class="text-emerald-400 font-extrabold text-sm">+</div>
+                            <div class="bg-white border border-emerald-200 px-2 py-1 rounded shadow-sm">
+                                <span class="block text-[7px] text-emerald-500 uppercase font-sans font-bold" id="lbl-alloc-val">Allocation</span>
+                                <span id="eq-alloc" class="font-bold">[4, 3, 1]</span>
+                            </div>
+                            <div class="text-emerald-400 font-extrabold text-sm">=</div>
+                            <div class="bg-emerald-600 text-white px-2 py-1 rounded shadow-md">
+                                <span class="block text-[7px] text-emerald-300 uppercase font-sans font-bold" id="lbl-new-work">New Work</span>
+                                <span id="eq-new-work" class="font-bold">[11, 7, 3]</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step analysis alert block feedback -->
+                    <div class="rounded-lg p-2.5 border flex items-start space-x-2 shrink-0" id="step-result-alert">
+                        <!-- Loaded dynamically -->
+                    </div>
+
+                    <!-- Finish processes array map status -->
+                    <div class="border-t border-slate-100 pt-2 flex flex-col space-y-1 shrink-0">
+                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider" id="lbl-finish-vector">Process Finish Array Mapping</span>
+                        <div class="flex flex-wrap gap-1" id="step-finish-vector-map">
+                            <!-- Loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scrollable chronological lists (Full Solution List view mode) -->
+                <div id="full-solution-viewport" class="hidden flex-1 flex flex-col space-y-3 overflow-y-auto pr-1">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Final verdicts and Safe Sequence banners -->
+            <div id="final-verdict-banner" class="hidden bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm flex items-center space-x-3 shrink-0">
+                <!-- Status icon and safe route elements loaded dynamically -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Snug Compact footer context -->
+    <footer class="bg-slate-100 border-t border-slate-200 py-2.5 px-4 shrink-0">
+        <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 gap-2">
+            <div class="flex items-center space-x-1.5">
+                <span class="font-bold text-slate-700 uppercase" id="footer-summary-title">Algorithm Summary:</span>
+                <span id="footer-summary-text" class="leading-relaxed">Need &le; Work &rarr; Executable. Work = Work + Allocation. Finish = True.</span>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 items-center font-bold">
+                <div class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span id="cc-executable" class="text-slate-600">Executable Process</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span id="cc-blocked" class="text-slate-600">Blocked Process</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span id="cc-work" class="text-slate-600">Work Updates</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                    <span id="cc-finished" class="text-slate-600">Completed State</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Core App Logic Script -->
+    <script>
+        // System state management
+        const state = {
+            lang: 'en',
+            inputMode: 'quick',        // 'quick' or 'edit'
+            matrixInputType: 'need',   // 'need' or 'max' (CORE SWITCH)
+            
+            // Raw string inputs for text areas
+            allocRaw: `0,1,0\n2,0,0\n3,0,2\n2,1,1\n0,0,2`,
+            needRaw: `7,4,3\n1,2,2\n6,0,0\n0,1,1\n4,3,1`,
+            maxRaw: `7,5,3\n3,2,2\n9,0,2\n2,2,2\n4,3,3`,
+            availRaw: `3,3,2`,
+
+            // Grid array parsed data sets
+            allocation: [],
+            need: [],
+            max: [],
+            available: [],
+            n: 0, 
+            m: 0, 
+
+            // Algorithmic tracking steps
+            traceSteps: [],
+            currentStepIndex: -1,
+            isSafe: false,
+            safeSequence: [],
+            allSafeSequences: [], // Lưu trữ tất cả các chuỗi an toàn tìm được
+
+            // Autoplay engine properties
+            isPlaying: false,
+            playInterval: null,
+            playSpeed: 1000, 
+
+            // UI layouts states
+            viewMode: 'step', 
+        };
+
+        // Bilingual Translations dictionary
+        const translations = {
+            en: {
+                headerTitle: "Banker's Safety Algorithm",
+                headerSubtitle: "Interactive Teaching Assistant & Sandbox",
+                langBtnText: "Tiếng Việt",
+                secConfigTitle: "Data Configuration",
+                btnLoadSafe: "Load Safe Case",
+                btnLoadUnsafe: "Load Unsafe Case",
+                lblAllocInput: "Allocation Matrix",
+                lblNeedInput: "Need Matrix",
+                lblNeedMaxInput_need: "Need Matrix",
+                lblNeedMaxInput_max: "Max Matrix (Tối đa)",
+                lblAvailInput: "Available Vector",
+                btnGenTables: "Generate Tables",
+                btnAddP: "+ Process",
+                btnRemP: "- Process",
+                btnAddR: "+ Resource",
+                btnRemR: "- Resource",
+                secMatricesTitle: "Live Workspace",
+                warningEditor: "Edits in cells below calculate outcomes in real-time.",
+                lblAvailableTitle: "Available Vector (Work Init)",
+                secControlsTitle: "Safety Check Controller",
+                secControlsDesc: "Step through safety check manually or auto play",
+                btnStartSolve: "Solve & Trace",
+                btnReset: "Reset Solver",
+                lblPlay: "Auto Play",
+                lblPause: "Pause",
+                lblSpeed: "Speed:",
+                lblTraceProgress: "Trace Index:",
+                lblWelcomeTitle: "Ready to Learn?",
+                lblWelcomeDesc: "Configure your matrices (Need or Max) on the left, then click Solve & Trace to run.",
+                lblWorkVec: "Work Vector",
+                lblWorkDesc: "Dynamic resource vector mapping current available allocation.",
+                lblAnalysis: "Comparison Detail (Need &le; Work)",
+                thRes: "Resource",
+                thPneed: "Need",
+                thCwork: "Work",
+                thCheckRes: "Result",
+                lblReleaseEquation: "Resource Release: Work = Work + Allocation",
+                lblOldWork: "Old Work",
+                lblAllocVal: "Allocation",
+                lblNewWork: "New Work",
+                lblFinishVector: "Process Finish Array",
+                footerSummaryTitle: "Algorithm Summary:",
+                footerSummaryText: "If Need &le; Work, process executes, releases Allocation to Work. System is safe if all processes finish.",
+                ccExecutable: "Executable",
+                ccBlocked: "Blocked",
+                ccWork: "Work Update",
+                ccFinished: "Completed",
+                btnToggleViewStep: "Show Steps",
+                btnToggleViewFull: "Full Trace",
+                msgSuccess: "Process can execute successfully.",
+                msgFailed: "Blocked. Need exceeds current Work.",
+                msgFinishSkipped: "Process already completed. Skipped.",
+                initExplanation: "Algorithm initialized. Work is set to initial Available vector. All Finish values are FALSE.",
+                finalSafeResult: "SYSTEM STATUS: SAFE",
+                finalUnsafeResult: "SYSTEM STATUS: UNSAFE",
+                safeSequenceIs: "Safe Sequence Found (Standard):",
+                allSafeSequencesTitle: "All Possible Safe Sequences",
+                unsafeSequenceDesc: "No Safe Sequence Exists. System is in deadlock risk.",
+                stepLabel: "Step",
+                stepOf: "of",
+                finishedLabel: "Finished",
+                unfinishedLabel: "Unfinished",
+                testingLabel: "Checking",
+                matrixTypeTitle: "Input Mode:",
+                errAllocExceedsMax: "Validation Error: Allocation cannot exceed Max! (Need cannot be negative)",
+                errFormat: "Error: Formatting error or invalid numbers.",
+                errRowMismatch: "Error: Dimension row counts between matrices must match.",
+                errColMismatch: "Error: Resource column counts must match.",
+                colCalculatedNeed: "Calc Need"
+            },
+            vi: {
+                headerTitle: "Thuật toán An toàn Banker",
+                headerSubtitle: "Trợ lý học tập tương tác & Bảng mô phỏng",
+                langBtnText: "English",
+                secConfigTitle: "Cấu hình Dữ liệu",
+                btnLoadSafe: "Nạp thế Safe",
+                btnLoadUnsafe: "Nạp thế Unsafe",
+                lblAllocInput: "Ma trận Cấp phát (Allocation)",
+                lblNeedInput: "Ma trận Nhu cầu (Need)",
+                lblNeedMaxInput_need: "Ma trận Nhu cầu (Need)",
+                lblNeedMaxInput_max: "Ma trận Tối đa (Max)",
+                lblAvailInput: "Vectơ Sẵn có (Available)",
+                btnGenTables: "Khởi tạo bảng",
+                btnAddP: "+ Tiến trình",
+                btnRemP: "- Tiến trình",
+                btnAddR: "+ Tài nguyên",
+                btnRemR: "- Tài nguyên",
+                secMatricesTitle: "Ma trận số liệu",
+                warningEditor: "Thay đổi chỉ số các ô dưới đây để tự động tính toán lại.",
+                lblAvailableTitle: "Vectơ Sẵn có (Work Khởi tạo)",
+                secControlsTitle: "Bộ Điều khiển Kiểm tra An toàn",
+                secControlsDesc: "Chạy từng bước thuật toán hoặc duyệt tự động",
+                btnStartSolve: "Chạy Từng bước",
+                btnReset: "Khởi động lại",
+                lblPlay: "Chạy tự động",
+                lblPause: "Tạm dừng",
+                lblSpeed: "Tốc độ:",
+                lblTraceProgress: "Lịch trình:",
+                lblWelcomeTitle: "Sẵn sàng Học tập?",
+                lblWelcomeDesc: "Cấu hình ma trận (Need hoặc Max) ở bên trái, sau đó click nút Chạy Từng bước để quan sát.",
+                lblWorkVec: "Vectơ Work (Đang làm việc)",
+                lblWorkDesc: "Vectơ tài nguyên tạm thời mô phỏng lượng sẵn có.",
+                lblAnalysis: "Chi tiết Phép toán so sánh (Need &le; Work)",
+                thRes: "Tài nguyên",
+                thPneed: "Need",
+                thCwork: "Work",
+                thCheckRes: "Kết quả",
+                lblReleaseEquation: "Công thức thu hồi tài nguyên: Work = Work + Allocation",
+                lblOldWork: "Work Cũ",
+                lblAllocVal: "Allocation",
+                lblNewWork: "Work Mới",
+                lblFinishVector: "Mảng Trạng thái Hoàn thành (Finish)",
+                footerSummaryTitle: "Tóm tắt thuật toán:",
+                footerSummaryText: "Nếu Need &le; Work, tiến trình chạy và trả lại Allocation cho Work. Hệ thống an toàn nếu mọi tiến trình đều xong.",
+                ccExecutable: "Khả thi",
+                ccBlocked: "Bị chặn",
+                ccWork: "Sửa đổi Work",
+                ccFinished: "Đã hoàn thành",
+                btnToggleViewStep: "Duyệt bước",
+                btnToggleViewFull: "Hiện toàn bộ",
+                msgSuccess: "Tiến trình đủ tài nguyên chạy và hoàn thành.",
+                msgFailed: "Bị chặn. Need vượt quá Work hiện tại.",
+                msgFinishSkipped: "Tiến trình đã hoàn thành từ trước.",
+                initExplanation: "Khởi tạo thuật toán. Gán vectơ Work bằng Available ban đầu. Thiết lập mọi Finish = FALSE.",
+                finalSafeResult: "TRẠNG THÁI HỆ THỐNG: AN TOÀN",
+                finalUnsafeResult: "TRẠNG THÁI HỆ THỐNG: MẤT AN TOÀN",
+                safeSequenceIs: "Chuỗi an toàn tìm thấy (Chuẩn):",
+                allSafeSequencesTitle: "Tất cả các chuỗi an toàn khả thi",
+                unsafeSequenceDesc: "Không tồn tại chuỗi an toàn. Hệ thống có nguy cơ bế tắc (Deadlock).",
+                stepLabel: "Bước",
+                stepOf: "trên",
+                finishedLabel: "Đã xong",
+                unfinishedLabel: "Chưa xong",
+                testingLabel: "Đang xét",
+                matrixTypeTitle: "Chọn Ma trận nhập:",
+                errAllocExceedsMax: "Lỗi dữ liệu: Giá trị Cấp phát (Allocation) vượt quá Tối đa (Max)! (Nhu cầu Need không thể âm)",
+                errFormat: "Lỗi định dạng số liệu không hợp lệ.",
+                errRowMismatch: "Lỗi: Số hàng (tiến trình) các ma trận không khớp.",
+                errColMismatch: "Lỗi: Số cột (tài nguyên) các ma trận không khớp.",
+                colCalculatedNeed: "Need Tính toán"
+            }
+        };
+
+        // Toggle Application Language
+        function toggleLanguage() {
+            state.lang = state.lang === 'en' ? 'vi' : 'en';
+            applyStaticTranslations();
+            renderSandboxTables();
+            renderActiveStep();
+        }
+
+        // Apply static layout labels based on bilingual dictionary
+        function applyStaticTranslations() {
+            const dict = translations[state.lang];
+            
+            document.getElementById('header-title').innerText = dict.headerTitle;
+            document.getElementById('header-subtitle').innerText = dict.headerSubtitle;
+            document.getElementById('lang-btn-text').innerText = dict.langBtnText;
+            document.getElementById('section-config-title').innerText = dict.secConfigTitle;
+            document.getElementById('btn-load-safe').innerText = dict.btnLoadSafe;
+            document.getElementById('btn-load-unsafe').innerText = dict.btnLoadUnsafe;
+            document.getElementById('lbl-alloc-input').innerText = dict.lblAllocInput;
+            
+            // Toggle text dynamic based on mode
+            const labelInput = document.getElementById('lbl-need-max-input');
+            if (state.matrixInputType === 'need') {
+                labelInput.innerText = dict.lblNeedMaxInput_need;
+                document.getElementById('raw-need-max').placeholder = "e.g.\n7,4,3\n1,2,2";
+            } else {
+                labelInput.innerText = dict.lblNeedMaxInput_max;
+                document.getElementById('raw-need-max').placeholder = "e.g.\n7,5,3\n3,2,2";
+            }
+            
+            document.getElementById('lbl-avail-input').innerText = dict.lblAvailInput;
+            document.getElementById('btn-generate-tables').innerText = dict.btnGenTables;
+            
+            document.getElementById('btn-add-p').innerText = dict.btnAddP;
+            document.getElementById('btn-rem-p').innerText = dict.btnRemP;
+            document.getElementById('btn-add-r').innerText = dict.btnAddR;
+            document.getElementById('btn-rem-r').innerText = dict.btnRemR;
+            
+            document.getElementById('section-matrices-title').innerText = dict.secMatricesTitle;
+            document.getElementById('warning-editor').innerText = dict.warningEditor;
+            document.getElementById('lbl-available-title').innerText = dict.lblAvailableTitle;
+            document.getElementById('section-controls-title').innerText = dict.secControlsTitle;
+            document.getElementById('section-controls-desc').innerText = dict.secControlsDesc;
+            document.getElementById('btn-start-solve').innerText = dict.btnStartSolve;
+            document.getElementById('btn-reset').innerText = dict.btnReset;
+            
+            document.getElementById('lbl-play').innerText = state.isPlaying ? dict.lblPause : dict.lblPlay;
+            document.getElementById('lbl-speed').innerText = dict.lblSpeed;
+            document.getElementById('lbl-trace-progress').innerText = dict.lblTraceProgress;
+            
+            document.getElementById('lbl-welcome-title').innerText = dict.lblWelcomeTitle;
+            document.getElementById('lbl-welcome-desc').innerText = dict.lblWelcomeDesc;
+            document.getElementById('lbl-work-vec').innerText = dict.lblWorkVec;
+            document.getElementById('lbl-work-desc').innerText = dict.lblWorkDesc;
+            document.getElementById('lbl-analysis').innerHTML = dict.lblAnalysis;
+            
+            document.getElementById('th-res').innerText = dict.thRes;
+            document.getElementById('th-pneed').innerText = dict.thPneed;
+            document.getElementById('th-cwork').innerText = dict.thCwork;
+            document.getElementById('th-check-res').innerText = dict.thCheckRes;
+            
+            document.getElementById('lbl-release-equation').innerHTML = dict.lblReleaseEquation;
+            document.getElementById('lbl-old-work').innerText = dict.lblOldWork;
+            document.getElementById('lbl-alloc-val').innerText = dict.lblAllocVal;
+            document.getElementById('lbl-new-work').innerText = dict.lblNewWork;
+            document.getElementById('lbl-finish-vector').innerText = dict.lblFinishVector;
+            
+            document.getElementById('footer-summary-title').innerText = dict.footerSummaryTitle;
+            document.getElementById('footer-summary-text').innerText = dict.footerSummaryText;
+            
+            document.getElementById('cc-executable').innerText = dict.ccExecutable;
+            document.getElementById('cc-blocked').innerText = dict.ccBlocked;
+            document.getElementById('cc-work').innerText = dict.ccWork;
+            document.getElementById('cc-finished').innerText = dict.ccFinished;
+
+            document.getElementById('lbl-matrix-selection-title').innerText = dict.matrixTypeTitle;
+
+            const btnToggleView = document.getElementById('btn-toggle-view');
+            if (btnToggleView) {
+                btnToggleView.innerText = state.viewMode === 'step' ? dict.btnToggleViewFull : dict.btnToggleViewStep;
+            }
+
+            // Top Mode buttons text
+            document.getElementById('mode-btn-need').innerText = dict.lblNeedMaxInput_need;
+            document.getElementById('mode-btn-max').innerText = dict.lblNeedMaxInput_max;
+
+            // Mode formulas in workspace
+            document.getElementById('mode-display-formula').innerText = state.matrixInputType === 'max' ? "Need = Max - Allocation" : "Need Mode (Direct Input)";
+        }
+
+        // Toggle input mode logic (Need vs Max)
+        function setMatrixInputType(type) {
+            state.matrixInputType = type;
+            
+            // Update quick button visual weights
+            const btnNeed = document.getElementById('mode-btn-need');
+            const btnMax = document.getElementById('mode-btn-max');
+            
+            if (type === 'need') {
+                btnNeed.className = "px-3 py-0.5 text-[10px] font-bold rounded bg-indigo-600 text-white shadow-sm transition-colors";
+                btnMax.className = "px-3 py-0.5 text-[10px] font-bold rounded text-slate-500 hover:text-slate-800 transition-colors";
+                
+                // Swap quick textarea content to preserve
+                document.getElementById('raw-need-max').value = state.needRaw;
+            } else {
+                btnNeed.className = "px-3 py-0.5 text-[10px] font-bold rounded text-slate-500 hover:text-slate-800 transition-colors";
+                btnMax.className = "px-3 py-0.5 text-[10px] font-bold rounded bg-indigo-600 text-white shadow-sm transition-colors";
+                
+                document.getElementById('raw-need-max').value = state.maxRaw;
+            }
+
+            applyStaticTranslations();
+            
+            // Re-sync and re-render workspace matrices
+            if (syncRawToState()) {
+                renderSandboxTables();
+            }
+            resetSolver();
+        }
+
+        // Core parsing of lines
+        function parseMatrixText(text) {
+            let lines = text.trim().split('\n');
+            let matrix = [];
+            for (let line of lines) {
+                let row = line.trim();
+                if (row === '') continue;
+                let nums = row.split(/[\s,;/\t]+/).map(x => parseInt(x));
+                if (nums.some(isNaN)) return null;
+                matrix.push(nums);
+            }
+            return matrix;
+        }
+
+        function parseVectorText(text) {
+            let row = text.trim();
+            if (row === '') return null;
+            let nums = row.split(/[\s,;/\t]+/).map(x => parseInt(x));
+            if (nums.some(isNaN)) return null;
+            return nums;
+        }
+
+        // Synchronize structural arrays with inputs
+        function syncRawToState() {
+            let parsedAlloc = parseMatrixText(state.allocRaw);
+            let parsedAvail = parseVectorText(state.availRaw);
+            
+            let parsedSecondMatrix = parseMatrixText(document.getElementById('raw-need-max').value); // Reads either Max or Need
+
+            if (!parsedAlloc || !parsedSecondMatrix || !parsedAvail) {
+                showError("errFormat", "Invalid matrix numbers formatting.");
+                return false;
+            }
+
+            if (parsedAlloc.length !== parsedSecondMatrix.length) {
+                showError("errRowMismatch", "Allocation and target rows count must be equal.");
+                return false;
+            }
+
+            let firstRowAllocLen = parsedAlloc[0].length;
+            let firstRowSecondLen = parsedSecondMatrix[0].length;
+            if (firstRowAllocLen !== firstRowSecondLen || firstRowAllocLen !== parsedAvail.length) {
+                showError("errColMismatch", "Matrix column dimensions count must be equal.");
+                return false;
+            }
+
+            // Bind values based on mode
+            state.allocation = parsedAlloc;
+            state.available = parsedAvail;
+            state.n = parsedAlloc.length;
+            state.m = parsedAvail.length;
+
+            if (state.matrixInputType === 'need') {
+                state.need = parsedSecondMatrix;
+                // Compute Max = Alloc + Need
+                state.max = [];
+                for (let i = 0; i < state.n; i++) {
+                    let rMax = [];
+                    for (let j = 0; j < state.m; j++) {
+                        rMax.push(state.allocation[i][j] + state.need[i][j]);
+                    }
+                    state.max.push(rMax);
+                }
+            } else { // 'max'
+                state.max = parsedSecondMatrix;
+                // Compute Need = Max - Alloc
+                state.need = [];
+                for (let i = 0; i < state.n; i++) {
+                    let rNeed = [];
+                    for (let j = 0; j < state.m; j++) {
+                        let diff = state.max[i][j] - state.allocation[i][j];
+                        if (diff < 0) {
+                            showError("errAllocExceedsMax", "Allocation value cannot exceed Max!");
+                            return false;
+                        }
+                        rNeed.push(diff);
+                    }
+                    state.need.push(rNeed);
+                }
+            }
+
+            hideError();
+            return true;
+        }
+
+        // Output structural data to textareas
+        function syncStateToRawText() {
+            state.allocRaw = state.allocation.map(row => row.join(',')).join('\n');
+            state.needRaw = state.need.map(row => row.join(',')).join('\n');
+            state.maxRaw = state.max.map(row => row.join(',')).join('\n');
+            state.availRaw = state.available.join(',');
+
+            document.getElementById('raw-alloc').value = state.allocRaw;
+            
+            if (state.matrixInputType === 'need') {
+                document.getElementById('raw-need-max').value = state.needRaw;
+            } else {
+                document.getElementById('raw-need-max').value = state.maxRaw;
+            }
+            document.getElementById('raw-avail').value = state.availRaw;
+        }
+
+        // Control validation panel displays
+        function showError(translationKey, fallbackText) {
+            const errBox = document.getElementById('validation-error');
+            const errText = document.getElementById('error-text');
+            errBox.classList.remove('hidden');
+            if (translations[state.lang][translationKey]) {
+                errText.innerText = translations[state.lang][translationKey];
+            } else {
+                errText.innerText = fallbackText;
+            }
+        }
+
+        function hideError() {
+            document.getElementById('validation-error').classList.add('hidden');
+        }
+
+        // Configure layout tabs (Raw vs spreadsheet Grid)
+        function setInputMode(mode) {
+            state.inputMode = mode;
+            
+            const tabQuick = document.getElementById('tab-quick');
+            const tabEdit = document.getElementById('tab-edit');
+            const quickControls = document.getElementById('quick-mode-inputs');
+            const editControls = document.getElementById('edit-mode-controls');
+
+            if (mode === 'quick') {
+                tabQuick.className = "py-1 text-[11px] font-bold rounded-md transition border border-indigo-600 bg-indigo-50 text-indigo-700";
+                tabEdit.className = "py-1 text-[11px] font-bold rounded-md transition border border-transparent bg-slate-50 text-slate-600 hover:bg-slate-100";
+                quickControls.classList.remove('hidden');
+                editControls.classList.add('hidden');
+                syncStateToRawText();
+            } else {
+                tabQuick.className = "py-1 text-[11px] font-bold rounded-md transition border border-transparent bg-slate-50 text-slate-600 hover:bg-slate-100";
+                tabEdit.className = "py-1 text-[11px] font-bold rounded-md transition border border-indigo-600 bg-indigo-50 text-indigo-700";
+                quickControls.classList.add('hidden');
+                editControls.classList.remove('hidden');
+                
+                if (syncRawToState()) {
+                    renderSandboxTables();
+                }
+            }
+        }
+
+        // Presets loading parameters
+        function loadSamplePreset(presetType) {
+            if (presetType === 'safe') {
+                state.allocRaw = `0,1,0\n2,0,0\n3,0,2\n2,1,1\n0,0,2`;
+                state.needRaw = `7,4,3\n1,2,2\n6,0,0\n0,1,1\n4,3,1`;
+                state.maxRaw = `7,5,3\n3,2,2\n9,0,2\n2,2,2\n4,3,3`;
+                state.availRaw = `3,3,2`;
+            } else {
+                state.allocRaw = `0,1,0\n2,0,0\n3,0,2\n2,1,1\n0,0,2`;
+                state.needRaw = `8,4,3\n1,2,2\n7,0,0\n0,1,1\n4,3,1`;
+                state.maxRaw = `8,5,3\n3,2,2\n10,0,2\n2,2,2\n4,3,3`;
+                state.availRaw = `2,3,2`;
+            }
+
+            document.getElementById('raw-alloc').value = state.allocRaw;
+            if (state.matrixInputType === 'need') {
+                document.getElementById('raw-need-max').value = state.needRaw;
+            } else {
+                document.getElementById('raw-need-max').value = state.maxRaw;
+            }
+            document.getElementById('raw-avail').value = state.availRaw;
+
+            hideError();
+            if (state.inputMode === 'edit') {
+                syncRawToState();
+                renderSandboxTables();
+            }
+            resetSolver();
+        }
+
+        // Grid Generator
+        function parseAndGenerateFromText() {
+            state.allocRaw = document.getElementById('raw-alloc').value;
+            let secondaryText = document.getElementById('raw-need-max').value;
+            if (state.matrixInputType === 'need') {
+                state.needRaw = secondaryText;
+            } else {
+                state.maxRaw = secondaryText;
+            }
+            state.availRaw = document.getElementById('raw-avail').value;
+
+            if (syncRawToState()) {
+                setInputMode('edit');
+                startSolving();
+            }
+        }
+
+        // Render dynamic table grid (Custom columns for Allocation / Need / Max based on chosen state mode)
+        function renderSandboxTables() {
+            const matrixTable = document.getElementById('matrix-table');
+            const availableTable = document.getElementById('available-table');
+            const dict = translations[state.lang];
+
+            const colSpanCount = state.matrixInputType === 'max' ? 3 : 2;
+
+            // 1. Double Header Grid Design
+            let mHeadersHtml = `
+                <thead class="bg-slate-100 text-slate-500 font-bold sticky top-0 z-[2]">
+                    <tr>
+                        <th class="px-2 py-1 border-b border-r border-slate-200 text-[10px]" rowspan="2">P</th>
+                        <th class="px-2 py-0.5 border-b border-r border-slate-200 text-[9px] uppercase" colspan="${state.m}">${dict.ccExecutable} (Alloc)</th>
+            `;
+
+            if (state.matrixInputType === 'max') {
+                mHeadersHtml += `
+                        <th class="px-2 py-0.5 border-b border-r border-slate-200 text-[9px] uppercase" colspan="${state.m}">${dict.lblNeedMaxInput_max}</th>
+                        <th class="px-2 py-0.5 border-b text-[9px] uppercase bg-slate-100 text-slate-500" colspan="${state.m}">${dict.colCalculatedNeed} ($Need$)</th>
+                `;
+            } else {
+                mHeadersHtml += `
+                        <th class="px-2 py-0.5 border-b text-[9px] uppercase" colspan="${state.m}">${dict.lblNeedInput} (Need)</th>
+                `;
+            }
+
+            mHeadersHtml += `
+                    </tr>
+                    <tr>
+            `;
+            
+            // Sub-columns A, B, C for each master matrix column
+            for (let cType = 0; cType < colSpanCount; cType++) {
+                for (let r = 0; r < state.m; r++) {
+                    let rLetter = String.fromCharCode(65 + r);
+                    let hasRightBorder = (r === state.m - 1 && cType < colSpanCount - 1);
+                    mHeadersHtml += `<th class="px-1 py-0.5 border-b ${hasRightBorder ? 'border-r border-slate-200' : ''} font-mono text-[9px]">${rLetter}</th>`;
+                }
+            }
+            mHeadersHtml += `</tr></thead>`;
+
+            let mBodyHtml = `<tbody>`;
+            for (let p = 0; p < state.n; p++) {
+                let activeRowClass = getRowHighlightClass(p);
+                
+                mBodyHtml += `<tr id="grid-row-p${p}" class="${activeRowClass} border-b border-slate-100 transition-all">`;
+                mBodyHtml += `<td class="px-2 py-1 border-r border-slate-200 font-bold text-slate-700">P${p}</td>`;
+                
+                // Render Allocation columns
+                for (let r = 0; r < state.m; r++) {
+                    mBodyHtml += `
+                        <td class="px-0.5 py-0.5 ${r === state.m - 1 ? 'border-r border-slate-200' : '' }">
+                            <input type="number" min="0" oninput="cellValueChange(${p}, ${r}, 'alloc', this)" value="${state.allocation[p][r]}" class="w-8 py-0.5 text-center font-mono focus:ring-1 focus:ring-indigo-500 rounded border border-slate-200 bg-white">
+                        </td>
+                    `;
+                }
+
+                if (state.matrixInputType === 'max') {
+                    // Render Max columns
+                    for (let r = 0; r < state.m; r++) {
+                        mBodyHtml += `
+                            <td class="px-0.5 py-0.5 ${r === state.m - 1 ? 'border-r border-slate-200' : '' }">
+                                <input type="number" min="0" oninput="cellValueChange(${p}, ${r}, 'max', this)" value="${state.max[p][r]}" class="w-8 py-0.5 text-center font-mono focus:ring-1 focus:ring-indigo-500 rounded border border-slate-200 bg-white">
+                            </td>
+                        `;
+                    }
+                    // Render Read-Only Calculated Need columns
+                    for (let r = 0; r < state.m; r++) {
+                        let computedNeed = state.need[p][r];
+                        let errorClass = computedNeed < 0 ? "text-rose-600 bg-rose-50 font-extrabold" : "text-indigo-600 bg-slate-50";
+                        mBodyHtml += `
+                            <td class="px-0.5 py-0.5 font-mono text-center select-none font-semibold ${errorClass}">
+                                ${computedNeed < 0 ? '!' : computedNeed}
+                            </td>
+                        `;
+                    }
+                } else {
+                    // Direct Need columns
+                    for (let r = 0; r < state.m; r++) {
+                        mBodyHtml += `
+                            <td class="px-0.5 py-0.5">
+                                <input type="number" min="0" oninput="cellValueChange(${p}, ${r}, 'need', this)" value="${state.need[p][r]}" class="w-8 py-0.5 text-center font-mono focus:ring-1 focus:ring-indigo-500 rounded border border-slate-200 bg-white">
+                            </td>
+                        `;
+                    }
+                }
+                mBodyHtml += `</tr>`;
+            }
+            mBodyHtml += `</tbody>`;
+            matrixTable.innerHTML = mHeadersHtml + mBodyHtml;
+
+            // 2. Render Available Vector Init row
+            let aHeadersHtml = `
+                <thead class="bg-slate-100 text-slate-500 font-bold">
+                    <tr>
+            `;
+            for (let r = 0; r < state.m; r++) {
+                let rLetter = String.fromCharCode(65 + r);
+                aHeadersHtml += `<th class="px-2 py-0.5 border-b border-slate-200 font-mono text-[9px]">${rLetter}</th>`;
+            }
+            aHeadersHtml += `</tr></thead><tbody><tr>`;
+
+            for (let r = 0; r < state.m; r++) {
+                aHeadersHtml += `
+                    <td class="px-1 py-1">
+                        <input type="number" min="0" oninput="availableValueChange(${r}, this)" value="${state.available[r]}" class="w-10 py-1 text-center font-mono font-bold border border-slate-200 rounded focus:ring-1 focus:ring-indigo-500 bg-white">
+                    </td>
+                `;
+            }
+            aHeadersHtml += `</tr></tbody>`;
+            availableTable.innerHTML = aHeadersHtml;
+        }
+
+        // Return conditional styles during steps tracking
+        function getRowHighlightClass(p) {
+            if (state.currentStepIndex < 0 || state.currentStepIndex >= state.traceSteps.length) {
+                return "hover:bg-slate-50";
+            }
+            
+            let currentStep = state.traceSteps[state.currentStepIndex];
+            if (currentStep && (currentStep.type === 'check' || currentStep.type === 'execute') && currentStep.processIndex === p) {
+                return currentStep.canExecute 
+                    ? "bg-emerald-50 ring-2 ring-emerald-500/35" 
+                    : "bg-rose-50 ring-2 ring-rose-500/35";
+            }
+            
+            let isPastFinished = currentStep.finish && currentStep.finish[p];
+            if (isPastFinished) {
+                return "opacity-40 bg-slate-100 line-through text-slate-400";
+            }
+
+            return "hover:bg-slate-50";
+        }
+
+        // Handle cell edits inside matrices
+        function cellValueChange(p, r, targetType, element) {
+            let val = parseInt(element.value);
+            if (isNaN(val) || val < 0) val = 0;
+
+            if (targetType === 'alloc') {
+                state.allocation[p][r] = val;
+            } else if (targetType === 'need') {
+                state.need[p][r] = val;
+            } else if (targetType === 'max') {
+                state.max[p][r] = val;
+            }
+
+            // Real-time calculated properties logic
+            if (state.matrixInputType === 'need') {
+                state.max[p][r] = state.allocation[p][r] + state.need[p][r];
+            } else {
+                state.need[p][r] = state.max[p][r] - state.allocation[p][r];
+            }
+
+            // Immediately clear traces first to prevent state drift
+            autoSolveBanker();
+            renderSandboxTables(); 
+        }
+
+        function availableValueChange(r, element) {
+            let val = parseInt(element.value);
+            if (isNaN(val) || val < 0) val = 0;
+
+            state.available[r] = val;
+            autoSolveBanker();
+            renderSandboxTables();
+        }
+
+        // Row/col edit workspace management
+        function addProcessRow() {
+            let initialRow = Array(state.m).fill(0);
+            state.allocation.push([...initialRow]);
+            state.need.push([...initialRow]);
+            state.max.push([...initialRow]);
+            state.n = state.allocation.length;
+            
+            syncStateToRawText();
+            autoSolveBanker();
+            renderSandboxTables();
+        }
+
+        function removeProcessRow() {
+            if (state.n <= 1) return;
+            state.allocation.pop();
+            state.need.pop();
+            state.max.pop();
+            state.n = state.allocation.length;
+
+            syncStateToRawText();
+            autoSolveBanker();
+            renderSandboxTables();
+        }
+
+        function addResourceColumn() {
+            if (state.m >= 8) return; // Limit columns slightly to fit safely on narrow screens
+            for (let i = 0; i < state.n; i++) {
+                state.allocation[i].push(0);
+                state.need[i].push(0);
+                state.max[i].push(0);
+            }
+            state.available.push(0);
+            state.m = state.available.length;
+
+            syncStateToRawText();
+            autoSolveBanker();
+            renderSandboxTables();
+        }
+
+        function removeResourceColumn() {
+            if (state.m <= 1) return;
+            for (let i = 0; i < state.n; i++) {
+                state.allocation[i].pop();
+                state.need[i].pop();
+                state.max[i].pop();
+            }
+            state.available.pop();
+            state.m = state.available.length;
+
+            syncStateToRawText();
+            autoSolveBanker();
+            renderSandboxTables();
+        }
+
+        // DFS Backtracking to find all valid safe sequences
+        function findAllSafeSequences() {
+            let allSeqs = [];
+            let currentSeq = [];
+            let finish = Array(state.n).fill(false);
+            let work = [...state.available];
+
+            function search() {
+                if (currentSeq.length === state.n) {
+                    allSeqs.push([...currentSeq]);
+                    return;
+                }
+                for (let i = 0; i < state.n; i++) {
+                    if (!finish[i]) {
+                        // Check if Need <= Work
+                        let canRun = true;
+                        for (let j = 0; j < state.m; j++) {
+                            if (state.need[i][j] > work[j]) {
+                                canRun = false;
+                                break;
+                            }
+                        }
+                        if (canRun) {
+                            // Backup work state
+                            let tempWork = [...work];
+                            // Allocate and simulate release
+                            for (let j = 0; j < state.m; j++) {
+                                work[j] += state.allocation[i][j];
+                            }
+                            finish[i] = true;
+                            currentSeq.push(i);
+
+                            search();
+
+                            // Backtrack
+                            currentSeq.pop();
+                            finish[i] = false;
+                            work = tempWork;
+                        }
+                    }
+                }
+            }
+            search();
+            return allSeqs;
+        }
+
+        // Banker's safety algorithmic logic execution loop
+        function autoSolveBanker() {
+            hideError();
+            
+            // Check Alloc <= Max validation
+            for (let i = 0; i < state.n; i++) {
+                for (let j = 0; j < state.m; j++) {
+                    if (state.need[i][j] < 0) {
+                        showError("errAllocExceedsMax", "Allocation cannot exceed Max value.");
+                        return;
+                    }
+                }
+            }
+
+            let work = [...state.available];
+            let finish = Array(state.n).fill(false);
+            let safeSeq = [];
+            let steps = [];
+
+            // Add Init Step
+            steps.push({
+                type: 'init',
+                work: [...work],
+                finish: [...finish],
+                sequence: [...safeSeq],
+                explanationEN: translations.en.initExplanation,
+                explanationVI: translations.vi.initExplanation
+            });
+
+            let progress = true;
+            while (safeSeq.length < state.n && progress) {
+                progress = false;
+                
+                for (let p = 0; p < state.n; p++) {
+                    if (finish[p]) continue;
+
+                    let comparisons = [];
+                    let canExecute = true;
+                    
+                    for (let r = 0; r < state.m; r++) {
+                        let pass = state.need[p][r] <= work[r];
+                        comparisons.push({
+                            resource: String.fromCharCode(65 + r),
+                            needVal: state.need[p][r],
+                            workVal: work[r],
+                            pass: pass
+                        });
+                        if (!pass) {
+                            canExecute = false;
+                        }
+                    }
+
+                    if (canExecute) {
+                        let oldWork = [...work];
+                        for (let r = 0; r < state.m; r++) {
+                            work[r] += state.allocation[p][r];
+                        }
+                        finish[p] = true;
+                        safeSeq.push(p);
+                        progress = true;
+
+                        steps.push({
+                            type: 'execute',
+                            processIndex: p,
+                            work: [...oldWork],
+                            finish: [...finish].map((f, idx) => idx === p ? false : f), 
+                            sequence: [...safeSeq].slice(0, -1),
+                            comparisons: comparisons,
+                            canExecute: true,
+                            newWork: [...work],
+                            newFinish: [...finish],
+                            newSequence: [...safeSeq],
+                            explanationEN: `Process P${p} satisfies Need &le; Work. It executes and releases resources: Work = Work + Allocation = [${oldWork.join(',')}] + [${state.allocation[p].join(',')}] = [${work.join(',')}]. Mark Finish[P${p}] = TRUE.`,
+                            explanationVI: `Tiến trình P${p} thỏa mãn điều kiện Need &le; Work. Tiến trình thực thi và giải phóng tài nguyên: Work = Work + Allocation = [${oldWork.join(',')}] + [${state.allocation[p].join(',')}] = [${work.join(',')}]. Đánh dấu Finish[P${p}] = TRUE.`
+                        });
+                        break; 
+                    } else {
+                        steps.push({
+                            type: 'check',
+                            processIndex: p,
+                            work: [...work],
+                            finish: [...finish],
+                            sequence: [...safeSeq],
+                            comparisons: comparisons,
+                            canExecute: false,
+                            explanationEN: `Process P${p} requires resources that exceed current Work vector (Need > Work). Cannot execute.`,
+                            explanationVI: `Tiến trình P${p} yêu cầu tài nguyên vượt quá Work hiện thời (Need > Work). Bị chặn, chưa thể thực thi.`
+                        });
+                    }
+                }
+            }
+
+            let isSafe = safeSeq.length === state.n;
+            steps.push({
+                type: 'final',
+                isSafe: isSafe,
+                work: [...work],
+                finish: [...finish],
+                sequence: [...safeSeq],
+                explanationEN: isSafe 
+                    ? `System is in a SAFE state. Safe sequence found: <${safeSeq.map(p => `P${p}`).join(", ")}>.`
+                    : `System is in an UNSAFE state. No safe sequence can be completed. Danger of deadlock.`,
+                explanationVI: isSafe 
+                    ? `Hệ thống đạt trạng thái AN TOÀN. Tìm thấy chuỗi an toàn: <${safeSeq.map(p => `P${p}`).join(", ")}>.`
+                    : `Hệ thống ở trạng thái MẤT AN TOÀN. Không tồn tại chuỗi an toàn khả thi. Nguy cơ xảy ra bế tắc.`
+            });
+
+            state.traceSteps = steps;
+            state.isSafe = isSafe;
+            state.safeSequence = safeSeq;
+            
+            // Tìm tất cả chuỗi an toàn khả thi
+            state.allSafeSequences = isSafe ? findAllSafeSequences() : [];
+
+            if (state.currentStepIndex >= state.traceSteps.length) {
+                state.currentStepIndex = state.traceSteps.length - 1;
+            }
+        }
+
+        // Initialize display triggers
+        function startSolving() {
+            if (!syncRawToState()) return;
+
+            autoSolveBanker();
+            state.currentStepIndex = 0;
+            state.viewMode = 'step';
+
+            document.getElementById('welcome-viewport').classList.add('hidden');
+            document.getElementById('step-by-step-viewport').classList.remove('hidden');
+            document.getElementById('full-solution-viewport').classList.add('hidden');
+            document.getElementById('trace-controls').classList.remove('hidden');
+
+            applyStaticTranslations();
+            renderSandboxTables();
+            renderActiveStep();
+        }
+
+        // Interface controls resets
+        function resetSolver() {
+            stopPlayback();
+            state.currentStepIndex = -1;
+            state.traceSteps = [];
+            
+            document.getElementById('welcome-viewport').classList.remove('hidden');
+            document.getElementById('step-by-step-viewport').classList.add('hidden');
+            document.getElementById('full-solution-viewport').classList.add('hidden');
+            document.getElementById('trace-controls').classList.add('hidden');
+            document.getElementById('final-verdict-banner').classList.add('hidden');
+
+            hideError();
+            renderSandboxTables();
+        }
+
+        function jumpToStep(index) {
+            if (index < 0 || index >= state.traceSteps.length) return;
+            state.currentStepIndex = index;
+            renderActiveStep();
+        }
+
+        function nextStep() {
+            if (state.currentStepIndex < state.traceSteps.length - 1) {
+                state.currentStepIndex++;
+                renderActiveStep();
+            } else {
+                stopPlayback();
+            }
+        }
+
+        function prevStep() {
+            if (state.currentStepIndex > 0) {
+                state.currentStepIndex--;
+                renderActiveStep();
+            }
+        }
+
+        // Auto Player playback loops
+        function toggleAutoPlay() {
+            if (state.isPlaying) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        }
+
+        function startPlayback() {
+            state.isPlaying = true;
+            document.getElementById('lbl-play').innerText = translations[state.lang].lblPause;
+            document.getElementById('play-icon').innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                </svg>
+            `;
+            
+            state.playInterval = setInterval(() => {
+                if (state.currentStepIndex >= state.traceSteps.length - 1) {
+                    jumpToStep(0);
+                } else {
+                    nextStep();
+                }
+            }, state.playSpeed);
+        }
+
+        function stopPlayback() {
+            state.isPlaying = false;
+            document.getElementById('lbl-play').innerText = translations[state.lang].lblPlay;
+            document.getElementById('play-icon').innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+            `;
+            if (state.playInterval) {
+                clearInterval(state.playInterval);
+            }
+        }
+
+        function setPlaySpeed(speed) {
+            state.playSpeed = speed;
+            document.getElementById('speed-slow').className = "px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition";
+            document.getElementById('speed-normal').className = "px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition";
+            document.getElementById('speed-fast').className = "px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition";
+            
+            if (speed === 2000) {
+                document.getElementById('speed-slow').className = "px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition";
+            } else if (speed === 1000) {
+                document.getElementById('speed-normal').className = "px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition";
+            } else {
+                document.getElementById('speed-fast').className = "px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition";
+            }
+
+            if (state.isPlaying) {
+                stopPlayback();
+                startPlayback();
+            }
+        }
+
+        // Toggles step-by-step or chronological solution list
+        function toggleViewMode() {
+            state.viewMode = state.viewMode === 'step' ? 'full' : 'step';
+            if (state.viewMode === 'full') {
+                document.getElementById('step-by-step-viewport').classList.add('hidden');
+                document.getElementById('full-solution-viewport').classList.remove('hidden');
+                renderFullSolutionList();
+            } else {
+                document.getElementById('step-by-step-viewport').classList.remove('hidden');
+                document.getElementById('full-solution-viewport').classList.add('hidden');
+                renderActiveStep();
+            }
+            applyStaticTranslations();
+        }
+
+        // Renders step content visually inside viewport
+        function renderActiveStep() {
+            if (state.currentStepIndex < 0 || state.currentStepIndex >= state.traceSteps.length) return;
+            
+            const currentStep = state.traceSteps[state.currentStepIndex];
+            const dict = translations[state.lang];
+
+            document.getElementById('btn-prev').disabled = state.currentStepIndex === 0;
+            document.getElementById('btn-next').disabled = state.currentStepIndex === state.traceSteps.length - 1;
+
+            // Generate timeline dots beads
+            const dotsContainer = document.getElementById('step-timeline-dots');
+            let dotsHtml = "";
+            state.traceSteps.forEach((step, idx) => {
+                let borderTheme = "border-slate-200 text-slate-600 hover:bg-slate-100";
+                
+                if (idx === state.currentStepIndex) {
+                    borderTheme = "bg-indigo-600 border-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/30";
+                } else if (step.type === 'execute') {
+                    borderTheme = "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100";
+                } else if (step.type === 'check') {
+                    borderTheme = "bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100";
+                } else if (step.type === 'init') {
+                    borderTheme = "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100";
+                } else if (step.type === 'final') {
+                    borderTheme = step.isSafe ? "bg-emerald-500 text-white border-emerald-500" : "bg-rose-500 text-white border-rose-500";
+                }
+
+                dotsHtml += `
+                    <button onclick="jumpToStep(${idx})" class="w-6 h-6 flex items-center justify-center text-[10px] font-bold rounded border transition ${borderTheme}">
+                        ${idx === state.traceSteps.length - 1 ? '★' : idx}
+                    </button>
+                `;
+            });
+            dotsContainer.innerHTML = dotsHtml;
+            document.getElementById('trace-step-text').innerText = `${dict.stepLabel} ${state.currentStepIndex} ${dict.stepOf} ${state.traceSteps.length - 1}`;
+
+            // Heading step values update
+            document.getElementById('active-step-num').innerText = `${dict.stepLabel} ${state.currentStepIndex}`;
+            
+            let badgeText = "Step";
+            let badgeColor = "bg-slate-100 text-slate-700 border-slate-200";
+            
+            if (currentStep.type === 'init') {
+                document.getElementById('active-step-title').innerText = dict.initExplanation.split('.')[0];
+                badgeText = "Init";
+                badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
+            } else if (currentStep.type === 'final') {
+                document.getElementById('active-step-title').innerText = currentStep.isSafe ? dict.finalSafeResult : dict.finalUnsafeResult;
+                badgeText = currentStep.isSafe ? "SAFE" : "UNSAFE";
+                badgeColor = currentStep.isSafe ? "bg-emerald-500 text-white border-emerald-600" : "bg-rose-500 text-white border-rose-600";
+            } else {
+                document.getElementById('active-step-title').innerText = `${dict.testingLabel} Process P${currentStep.processIndex}`;
+                badgeText = currentStep.canExecute ? "CAN RUN" : "BLOCKED";
+                badgeColor = currentStep.canExecute ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200";
+            }
+            
+            const badgeEl = document.getElementById('active-step-badge');
+            badgeEl.innerText = badgeText;
+            badgeEl.className = `px-2 py-0.5 rounded-full text-[9px] font-bold shadow-sm uppercase border ${badgeColor}`;
+
+            // Work vector snapshots mapping render
+            const workContainer = document.getElementById('active-work-vector');
+            let workHtml = "";
+            currentStep.work.forEach((wVal, rIdx) => {
+                let rLetter = String.fromCharCode(65 + rIdx);
+                workHtml += `
+                    <div class="flex flex-col items-center bg-white border border-blue-200 rounded py-0.5 px-2 shadow-sm min-w-[34px]">
+                        <span class="text-[7px] text-blue-400 font-sans uppercase">${rLetter}</span>
+                        <span class="text-xs font-mono font-bold leading-tight">${wVal}</span>
+                    </div>
+                `;
+            });
+            workContainer.innerHTML = workHtml;
+
+            // Element comparisons list render
+            const compSection = document.getElementById('comparison-section');
+            const compRows = document.getElementById('comparison-rows');
+            
+            if (currentStep.type === 'check' || currentStep.type === 'execute') {
+                compSection.classList.remove('hidden');
+                let rowsHtml = "";
+                currentStep.comparisons.forEach(c => {
+                    let mark = c.pass ? '✓' : '✗';
+                    let markClass = c.pass ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200';
+                    
+                    rowsHtml += `
+                        <tr class="hover:bg-slate-50 text-center">
+                            <td class="px-2 py-1.5 font-bold text-slate-700 text-left border-r border-slate-100">${c.resource}</td>
+                            <td class="px-2 py-1.5 font-bold text-slate-800">${c.needVal}</td>
+                            <td class="px-1 py-1.5 text-slate-400 font-bold text-[10px]">${c.needVal} &le; ${c.workVal}</td>
+                            <td class="px-2 py-1.5 text-slate-600 font-bold">${c.workVal}</td>
+                            <td class="px-2 py-1.5">
+                                <span class="px-1.5 py-0.5 rounded font-bold border text-[10px] leading-none inline-flex items-center ${markClass}">
+                                    <span>${mark}</span>
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                compRows.innerHTML = rowsHtml;
+            } else {
+                compSection.classList.add('hidden');
+            }
+
+            // Results narrative banner text
+            const alertContainer = document.getElementById('step-result-alert');
+            let alertClass = "";
+            let alertContent = "";
+
+            if (currentStep.type === 'init') {
+                alertClass = "bg-blue-50/50 border-blue-100 text-blue-800";
+                alertContent = `
+                    <div class="leading-relaxed">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-blue-600">Trace Initialization</p>
+                        <p class="text-[11px] font-medium text-slate-600">${state.lang === 'en' ? currentStep.explanationEN : currentStep.explanationVI}</p>
+                    </div>
+                `;
+            } else if (currentStep.type === 'final') {
+                alertClass = currentStep.isSafe ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-rose-50 border-rose-100 text-rose-800";
+                let description = state.lang === 'en' ? currentStep.explanationEN : currentStep.explanationVI;
+                
+                alertContent = `
+                    <div class="leading-relaxed">
+                        <p class="text-[10px] font-bold uppercase tracking-wider ${currentStep.isSafe ? 'text-emerald-600' : 'text-rose-600'}">${currentStep.isSafe ? dict.finalSafeResult : dict.finalUnsafeResult}</p>
+                        <p class="text-[11px] font-bold text-slate-700">${description}</p>
+                    </div>
+                `;
+            } else {
+                alertClass = currentStep.canExecute ? "bg-emerald-50/40 border-emerald-100 text-emerald-800" : "bg-rose-50/40 border-rose-100 text-rose-800";
+                let exp = state.lang === 'en' ? currentStep.explanationEN : currentStep.explanationVI;
+                
+                alertContent = `
+                    <div class="leading-tight">
+                        <span class="block text-[10px] font-bold uppercase tracking-wide ${currentStep.canExecute ? 'text-emerald-600' : 'text-rose-600'}">${currentStep.canExecute ? dict.msgSuccess : dict.msgFailed}</span>
+                        <p class="text-[11px] leading-relaxed text-slate-600 font-medium">${exp}</p>
+                    </div>
+                `;
+            }
+            alertContainer.className = `rounded-lg p-2.5 border flex items-start space-x-2 transition-colors ${alertClass}`;
+            alertContainer.innerHTML = alertContent;
+
+            // Resource Release Visual math block toggling
+            const eqBlock = document.getElementById('step-release-equation');
+            if (currentStep.type === 'execute') {
+                eqBlock.classList.remove('hidden');
+                
+                let oldWStr = `[${currentStep.work.join(',')}]`;
+                let allocStr = `[${state.allocation[currentStep.processIndex].join(',')}]`;
+                let newWStr = `[${currentStep.newWork.join(',')}]`;
+                
+                document.getElementById('eq-old-work').innerText = oldWStr;
+                document.getElementById('eq-alloc').innerText = allocStr;
+                document.getElementById('eq-new-work').innerText = newWStr;
+            } else {
+                eqBlock.classList.add('hidden');
+            }
+
+            // Finish process array mapped output
+            const finishContainer = document.getElementById('step-finish-vector-map');
+            let finishHtml = "";
+            currentStep.finish.forEach((fVal, idx) => {
+                let statusColor = fVal ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-rose-50 text-rose-600 border-rose-200 animate-pulse";
+                let statusLabel = fVal ? dict.finishedLabel : dict.unfinishedLabel;
+                
+                if ((currentStep.type === 'check' || currentStep.type === 'execute') && currentStep.processIndex === idx) {
+                    statusColor = currentStep.canExecute 
+                        ? "bg-emerald-500 text-white border-emerald-600 font-bold ring-1 ring-emerald-500/20 animate-none" 
+                        : "bg-rose-500 text-white border-rose-600 font-bold ring-1 ring-rose-500/20 animate-none";
+                    statusLabel = dict.testingLabel;
+                }
+
+                finishHtml += `
+                    <div class="flex-1 min-w-[54px] flex flex-col items-center border rounded py-0.5 text-[9px] text-center font-bold leading-tight shadow-sm transition-all ${statusColor}">
+                        <span class="opacity-75">P${idx}</span>
+                        <span class="font-extrabold text-[8px] uppercase tracking-wider mt-0.5">${statusLabel}</span>
+                    </div>
+                `;
+            });
+            finishContainer.innerHTML = finishHtml;
+
+            // Instantly render workspace table rows highlighting
+            renderSandboxTables();
+            renderFinalVerdictBanner();
+        }
+
+        // Complete Chronological Solution generation mapping
+        function renderFullSolutionList() {
+            const container = document.getElementById('full-solution-viewport');
+            const dict = translations[state.lang];
+            let listHtml = "";
+
+            state.traceSteps.forEach((step, idx) => {
+                let themeBorder = "border-slate-200 bg-white";
+                let stepBadge = `<span class="px-2 py-0.5 text-[8px] font-bold rounded uppercase bg-slate-100 text-slate-600 border border-slate-200">Step</span>`;
+                
+                if (step.type === 'init') {
+                    themeBorder = "border-blue-200 bg-blue-50/10";
+                    stepBadge = `<span class="px-2 py-0.5 text-[8px] font-bold rounded uppercase bg-blue-100 text-blue-700 border border-blue-200">Init</span>`;
+                } else if (step.type === 'execute') {
+                    themeBorder = "border-emerald-200 bg-emerald-50/5";
+                    stepBadge = `<span class="px-2 py-0.5 text-[8px] font-bold rounded uppercase bg-emerald-100 text-emerald-700 border border-emerald-200 font-extrabold">Can Run</span>`;
+                } else if (step.type === 'check') {
+                    themeBorder = "border-rose-200 bg-rose-50/5";
+                    stepBadge = `<span class="px-2 py-0.5 text-[8px] font-bold rounded uppercase bg-rose-100 text-rose-700 border border-rose-200">Blocked</span>`;
+                } else if (step.type === 'final') {
+                    themeBorder = step.isSafe ? "border-emerald-300 bg-emerald-50/15" : "border-rose-300 bg-rose-50/15";
+                    stepBadge = `<span class="px-2 py-0.5 text-[8px] font-bold rounded uppercase ${step.isSafe ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">${step.isSafe ? 'SAFE' : 'UNSAFE'}</span>`;
+                }
+
+                let explanation = state.lang === 'en' ? step.explanationEN : step.explanationVI;
+
+                listHtml += `
+                    <div class="border rounded-xl p-3.5 shadow-sm transition-all hover:shadow ${themeBorder} flex flex-col space-y-2">
+                        <div class="flex justify-between items-center pb-1.5 border-b border-slate-100">
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-slate-400">${dict.stepLabel} ${idx}</span>
+                                <h4 class="font-extrabold text-slate-800 text-xs mt-0.5">
+                                    ${step.type === 'init' ? 'Initializing State' : step.type === 'final' ? 'Verdict reached' : `${dict.testingLabel} P${step.processIndex}`}
+                                </h4>
+                            </div>
+                            ${stepBadge}
+                        </div>
+
+                        <div class="text-[11px] text-slate-600 leading-relaxed font-semibold">
+                            ${explanation}
+                        </div>
+
+                        ${step.type === 'execute' ? `
+                            <div class="bg-emerald-50/50 border border-emerald-100 p-2 rounded text-center font-mono text-[10px] text-emerald-800">
+                                <b>Work Update:</b> [${step.work.join(',')}] + [${state.allocation[step.processIndex].join(',')}] = [${step.newWork.join(',')}]
+                            </div>
+                        ` : ''}
+
+                        <div class="flex items-center justify-between text-[9px] pt-1">
+                            <span class="text-slate-400 font-bold uppercase">Work: <span class="font-mono text-slate-700">[${step.work.join(', ')}]</span></span>
+                            <span class="text-slate-400 font-bold uppercase">Finish: <span class="font-mono text-slate-700">[${step.finish.map(f => f ? '✓' : '✗').join(', ')}]</span></span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = listHtml;
+        }
+
+        // Render dynamic Safe Path/Unsafe Sequence badges
+        function renderFinalVerdictBanner() {
+            const banner = document.getElementById('final-verdict-banner');
+            const dict = translations[state.lang];
+
+            if (state.traceSteps.length === 0) {
+                banner.classList.add('hidden');
+                return;
+            }
+
+            banner.classList.remove('hidden');
+
+            if (state.isSafe) {
+                let seqPills = state.safeSequence.map(p => `
+                    <span class="bg-emerald-600 text-white font-mono font-extrabold text-[11px] px-2 py-0.5 rounded shadow-sm">
+                        P${p}
+                    </span>
+                `).join('<span class="text-emerald-400 text-xs font-bold">&rarr;</span>');
+
+                // Render all possible sequences
+                let allSeqsHtml = "";
+                if (state.allSafeSequences.length > 0) {
+                    allSeqsHtml = `
+                        <div class="mt-2 border-t border-slate-100 pt-2 w-full">
+                            <span class="text-[10px] font-bold uppercase tracking-wide text-slate-500 block mb-1">
+                                ${dict.allSafeSequencesTitle} (${state.allSafeSequences.length}):
+                            </span>
+                            <div class="max-h-20 overflow-y-auto space-y-1 pr-1">
+                                ${state.allSafeSequences.map((seq, sIdx) => `
+                                    <div class="flex items-center gap-1.5 text-[10px] bg-slate-50 border border-slate-100 px-2 py-0.5 rounded font-mono text-slate-600">
+                                        <span class="font-bold text-slate-400">#${sIdx + 1}</span>
+                                        <span>&lang; ${seq.map(p => `P${p}`).join(", ")} &rang;</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                banner.className = "bg-white border-2 border-emerald-500 rounded-xl p-3.5 shadow-sm flex flex-col shrink-0 gap-2";
+                banner.innerHTML = `
+                    <div class="flex items-start space-x-3 w-full">
+                        <div class="bg-emerald-100 text-emerald-700 p-2 rounded-full shadow-inner shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                        </div>
+                        <div class="space-y-1 text-left flex-1 min-w-0">
+                            <h3 class="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">${dict.finalSafeResult}</h3>
+                            <p class="text-[10px] text-slate-500 font-bold leading-none">${dict.safeSequenceIs}</p>
+                            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                ${seqPills}
+                            </div>
+                        </div>
+                    </div>
+                    ${allSeqsHtml}
+                `;
+            } else {
+                banner.className = "bg-white border-2 border-rose-500 rounded-xl p-3.5 shadow-sm flex items-center space-x-3 shrink-0";
+                banner.innerHTML = `
+                    <div class="bg-rose-100 text-rose-700 p-2 rounded-full shadow-inner shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                        </svg>
+                    </div>
+                    <div class="space-y-1 text-left flex-1">
+                        <h3 class="text-xs font-extrabold text-rose-800 uppercase tracking-wider">${dict.finalUnsafeResult}</h3>
+                        <p class="text-[10px] text-slate-500 font-bold leading-normal">${dict.unsafeSequenceDesc}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize viewport defaults on load
+        window.onload = function() {
+            loadSamplePreset('safe');
+            applyStaticTranslations();
+            setInputMode('quick');
+        };
+    </script>
+</body>
+</html>
