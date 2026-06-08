@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS Memory Allocation Strategies Simulator</title>
+    <!-- Tailwind CSS for high-quality minimalist UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        code, pre, .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Elegant custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-[#1e293b] h-screen overflow-hidden flex flex-col antialiased">
+
+    <!-- Header Section -->
+    <header class="bg-white border-b border-slate-200/80 shrink-0 h-14 shadow-sm z-10">
+        <div class="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-indigo-600 text-white p-1.5 rounded-lg font-bold text-xs tracking-wide shadow-sm">OS</div>
+                <div>
+                    <h1 class="font-extrabold text-slate-800 text-sm sm:text-base leading-tight" id="header-title">Memory Allocation Simulator</h1>
+                    <p class="text-[10px] text-slate-500" id="header-subtitle">Mô phỏng cấp phát bộ nhớ động - First-Fit, Best-Fit, Worst-Fit, Next-Fit</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- Bilingual Switch Button -->
+                <button onclick="toggleLanguage()" class="px-3 py-1 border border-slate-200 hover:border-indigo-600 rounded-lg text-[11px] font-bold text-slate-700 hover:text-indigo-600 transition flex items-center space-x-1.5 bg-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3.5 h-3.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 0-3.827-5.802" />
+                    </svg>
+                    <span id="lang-btn-text">Tiếng Việt</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid with fixed viewport scaling for Laptops -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden min-h-0">
+        
+        <!-- Left Column: Parameters setup and Live Visual Memory representation -->
+        <section class="lg:col-span-5 flex flex-col space-y-3 min-h-0 h-full">
+            
+            <!-- Quick Input Setup Panel -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm shrink-0">
+                <h2 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5 pb-2 border-b border-slate-100 mb-3">
+                    <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                    <span id="section-config-title">Allocation Configuration</span>
+                </h2>
+
+                <div class="space-y-3">
+                    <!-- Memory Blocks input -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-blocks-input">Free Memory Blocks (KB)</label>
+                        <input type="text" id="input-blocks" class="w-full text-xs font-mono px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition" placeholder="e.g. 500,200,300,600">
+                    </div>
+
+                    <!-- Process Sizes input -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-processes-input">Process Sizes (KB)</label>
+                        <input type="text" id="input-processes" class="w-full text-xs font-mono px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition" placeholder="e.g. 210,415,120,430">
+                    </div>
+
+                    <!-- Layout Strategy Selectors and Load presets -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end pt-1">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-strategy-select">Allocation Strategy</label>
+                            <select id="select-strategy" class="w-full text-xs font-semibold px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white">
+                                <option value="first">First-Fit</option>
+                                <option value="best">Best-Fit</option>
+                                <option value="worst">Worst-Fit</option>
+                                <option value="next">Next-Fit</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="loadSamplePreset()" class="flex-1 py-1.5 border border-slate-200 text-slate-700 font-bold rounded-lg text-[10px] hover:bg-slate-50 transition uppercase tracking-wide" id="btn-load-preset">
+                                Load Example
+                            </button>
+                            <button onclick="triggerSimulation()" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] transition uppercase tracking-wide shadow-sm" id="btn-simulate">
+                                Simulate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Notification / Error Displays -->
+                <div id="validation-error" class="hidden mt-2 p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[10px] flex items-start space-x-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 mt-0.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                    <span id="error-text">Inconsistent formats detected.</span>
+                </div>
+            </div>
+
+            <!-- Visual Memory Blocks Workspace (Proportional bars) -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+                    <h3 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                        <span id="section-memory-title">Memory Allocation Visualizer</span>
+                    </h3>
+                    <span class="text-[9px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" id="active-strategy-badge">Interactive</span>
+                </div>
+
+                <p class="text-[10px] text-slate-400 my-2" id="warning-memory-state">Blocks are rendered proportionally. Allocated segments (Green), free areas (Gray), highlighted pointer (Blue).</p>
+
+                <!-- Memory map container inside scroll container -->
+                <div id="memory-bars-container" class="overflow-y-auto flex-1 flex flex-col space-y-3.5 pr-1 min-h-0">
+                    <!-- Memory Blocks bars are generated here by JavaScript -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Explanatory walkthroughs and Comparison Mode metrics -->
+        <section class="lg:col-span-7 flex flex-col space-y-3 min-h-0 h-full">
+            
+            <!-- Step Execution Control Block -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm shrink-0">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5">
+                            <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                            <span id="section-controls-title">Learning Step Controller</span>
+                        </h2>
+                        <p class="text-[10px] text-slate-500" id="section-controls-desc">Step through comparisons, searches, and allocations</p>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="toggleCompareMode()" class="px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold rounded-lg text-[10px] transition uppercase tracking-wide" id="btn-compare-all">
+                            Compare All Algorithms
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Trace steps controllers -->
+                <div id="trace-controls" class="hidden mt-3 pt-2.5 border-t border-slate-100 flex flex-col space-y-2.5">
+                    
+                    <!-- Player operations -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                        <div class="flex items-center space-x-1">
+                            <button onclick="prevStep()" id="btn-prev" class="p-1 border border-slate-200 rounded hover:bg-white hover:text-indigo-600 text-slate-500 transition disabled:opacity-40 disabled:hover:bg-transparent" title="Previous Process">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                            <button onclick="toggleAutoPlay()" id="btn-play" class="p-1 border border-slate-200 rounded hover:bg-white hover:text-indigo-600 text-slate-500 transition flex items-center space-x-1 font-bold text-[10px] px-2.5" title="Auto Play">
+                                <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                </svg>
+                                <span id="lbl-play">Auto Play</span>
+                            </button>
+                            <button onclick="nextStep()" id="btn-next" class="p-1 border border-slate-200 rounded hover:bg-white hover:text-indigo-600 text-slate-500 transition disabled:opacity-40 disabled:hover:bg-transparent" title="Next Process">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+                            <button onclick="resetSolver()" class="p-1 border border-slate-200 rounded hover:bg-white hover:text-red-600 text-slate-500 transition text-[10px] px-2 font-bold" id="btn-reset">
+                                Reset
+                            </button>
+                        </div>
+
+                        <!-- Speed dials -->
+                        <div class="flex items-center space-x-1">
+                            <span class="text-[9px] uppercase font-bold text-slate-400" id="lbl-speed">Speed:</span>
+                            <button onclick="setPlaySpeed(2000)" id="speed-slow" class="px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition">0.5x</button>
+                            <button onclick="setPlaySpeed(1000)" id="speed-normal" class="px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition">1.0x</button>
+                            <button onclick="setPlaySpeed(400)" id="speed-fast" class="px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition">2.5x</button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Step bar timeline beads -->
+                    <div class="flex items-center justify-between text-[10px] mt-1">
+                        <span class="text-slate-400 font-bold" id="lbl-trace-progress">Processes Allocated:</span>
+                        <span class="font-extrabold text-indigo-600" id="trace-step-text">Process 0 of 0</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1 items-center max-h-16 overflow-y-auto" id="step-timeline-dots">
+                        <!-- Instantiated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standard Walkthrough Explanation Viewport -->
+            <div id="simulation-panels-holder" class="flex-1 flex flex-col justify-between min-h-0">
+                
+                <!-- Welcome guidelines -->
+                <div id="welcome-viewport" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col items-center justify-center text-center space-y-3 flex-1">
+                    <div class="bg-indigo-50 border border-indigo-100 text-indigo-600 p-3 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-slate-800 text-sm" id="lbl-welcome-title">Memory Allocation Simulator</h3>
+                        <p class="text-[11px] text-slate-500 max-w-sm mx-auto mt-1" id="lbl-welcome-desc">Nạp dữ liệu mẫu bằng cách nhấn "Load Example" hoặc điền thủ công, sau đó click "Simulate" để tiến hành mô phỏng từng bước chi tiết.</p>
+                    </div>
+                </div>
+
+                <!-- Simulation Active State Step Card -->
+                <div id="step-by-step-viewport" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between flex-1 min-h-0 overflow-y-auto gap-3.5">
+                    
+                    <!-- Trace step Header info -->
+                    <div class="flex justify-between items-start border-b border-slate-100 pb-2.5 shrink-0">
+                        <div>
+                            <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider font-mono" id="active-step-num">Step 1</span>
+                            <h3 class="font-extrabold text-slate-800 text-sm leading-tight mt-0.5" id="active-step-title">Initializing State</h3>
+                        </div>
+                        <div id="active-step-badge" class="px-2.5 py-0.5 rounded-full text-[9px] font-bold shadow-sm uppercase border bg-slate-100 text-slate-700 border-slate-200">
+                            Analyzing
+                        </div>
+                    </div>
+
+                    <!-- Current active process dimensions details -->
+                    <div class="bg-indigo-50/60 border border-indigo-100/80 rounded-lg p-2.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+                        <div>
+                            <span class="text-[9px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                <span id="lbl-active-proc">Current Process Evaluation</span>
+                            </span>
+                            <p class="text-[10px] text-indigo-600 font-medium" id="lbl-active-proc-desc">Phân tích yêu cầu bộ nhớ của tiến trình hiện tại.</p>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-white px-3 py-1 rounded-md border border-indigo-200/50 shadow-sm shrink-0 self-center">
+                            <span class="font-extrabold text-xs text-indigo-600" id="active-p-id">P1</span>
+                            <span class="text-slate-300">|</span>
+                            <span class="font-mono text-xs font-bold text-slate-700" id="active-p-size">210 KB</span>
+                        </div>
+                    </div>
+
+                    <!-- Search decision walkthrough table -->
+                    <div id="search-walkthrough-section" class="space-y-1.5 min-h-0 flex-1 overflow-y-auto">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-indigo-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.637Z" />
+                            </svg>
+                            <span id="lbl-search-path">Strategy Decision Log</span>
+                        </h4>
+
+                        <div class="border border-slate-100 rounded-lg overflow-hidden bg-slate-50">
+                            <table class="min-w-full divide-y divide-slate-100 text-[11px]">
+                                <thead class="bg-slate-100 text-slate-500 font-bold">
+                                    <tr class="text-center">
+                                        <th class="px-2.5 py-1 text-left uppercase text-[9px]" id="th-block">Block</th>
+                                        <th class="px-2.5 py-1 uppercase text-[9px]" id="th-size">Free Size</th>
+                                        <th class="px-2.5 py-1 uppercase text-[9px]" id="th-check">Check Condition</th>
+                                        <th class="px-2.5 py-1 uppercase text-[9px]" id="th-reason">Evaluation Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 bg-white font-mono" id="search-path-rows">
+                                    <!-- Dynamic records generated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Equation division remaining blocks -->
+                    <div id="step-calculation-section" class="hidden bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 shrink-0">
+                        <span class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider" id="lbl-calc-formula">Allocation Math & fragmentation update</span>
+                        
+                        <div class="flex items-center justify-center gap-2 py-1 text-center font-mono text-[11px] text-emerald-800">
+                            <div class="bg-white border border-emerald-200 px-2 py-1 rounded shadow-sm">
+                                <span class="block text-[7px] text-emerald-500 uppercase font-sans font-bold" id="lbl-math-block-size">Partition Size</span>
+                                <span id="math-block-val" class="font-bold">600 KB</span>
+                            </div>
+                            <div class="text-emerald-400 font-extrabold text-sm">&minus;</div>
+                            <div class="bg-white border border-emerald-200 px-2 py-1 rounded shadow-sm">
+                                <span class="block text-[7px] text-emerald-500 uppercase font-sans font-bold" id="lbl-math-proc-size">Process Size</span>
+                                <span id="math-proc-val" class="font-bold">210 KB</span>
+                            </div>
+                            <div class="text-emerald-400 font-extrabold text-sm">=</div>
+                            <div class="bg-emerald-600 text-white px-2 py-1 rounded shadow-md">
+                                <span class="block text-[7px] text-emerald-300 uppercase font-sans font-bold" id="lbl-math-remaining">Free Remaining</span>
+                                <span id="math-remaining-val" class="font-bold">390 KB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Decision text alerts -->
+                    <div class="rounded-lg p-2.5 border flex items-start space-x-2 shrink-0" id="step-alert-feedback">
+                        <!-- Loaded dynamically -->
+                    </div>
+
+                    <!-- Simplified final matrix states list -->
+                    <div class="border-t border-slate-100 pt-2 flex flex-col space-y-1 shrink-0">
+                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider" id="lbl-final-state-summary">Step Allocation Progress Tracker</span>
+                        <div class="flex flex-wrap gap-1" id="allocation-beads-container">
+                            <!-- Loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compare All Strategies Modal/Panel Viewport -->
+                <div id="compare-all-viewport" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col flex-1 min-h-0 overflow-y-auto gap-4">
+                    <div class="flex justify-between items-center pb-2.5 border-b border-slate-100">
+                        <div>
+                            <h3 class="font-extrabold text-slate-800 text-sm leading-tight" id="lbl-compare-title">Algorithms Comparative Analysis</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5" id="lbl-compare-desc">Runs First-Fit, Best-Fit, Worst-Fit, and Next-Fit with active input datasets.</p>
+                        </div>
+                        <button onclick="closeCompareMode()" class="px-2.5 py-1 text-[10px] font-bold border border-slate-200 text-slate-600 hover:text-indigo-600 rounded bg-white transition hover:border-indigo-600" id="btn-close-compare">
+                            Back
+                        </button>
+                    </div>
+
+                    <!-- Comparison scorecard list -->
+                    <div class="border border-slate-100 rounded-lg overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100 text-[11px] text-center">
+                            <thead class="bg-slate-100 text-slate-500 font-bold">
+                                <tr>
+                                    <th class="px-3 py-2 text-left uppercase text-[9px]" id="th-comp-alg">Algorithm</th>
+                                    <th class="px-3 py-2 uppercase text-[9px]" id="th-comp-success">Success Processes</th>
+                                    <th class="px-3 py-2 uppercase text-[9px]" id="th-comp-rem">Total Remaining Free Memory</th>
+                                    <th class="px-3 py-2 uppercase text-[9px]" id="th-comp-frag">Fragmented Blocks Count</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 font-mono font-semibold" id="compare-rows-container">
+                                <!-- Loaded dynamically via simulation comparisons -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Custom dynamic chart-bars visual for performance -->
+                    <div class="space-y-3 pt-1">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider" id="lbl-success-chart-title">Successful Allocations Comparison Chart</h4>
+                        <div class="space-y-2" id="success-bars-chart">
+                            <!-- Populated with mini horizontal progress bars representing algorithms' success percentages -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Final summary tables for step view modes -->
+            <div id="final-summary-card" class="hidden bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm flex flex-col gap-3 shrink-0">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                    <h3 class="text-xs font-extrabold text-slate-800 uppercase tracking-wide flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-emerald-600">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        <span id="lbl-summary-title">Simulation Analysis Summary</span>
+                    </h3>
+                    <span id="simulation-status-badge" class="px-2 py-0.5 rounded text-[9px] font-extrabold shadow-sm bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
+                        SUCCESS
+                    </span>
+                </div>
+
+                <!-- Snapshot overview grid of processes outcomes -->
+                <div class="border border-slate-100 rounded-lg overflow-x-auto max-h-[140px]">
+                    <table class="min-w-full divide-y divide-slate-100 text-[10px] text-center">
+                        <thead class="bg-slate-100 text-slate-500 font-bold sticky top-0">
+                            <tr>
+                                <th class="px-2 py-1 uppercase text-[8px] text-left">Process</th>
+                                <th class="px-2 py-1 uppercase text-[8px]">Requested Size</th>
+                                <th class="px-2 py-1 uppercase text-[8px]">Allocated Block</th>
+                                <th class="px-2 py-1 uppercase text-[8px]">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-mono font-medium" id="summary-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100 text-[11px] font-bold">
+                    <span class="text-slate-500 uppercase" id="lbl-final-free-title">Final Free Blocks:</span>
+                    <span class="text-slate-800" id="final-free-blocks-vector">85KB, 200KB, 300KB, 270KB</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Interactive Educational Notes Footer -->
+    <footer class="bg-slate-100 border-t border-slate-200 py-3 px-4 shrink-0">
+        <div class="max-w-[1600px] mx-auto flex flex-col lg:flex-row items-center justify-between text-[11px] text-slate-600 gap-3">
+            <div class="flex items-center space-x-1.5">
+                <span class="font-extrabold text-slate-800 uppercase" id="footer-summary-title">Educational Strategy Rules:</span>
+                <span id="footer-summary-text" class="leading-relaxed">Learn how pointers find spaces under different memory fragmentation strategies.</span>
+            </div>
+            
+            <!-- Quick Color Codes descriptors -->
+            <div class="flex flex-wrap gap-3 items-center font-bold">
+                <div class="flex items-center space-x-1.5">
+                    <span class="w-2.5 h-2.5 rounded bg-emerald-500 inline-block shadow-sm"></span>
+                    <span id="cc-allocated" class="text-slate-700">Allocated Block Segment</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <span class="w-2.5 h-2.5 rounded bg-blue-500 inline-block shadow-sm"></span>
+                    <span id="cc-selected" class="text-slate-700">Checking/Selected Pointer</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <span class="w-2.5 h-2.5 rounded bg-rose-500 inline-block shadow-sm"></span>
+                    <span id="cc-failed" class="text-slate-700">Allocation Failed State</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <span class="w-2.5 h-2.5 rounded bg-slate-300 inline-block shadow-sm"></span>
+                    <span id="cc-free" class="text-slate-700">Remaining Free Memory (KB)</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Core App Engine Script -->
+    <script>
+        // Reactive System State Management
+        const state = {
+            lang: 'en',
+            blocksInput: '500,200,300,600',
+            processesInput: '210,415,120,430',
+            strategy: 'worst',
+
+            // Structural properties parsed
+            blocks: [],
+            processes: [],
+
+            // Simulation step traces list
+            traceSteps: [],
+            currentStepIndex: -1,
+            finalBlocksState: [],
+            simulationSuccess: false,
+
+            // Playback controls configs
+            isPlaying: false,
+            playInterval: null,
+            playSpeed: 1000,
+
+            // Active view states
+            viewMode: 'welcome', // 'welcome', 'step', 'compare'
+        };
+
+        // Complete Bilingual translations dictionaries
+        const translations = {
+            en: {
+                headerTitle: "Memory Allocation Simulator",
+                headerSubtitle: "Dynamic Partitioning Simulation - First-Fit, Best-Fit, Worst-Fit, Next-Fit",
+                langBtnText: "Tiếng Việt",
+                secConfigTitle: "Allocation Configuration",
+                lblBlocksInput: "Free Memory Blocks (KB)",
+                lblProcessesInput: "Process Sizes (KB)",
+                lblStrategySelect: "Allocation Strategy",
+                btnLoadPreset: "Load Example",
+                btnSimulate: "Simulate",
+                sectionMemoryTitle: "Memory Allocation Visualizer",
+                warningMemoryState: "Blocks are rendered proportionally. Allocated segments (Green), free areas (Gray), highlighted pointer (Blue).",
+                sectionControlsTitle: "Learning Step Controller",
+                sectionControlsDesc: "Step through comparisons, searches, and allocations",
+                btnCompareAll: "Compare All Algorithms",
+                lblPlay: "Auto Play",
+                lblPause: "Pause",
+                lblSpeed: "Speed:",
+                lblTraceProgress: "Processes Allocated:",
+                lblWelcomeTitle: "Memory Allocation Simulator",
+                lblWelcomeDesc: "Click 'Load Example' or configure manual block/process fields on the left, then click 'Simulate' to inspect decisions step-by-step.",
+                activeStepTitle: "Analyzing",
+                lblActiveProc: "Current Process Evaluation",
+                lblActiveProcDesc: "Analyzing memory request of active evaluation process.",
+                lblSearchPath: "Strategy Decision Log",
+                thBlock: "Block",
+                thSize: "Free Size",
+                thCheck: "Check Condition",
+                thReason: "Evaluation Details",
+                lblCalcFormula: "Allocation Math & fragmentation update",
+                lblMathBlockSize: "Partition Size",
+                lblMathProcSize: "Process Size",
+                lblMathRemaining: "Free Remaining",
+                lblFinalStateSummary: "Step Allocation Progress Tracker",
+                lblCompareTitle: "Algorithms Comparative Analysis",
+                lblCompareDesc: "Runs First-Fit, Best-Fit, Worst-Fit, and Next-Fit with active input datasets.",
+                btnCloseCompare: "Back",
+                thCompAlg: "Algorithm",
+                thCompSuccess: "Success Processes",
+                thCompRem: "Total Remaining Free Memory",
+                thCompFrag: "Fragmented Blocks Count",
+                lblSuccessChartTitle: "Successful Allocations Comparison Chart",
+                lblSummaryTitle: "Simulation Analysis Summary",
+                lblFinalFreeTitle: "Final Free Blocks:",
+                footerSummaryTitle: "Educational Strategy Rules:",
+                footerSummaryText: "First-Fit: first fit. Best-Fit: smallest fit. Worst-Fit: largest fit. Next-Fit: search next from pointer.",
+                ccAllocated: "Allocated Segment",
+                ccSelected: "Checking / Active Pointer",
+                ccFailed: "Allocation Failed State",
+                ccFree: "Remaining Free Memory",
+                
+                // Detailed algorithm logic explanations
+                ruleFirst: "First-Fit chooses the first block large enough to fit the process.",
+                ruleBest: "Best-Fit searches all blocks to choose the smallest suitable block that fits.",
+                ruleWorst: "Worst-Fit searches all blocks to choose the largest available block to leave maximum remaining space.",
+                ruleNext: "Next-Fit scans from the previous allocation's index to choose the next suitable block.",
+                
+                msgSuccess: "Process allocated successfully.",
+                msgFailed: "No suitable block has sufficient capacity. Allocation failed.",
+                checkingBlock: "Evaluating Block",
+                fitFound: "Suitable Match Found",
+                tooSmall: "Too small",
+                optimalMatch: "Optimal choice",
+                worstMatch: "Worst choice (Largest block)",
+                skippedPointer: "Scanning forward...",
+                initialState: "Initial state initialized.",
+                allSuccess: "Allocation Completed",
+                hasFailedProcs: "Allocation Failed (Partial success)",
+                stepLabel: "Step",
+                processLabel: "Process",
+                successLabel: "Success",
+                failedLabel: "Failed",
+                pointerLabel: "Pointer Index"
+            },
+            vi: {
+                headerTitle: "Mô phỏng Cấp phát Bộ nhớ",
+                headerSubtitle: "Phân vùng động - First-Fit, Best-Fit, Worst-Fit, Next-Fit",
+                langBtnText: "English",
+                secConfigTitle: "Cấu hình phân bổ",
+                lblBlocksInput: "Các phân vùng trống (KB)",
+                lblProcessesInput: "Kích thước tiến trình (KB)",
+                lblStrategySelect: "Chiến thuật Cấp phát",
+                btnLoadPreset: "Nạp Mẫu",
+                btnSimulate: "Mô phỏng",
+                sectionMemoryTitle: "Trực quan hóa Bản đồ Bộ nhớ",
+                warningMemoryState: "Kích thước ô tỉ lệ thuận với dung lượng. Xanh lá: Tiến trình, Xám: Bộ nhớ trống, Viền xanh dương: Đang xét.",
+                sectionControlsTitle: "Bộ Điều khiển Mô phỏng",
+                sectionControlsDesc: "Duyệt từng tiến trình để xem logic so sánh và cấp phát",
+                btnCompareAll: "So sánh tất cả thuật toán",
+                lblPlay: "Tự động Chạy",
+                lblPause: "Tạm dừng",
+                lblSpeed: "Tốc độ:",
+                lblTraceProgress: "Tiến trình Cấp phát:",
+                lblWelcomeTitle: "Mô phỏng Cấp phát Bộ nhớ",
+                lblWelcomeDesc: "Click 'Nạp Mẫu' hoặc điền số liệu bộ nhớ tự do & kích thước tiến trình bên trái, sau đó bấm 'Mô phỏng' để xem phân tích.",
+                activeStepTitle: "Đang xét phân tích",
+                lblActiveProc: "Tiến trình Đang Xét",
+                lblActiveProcDesc: "Kiểm tra kích thước tiến trình và duyệt qua các phân vùng.",
+                lblSearchPath: "Lịch trình Quyết định So sánh",
+                thBlock: "Phân vùng",
+                thSize: "Kích thước trống",
+                thCheck: "Điều kiện kiểm tra",
+                thReason: "Chi tiết đánh giá",
+                lblCalcFormula: "Tính toán phân mảnh và cập nhật dung lượng",
+                lblMathBlockSize: "Dung lượng phân vùng",
+                lblMathProcSize: "Kích thước tiến trình",
+                lblMathRemaining: "Dung lượng dư còn lại",
+                lblFinalStateSummary: "Trạng thái Cấp phát hiện tại",
+                lblCompareTitle: "Bảng So sánh Toàn bộ Thuật toán",
+                lblCompareDesc: "So sánh trực tiếp kết quả chạy First-Fit, Best-Fit, Worst-Fit và Next-Fit trên cùng một bộ dữ liệu.",
+                btnCloseCompare: "Quay lại",
+                thCompAlg: "Thuật toán",
+                thCompSuccess: "Số Tiến trình thành công",
+                thCompRem: "Tổng Bộ nhớ trống còn lại",
+                thCompFrag: "Số Phân vùng bị phân mảnh",
+                lblSuccessChartTitle: "Biểu đồ so sánh số lượng tiến trình cấp phát thành công",
+                lblSummaryTitle: "Tóm tắt kết quả Mô phỏng",
+                lblFinalFreeTitle: "Bộ nhớ trống cuối cùng:",
+                footerSummaryTitle: "Quy tắc chiến thuật giáo khoa:",
+                footerSummaryText: "First-Fit: phân vùng đầu tiên thỏa. Best-Fit: dư ít nhất. Worst-Fit: dư nhiều nhất. Next-Fit: tìm tiếp từ vị trí trước.",
+                ccAllocated: "Dung lượng Cấp phát (Xanh lá)",
+                ccSelected: "Vị trí Đang xét / Con trỏ (Xanh dương)",
+                ccFailed: "Cấp phát Thất bại (Đỏ)",
+                ccFree: "Dung lượng trống còn dư (Xám)",
+
+                ruleFirst: "First-Fit chọn phân vùng trống đầu tiên đủ lớn để chứa tiến trình.",
+                ruleBest: "Best-Fit duyệt qua mọi phân vùng và chọn phân vùng trống nhỏ nhất đủ dung lượng.",
+                ruleWorst: "Worst-Fit duyệt qua mọi phân vùng và chọn phân vùng lớn nhất để chừa lại dung lượng dư lớn nhất.",
+                ruleNext: "Next-Fit tìm kiếm phân vùng phù hợp tiếp theo bắt đầu từ vị trí của con trỏ cấp phát gần nhất.",
+
+                msgSuccess: "Cấp phát tiến trình thành công.",
+                msgFailed: "Không tìm thấy phân vùng nào đủ dung lượng trống. Cấp phát thất bại.",
+                checkingBlock: "Kiểm tra Phân vùng",
+                fitFound: "Thỏa mãn phân vùng trống",
+                tooSmall: "Dung lượng quá nhỏ",
+                optimalMatch: "Lựa chọn tốt nhất (Dư ít nhất)",
+                worstMatch: "Lựa chọn phân vùng lớn nhất (Worst)",
+                skippedPointer: "Bỏ qua phân vùng này...",
+                initialState: "Khởi tạo trạng thái ban đầu thành công.",
+                allSuccess: "Hoàn tất Cấp phát bộ nhớ",
+                hasFailedProcs: "Cấp phát Thất bại Một phần",
+                stepLabel: "Bước",
+                processLabel: "Tiến trình",
+                successLabel: "Thành công",
+                failedLabel: "Thất bại",
+                pointerLabel: "Vị trí Con trỏ"
+            }
+        };
+
+        // Language toggle
+        function toggleLanguage() {
+            state.lang = state.lang === 'en' ? 'vi' : 'en';
+            applyStaticTranslations();
+            renderActiveStep();
+            renderMemoryBars();
+            if (state.viewMode === 'compare') {
+                renderComparePanel();
+            }
+        }
+
+        // Apply translations directly to domestic static layout elements
+        function applyStaticTranslations() {
+            const dict = translations[state.lang];
+            
+            document.getElementById('header-title').innerText = dict.headerTitle;
+            document.getElementById('header-subtitle').innerText = dict.headerSubtitle;
+            document.getElementById('lang-btn-text').innerText = dict.langBtnText;
+            document.getElementById('section-config-title').innerText = dict.secConfigTitle;
+            document.getElementById('lbl-blocks-input').innerText = dict.lblBlocksInput;
+            document.getElementById('lbl-processes-input').innerText = dict.lblProcessesInput;
+            document.getElementById('lbl-strategy-select').innerText = dict.lblStrategySelect;
+            document.getElementById('btn-load-preset').innerText = dict.btnLoadPreset;
+            document.getElementById('btn-simulate').innerText = dict.btnSimulate;
+            document.getElementById('section-memory-title').innerText = dict.sectionMemoryTitle;
+            document.getElementById('warning-memory-state').innerText = dict.warningMemoryState;
+            document.getElementById('section-controls-title').innerText = dict.sectionControlsTitle;
+            document.getElementById('section-controls-desc').innerText = dict.sectionControlsDesc;
+            document.getElementById('btn-compare-all').innerText = dict.btnCompareAll;
+            document.getElementById('lbl-play').innerText = state.isPlaying ? dict.lblPause : dict.lblPlay;
+            document.getElementById('lbl-speed').innerText = dict.lblSpeed;
+            document.getElementById('lbl-trace-progress').innerText = dict.lblTraceProgress;
+            
+            document.getElementById('lbl-welcome-title').innerText = dict.lblWelcomeTitle;
+            document.getElementById('lbl-welcome-desc').innerText = dict.lblWelcomeDesc;
+            document.getElementById('lbl-active-proc').innerText = dict.lblActiveProc;
+            document.getElementById('lbl-active-proc-desc').innerText = dict.lblActiveProcDesc;
+            document.getElementById('lbl-search-path').innerText = dict.lblSearchPath;
+            document.getElementById('th-block').innerText = dict.thBlock;
+            document.getElementById('th-size').innerText = dict.thSize;
+            document.getElementById('th-check').innerText = dict.thCheck;
+            document.getElementById('th-reason').innerText = dict.thReason;
+            document.getElementById('lbl-calc-formula').innerText = dict.lblCalcFormula;
+            document.getElementById('lbl-math-block-size').innerText = dict.lblMathBlockSize;
+            document.getElementById('lbl-math-proc-size').innerText = dict.lblMathProcSize;
+            document.getElementById('lbl-math-remaining').innerText = dict.lblMathRemaining;
+            document.getElementById('lbl-final-state-summary').innerText = dict.lblFinalStateSummary;
+            
+            document.getElementById('lbl-compare-title').innerText = dict.lblCompareTitle;
+            document.getElementById('lbl-compare-desc').innerText = dict.lblCompareDesc;
+            document.getElementById('btn-close-compare').innerText = dict.btnCloseCompare;
+            document.getElementById('th-comp-alg').innerText = dict.thCompAlg;
+            document.getElementById('th-comp-success').innerText = dict.thCompSuccess;
+            document.getElementById('th-comp-rem').innerText = dict.thCompRem;
+            document.getElementById('th-comp-frag').innerText = dict.thCompFrag;
+            document.getElementById('lbl-success-chart-title').innerText = dict.lblSuccessChartTitle;
+            document.getElementById('lbl-summary-title').innerText = dict.lblSummaryTitle;
+            document.getElementById('lbl-final-free-title').innerText = dict.lblFinalFreeTitle;
+            document.getElementById('footer-summary-title').innerText = dict.footerSummaryTitle;
+            document.getElementById('footer-summary-text').innerText = dict.footerSummaryText;
+            
+            document.getElementById('cc-allocated').innerText = dict.ccAllocated;
+            document.getElementById('cc-selected').innerText = dict.ccSelected;
+            document.getElementById('cc-failed').innerText = dict.ccFailed;
+            document.getElementById('cc-free').innerText = dict.ccFree;
+        }
+
+        // Parsing comma lists safely
+        function parseCommaList(str) {
+            if (!str) return [];
+            return str.split(/[\s,;]+/).map(x => parseInt(x.trim())).filter(x => !isNaN(x) && x > 0);
+        }
+
+        // Synchronize and validate inputs
+        function syncInputs() {
+            const rawBlocks = document.getElementById('input-blocks').value;
+            const rawProcesses = document.getElementById('input-processes').value;
+            
+            const blocks = parseCommaList(rawBlocks);
+            const processes = parseCommaList(rawProcesses);
+
+            if (blocks.length === 0 || processes.length === 0) {
+                document.getElementById('validation-error').classList.remove('hidden');
+                document.getElementById('error-text').innerText = state.lang === 'en' 
+                    ? "Inconsistent formats or empty block/process lists." 
+                    : "Định dạng không đồng nhất hoặc dải bộ nhớ/tiến trình đang trống.";
+                return false;
+            }
+
+            state.blocks = blocks;
+            state.processes = processes;
+            state.strategy = document.getElementById('select-strategy').value;
+
+            document.getElementById('validation-error').classList.add('hidden');
+            return true;
+        }
+
+        // Load predefined samples on demand
+        function loadSamplePreset() {
+            state.blocksInput = '500,200,300,600';
+            state.processesInput = '210,415,120,430';
+
+            document.getElementById('input-blocks').value = state.blocksInput;
+            document.getElementById('input-processes').value = state.processesInput;
+            
+            resetSolver();
+        }
+
+        // Core Simulator Engine (First-fit, Best-fit, Worst-fit, Next-fit calculations with Step-by-Step traceability)
+        function simulateAllAllocations(blocks, processes, strategy) {
+            let currentBlocks = blocks.map((size, index) => ({
+                id: `B${index + 1}`,
+                index: index,
+                originalSize: size,
+                freeSize: size,
+                allocations: [] // list of process segments currently placed in it
+            }));
+
+            let steps = [];
+            let lastPointer = 0; // next fit position anchor
+
+            // Initial baseline step state (Step 0)
+            steps.push({
+                type: 'init',
+                pId: 'None',
+                pSize: 0,
+                blocksBefore: JSON.parse(JSON.stringify(currentBlocks)),
+                blocksAfter: JSON.parse(JSON.stringify(currentBlocks)),
+                lastPointerBefore: 0,
+                lastPointerAfter: 0,
+                searchedBlocks: [],
+                chosenBlockId: null,
+                success: true,
+                explanationEN: translations.en.initialState,
+                explanationVI: translations.vi.initialState
+            });
+
+            // Process sequentially each allocation request
+            for (let pIdx = 0; pIdx < processes.length; pIdx++) {
+                const pSize = processes[pIdx];
+                const pId = `P${pIdx + 1}`;
+
+                let step = {
+                    type: 'allocation_try',
+                    pId: pId,
+                    pSize: pSize,
+                    blocksBefore: JSON.parse(JSON.stringify(currentBlocks)),
+                    lastPointerBefore: lastPointer,
+                    searchedBlocks: [], // records each block scanned, size checked, condition & result
+                    chosenBlockId: null,
+                    chosenBlockIndex: -1,
+                    success: false,
+                    explanationEN: '',
+                    explanationVI: ''
+                };
+
+                let chosenIdx = -1;
+
+                if (strategy === 'first') {
+                    for (let i = 0; i < currentBlocks.length; i++) {
+                        const b = currentBlocks[i];
+                        const suitable = b.freeSize >= pSize;
+                        
+                        step.searchedBlocks.push({
+                            id: b.id,
+                            index: i,
+                            freeSize: b.freeSize,
+                            suitable: suitable,
+                            reasonEN: suitable ? `${b.freeSize}KB >= ${pSize}KB (First suitable block found!)` : `${b.freeSize}KB < ${pSize}KB (Insufficient space)`,
+                            reasonVI: suitable ? `${b.freeSize}KB >= ${pSize}KB (Phân vùng phù hợp đầu tiên!)` : `${b.freeSize}KB < ${pSize}KB (Dung lượng trống không đủ)`
+                        });
+
+                        if (suitable) {
+                            chosenIdx = i;
+                            break;
+                        }
+                    }
+                } else if (strategy === 'best') {
+                    let bestIdx = -1;
+                    let minRemaining = Infinity;
+
+                    for (let i = 0; i < currentBlocks.length; i++) {
+                        const b = currentBlocks[i];
+                        const suitable = b.freeSize >= pSize;
+                        const remaining = b.freeSize - pSize;
+
+                        step.searchedBlocks.push({
+                            id: b.id,
+                            index: i,
+                            freeSize: b.freeSize,
+                            suitable: suitable,
+                            remaining: remaining,
+                            reasonEN: suitable ? `${b.freeSize}KB &ge; ${pSize}KB (Fragment space left: ${remaining}KB)` : `${b.freeSize}KB < ${pSize}KB (Insufficient space)`,
+                            reasonVI: suitable ? `${b.freeSize}KB &ge; ${pSize}KB (Phần phân mảnh còn lại: ${remaining}KB)` : `${b.freeSize}KB < ${pSize}KB (Dung lượng trống không đủ)`
+                        });
+
+                        if (suitable && remaining < minRemaining) {
+                            minRemaining = remaining;
+                            bestIdx = i;
+                        }
+                    }
+                    chosenIdx = bestIdx;
+                } else if (strategy === 'worst') {
+                    let worstIdx = -1;
+                    let maxRemaining = -1;
+
+                    for (let i = 0; i < currentBlocks.length; i++) {
+                        const b = currentBlocks[i];
+                        const suitable = b.freeSize >= pSize;
+                        const remaining = b.freeSize - pSize;
+
+                        step.searchedBlocks.push({
+                            id: b.id,
+                            index: i,
+                            freeSize: b.freeSize,
+                            suitable: suitable,
+                            remaining: remaining,
+                            reasonEN: suitable ? `${b.freeSize}KB &ge; ${pSize}KB (Fragment space left: ${remaining}KB)` : `${b.freeSize}KB < ${pSize}KB (Insufficient space)`,
+                            reasonVI: suitable ? `${b.freeSize}KB &ge; ${pSize}KB (Phần phân mảnh còn lại: ${remaining}KB)` : `${b.freeSize}KB < ${pSize}KB (Dung lượng trống không đủ)`
+                        });
+
+                        if (suitable && remaining > maxRemaining) {
+                            maxRemaining = remaining;
+                            worstIdx = i;
+                        }
+                    }
+                    chosenIdx = worstIdx;
+                } else if (strategy === 'next') {
+                    // Next-Fit starts search starting from last pointer wrap-around
+                    let totalCount = currentBlocks.length;
+                    let foundMatch = false;
+
+                    for (let count = 0; count < totalCount; count++) {
+                        let i = (lastPointer + count) % totalCount;
+                        const b = currentBlocks[i];
+                        const suitable = b.freeSize >= pSize;
+
+                        step.searchedBlocks.push({
+                            id: b.id,
+                            index: i,
+                            freeSize: b.freeSize,
+                            suitable: suitable,
+                            reasonEN: suitable ? `${b.freeSize}KB &ge; ${pSize}KB (Suitable search match from ptr position: ${lastPointer})` : `${b.freeSize}KB < ${pSize}KB (Insufficient space)`,
+                            reasonVI: suitable ? `${b.freeSize}KB &ge; ${pSize}KB (Hợp lệ bắt đầu từ vị trí con trỏ: ${lastPointer})` : `${b.freeSize}KB < ${pSize}KB (Dung lượng trống không đủ)`
+                        });
+
+                        if (suitable && !foundMatch) {
+                            chosenIdx = i;
+                            foundMatch = true;
+                            // In Next-Fit we stop instantly on first valid find after starting point
+                        }
+                    }
+                }
+
+                // If found suitable free block partition segment
+                if (chosenIdx !== -1) {
+                    let b = currentBlocks[chosenIdx];
+                    b.freeSize -= pSize;
+                    b.allocations.push({ pId: pId, size: pSize });
+                    
+                    lastPointer = chosenIdx; // Update next-fit tracking index
+
+                    step.chosenBlockId = b.id;
+                    step.chosenBlockIndex = chosenIdx;
+                    step.success = true;
+
+                    step.explanationEN = `Process ${pId} (${pSize}KB) allocated successfully inside Block ${b.id} using ${strategy.toUpperCase()}-FIT. Capacity reduced: ${b.freeSize + pSize}KB - ${pSize}KB = ${b.freeSize}KB free remaining.`;
+                    step.explanationVI = `Tiến trình ${pId} (${pSize}KB) được cấp phát thành công vào Phân vùng ${b.id} theo chiến thuật ${strategy.toUpperCase()}-FIT. Dung lượng trống giảm từ: ${b.freeSize + pSize}KB - ${pSize}KB = ${b.freeSize}KB trống còn lại.`;
+                } else {
+                    step.success = false;
+                    step.explanationEN = `Allocation failure for Process ${pId} (${pSize}KB). No block has sufficient space available using ${strategy.toUpperCase()}-FIT.`;
+                    step.explanationVI = `Cấp phát thất bại cho Tiến trình ${pId} (${pSize}KB). Không phân vùng trống nào chứa đủ dung lượng theo ${strategy.toUpperCase()}-FIT.`;
+                }
+
+                step.blocksAfter = JSON.parse(JSON.stringify(currentBlocks));
+                step.lastPointerAfter = lastPointer;
+                steps.push(step);
+            }
+
+            return { steps, finalBlocksState: currentBlocks };
+        }
+
+        // Initialize dynamic simulations and render
+        function triggerSimulation() {
+            if (!syncInputs()) return;
+
+            state.viewMode = 'step';
+            
+            const simOutcome = simulateAllAllocations(state.blocks, state.processes, state.strategy);
+            state.traceSteps = simOutcome.steps;
+            state.finalBlocksState = simOutcome.finalBlocksState;
+            state.currentStepIndex = 0;
+
+            // Determine if overall allocation succeeded (every process placed)
+            state.simulationSuccess = state.traceSteps.every(st => st.type === 'init' || st.success);
+
+            // Update UI Panels toggles
+            document.getElementById('welcome-viewport').classList.add('hidden');
+            document.getElementById('step-by-step-viewport').classList.remove('hidden');
+            document.getElementById('compare-all-viewport').classList.add('hidden');
+            document.getElementById('trace-controls').classList.remove('hidden');
+
+            applyStaticTranslations();
+            renderActiveStep();
+            renderMemoryBars();
+        }
+
+        // Complete Reset Interface back to initial states
+        function resetSolver() {
+            stopPlayback();
+            state.currentStepIndex = -1;
+            state.traceSteps = [];
+            state.viewMode = 'welcome';
+
+            document.getElementById('welcome-viewport').classList.remove('hidden');
+            document.getElementById('step-by-step-viewport').classList.add('hidden');
+            document.getElementById('compare-all-viewport').classList.add('hidden');
+            document.getElementById('trace-controls').classList.add('hidden');
+            document.getElementById('final-summary-card').classList.add('hidden');
+            document.getElementById('validation-error').classList.add('hidden');
+
+            document.getElementById('memory-bars-container').innerHTML = '';
+        }
+
+        // Horizontal Stacked Memory Visualizer (Education-focused proportions)
+        function renderMemoryBars() {
+            const container = document.getElementById('memory-bars-container');
+            if (state.currentStepIndex === -1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const currentStep = state.traceSteps[state.currentStepIndex];
+            const currentBlocks = currentStep.blocksAfter;
+            
+            // For Next-Fit, identify the pointer position
+            const ptrIdx = currentStep.lastPointerAfter;
+
+            let html = "";
+            currentBlocks.forEach((block, bIdx) => {
+                
+                // Identify if this specific block is checking/selected in this step
+                let isChecking = false;
+                let borderHighlight = "border-slate-200";
+                let pulseRing = "";
+
+                if (currentStep.type === 'allocation_try') {
+                    // Is this block part of the search?
+                    const searchedRecord = currentStep.searchedBlocks.find(sb => sb.index === bIdx);
+                    if (searchedRecord) {
+                        isChecking = true;
+                    }
+
+                    // Is this block the chosen one?
+                    if (currentStep.chosenBlockIndex === bIdx) {
+                        borderHighlight = "border-indigo-500 ring-2 ring-indigo-500/20";
+                    } else if (isChecking) {
+                        borderHighlight = "border-blue-500 ring-2 ring-blue-500/10";
+                    }
+                }
+
+                // Next-Fit pointer visual anchor label
+                let isNextFitPointer = (state.strategy === 'next' && bIdx === ptrIdx);
+
+                html += `
+                    <div class="bg-white border rounded-lg p-2.5 transition-all shadow-sm ${borderHighlight} flex flex-col space-y-1.5 relative">
+                        
+                        <!-- Header descriptor of block -->
+                        <div class="flex items-center justify-between text-[11px] font-bold">
+                            <span class="text-slate-800 flex items-center gap-1">
+                                <span class="bg-slate-100 px-1.5 py-0.5 rounded font-mono border">Block ${bIdx + 1}</span>
+                                <span class="text-slate-400 font-medium">Capacity: ${block.originalSize}KB</span>
+                            </span>
+                            <div class="flex items-center space-x-1.5">
+                                ${isNextFitPointer ? `
+                                    <span class="bg-blue-600 text-white text-[8px] font-mono font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-0.5">
+                                        <span class="w-1 h-1 rounded-full bg-white animate-ping"></span>
+                                        Ptr Link
+                                    </span>
+                                ` : ''}
+                                <span class="text-slate-500 font-mono text-[10px]">Free: ${block.freeSize}KB</span>
+                            </div>
+                        </div>
+
+                        <!-- Bar segmentation representation -->
+                        <div class="bg-slate-200 h-7 rounded-md relative overflow-hidden flex border border-slate-300/40">
+                `;
+
+                // Render placed processes (Green portions)
+                block.allocations.forEach(alloc => {
+                    let percent = (alloc.size / block.originalSize) * 100;
+                    html += `
+                        <div style="width: ${percent}%" class="bg-emerald-500/90 text-white text-[9px] font-bold flex flex-col justify-center items-center overflow-hidden border-r border-emerald-600/30 shrink-0 leading-none">
+                            <span class="font-sans truncate px-1">${alloc.pId}</span>
+                            <span class="text-[8px] font-mono text-emerald-100 mt-0.5 truncate px-1">${alloc.size}K</span>
+                        </div>
+                    `;
+                });
+
+                // Render remaining free space block section (Light Gray)
+                if (block.freeSize > 0) {
+                    let percent = (block.freeSize / block.originalSize) * 100;
+                    html += `
+                        <div style="width: ${percent}%" class="bg-slate-300 text-slate-600 text-[9px] font-mono font-bold flex justify-center items-center overflow-hidden shrink-0">
+                            Free: ${block.freeSize}KB
+                        </div>
+                    `;
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Active Trace Step Explanations and Calculation visual updates
+        function renderActiveStep() {
+            if (state.currentStepIndex < 0 || state.currentStepIndex >= state.traceSteps.length) return;
+            
+            const currentStep = state.traceSteps[state.currentStepIndex];
+            const dict = translations[state.lang];
+
+            // Toggle timeline dot beacons
+            document.getElementById('btn-prev').disabled = state.currentStepIndex === 0;
+            document.getElementById('btn-next').disabled = state.currentStepIndex === state.traceSteps.length - 1;
+
+            // Generate progress map of steps
+            const dotsContainer = document.getElementById('step-timeline-dots');
+            let dotsHtml = "";
+            state.traceSteps.forEach((st, idx) => {
+                let borderTheme = "border-slate-200 text-slate-600 hover:bg-slate-100";
+                
+                if (idx === state.currentStepIndex) {
+                    borderTheme = "bg-indigo-600 border-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/30";
+                } else if (st.type === 'init') {
+                    borderTheme = "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100";
+                } else if (st.success) {
+                    borderTheme = "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100";
+                } else {
+                    borderTheme = "bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100 animate-pulse";
+                }
+
+                dotsHtml += `
+                    <button onclick="jumpToStep(${idx})" class="w-6 h-6 flex items-center justify-center text-[9px] font-extrabold rounded border transition ${borderTheme}">
+                        ${idx === 0 ? 'Init' : 'P' + idx}
+                    </button>
+                `;
+            });
+            dotsContainer.innerHTML = dotsHtml;
+            document.getElementById('trace-step-text').innerText = `Step ${state.currentStepIndex} ${dict.stepOf} ${state.traceSteps.length - 1}`;
+
+            // Heading data binds
+            document.getElementById('active-step-num').innerText = `${dict.stepLabel} ${state.currentStepIndex}`;
+            
+            let badgeText = "Analyzing";
+            let badgeColor = "bg-slate-100 text-slate-700 border-slate-200";
+
+            if (currentStep.type === 'init') {
+                document.getElementById('active-step-title').innerText = currentStep.explanationEN.split('.')[0];
+                badgeText = "Start";
+                badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
+
+                // Hide process evaluations and formulas
+                document.getElementById('active-p-id').innerText = "None";
+                document.getElementById('active-p-size').innerText = "0 KB";
+                document.getElementById('search-walkthrough-section').classList.add('hidden');
+                document.getElementById('step-calculation-section').classList.add('hidden');
+            } else {
+                document.getElementById('active-step-title').innerText = `${dict.processLabel} ${currentStep.pId} Allocation Evaluation`;
+                badgeText = currentStep.success ? dict.successLabel : dict.failedLabel;
+                badgeColor = currentStep.success ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200";
+
+                // Show process evaluations
+                document.getElementById('active-p-id').innerText = currentStep.pId;
+                document.getElementById('active-p-size').innerText = `${currentStep.pSize} KB`;
+                document.getElementById('search-walkthrough-section').classList.remove('hidden');
+
+                // Render dynamic decision comparisons logs
+                const compTableBody = document.getElementById('search-path-rows');
+                let rowsHtml = "";
+                currentStep.searchedBlocks.forEach(sb => {
+                    let suitabilityClass = sb.suitable ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-rose-600 bg-rose-50 border-rose-200";
+                    let checkMark = sb.suitable ? "✓ Fit" : "✗ Too Small";
+
+                    rowsHtml += `
+                        <tr class="hover:bg-slate-50 text-center">
+                            <td class="px-2.5 py-1.5 font-bold text-slate-700 text-left border-r border-slate-100">${sb.id}</td>
+                            <td class="px-2.5 py-1.5 font-bold text-slate-800">${sb.freeSize} KB</td>
+                            <td class="px-2.5 py-1.5 font-bold">
+                                <span class="px-1.5 py-0.5 rounded border text-[10px] inline-block ${suitabilityClass}">
+                                    ${checkMark}
+                                </span>
+                            </td>
+                            <td class="px-2.5 py-1.5 text-slate-600 text-left text-[10px] leading-tight font-medium">
+                                ${state.lang === 'en' ? sb.reasonEN : sb.reasonVI}
+                            </td>
+                        </tr>
+                    `;
+                });
+                compTableBody.innerHTML = rowsHtml;
+
+                // Render calculation segment if chosen block exists
+                const mathBlock = document.getElementById('step-calculation-section');
+                if (currentStep.success) {
+                    mathBlock.classList.remove('hidden');
+                    const bBefore = currentStep.blocksBefore.find(bb => bb.id === currentStep.chosenBlockId);
+                    
+                    document.getElementById('math-block-val').innerText = `${bBefore.freeSize} KB`;
+                    document.getElementById('math-proc-val').innerText = `${currentStep.pSize} KB`;
+                    document.getElementById('math-remaining-val').innerText = `${bBefore.freeSize - currentStep.pSize} KB`;
+                } else {
+                    mathBlock.classList.add('hidden');
+                }
+            }
+
+            document.getElementById('active-step-badge').innerText = badgeText;
+            document.getElementById('active-step-badge').className = `px-2.5 py-0.5 rounded-full text-[9px] font-bold shadow-sm uppercase border ${badgeColor}`;
+
+            // Textual feedback
+            const feedbackAlert = document.getElementById('step-alert-feedback');
+            let alertClass = currentStep.success ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-rose-50 border-rose-100 text-rose-800";
+            if (currentStep.type === 'init') {
+                alertClass = "bg-blue-50 border-blue-100 text-blue-800";
+            }
+
+            let expl = state.lang === 'en' ? currentStep.explanationEN : currentStep.explanationVI;
+            feedbackAlert.className = `rounded-lg p-2.5 border flex items-start space-x-2 shrink-0 ${alertClass}`;
+            feedbackAlert.innerHTML = `
+                <div class="leading-relaxed">
+                    <span class="block text-[10px] font-extrabold uppercase tracking-wide">
+                        ${currentStep.type === 'init' ? 'Baseline' : currentStep.success ? dict.msgSuccess : dict.msgFailed}
+                    </span>
+                    <p class="text-[11px] font-medium leading-relaxed mt-0.5 text-slate-600">${expl}</p>
+                </div>
+            `;
+
+            // Active strategy text rule inside control box
+            const ruleTextEN = translations.en[`rule${state.strategy.charAt(0).toUpperCase() + state.strategy.slice(1)}`];
+            const ruleTextVI = translations.vi[`rule${state.strategy.charAt(0).toUpperCase() + state.strategy.slice(1)}`];
+            document.getElementById('active-strategy-badge').innerText = state.strategy;
+            document.getElementById('section-controls-desc').innerText = state.lang === 'en' ? ruleTextEN : ruleTextVI;
+
+            // Render allocation tracker beads maps at the bottom
+            const beadsContainer = document.getElementById('allocation-beads-container');
+            let beadsHtml = "";
+            state.processes.forEach((p, idx) => {
+                const stepIdx = idx + 1; // offset step index
+                const pId = `P${stepIdx}`;
+                
+                let isAllocated = false;
+                let outcomeLabel = dict.unfinishedLabel;
+                let bgTheme = "bg-slate-100 text-slate-400 border-slate-200";
+
+                // Check historical status at the current step
+                if (state.currentStepIndex >= stepIdx) {
+                    const historalStep = state.traceSteps[stepIdx];
+                    if (historalStep && historalStep.success) {
+                        bgTheme = "bg-emerald-500 text-white border-emerald-600 font-extrabold";
+                        outcomeLabel = historalStep.chosenBlockId;
+                    } else {
+                        bgTheme = "bg-rose-500 text-white border-rose-600 font-extrabold";
+                        outcomeLabel = dict.failedLabel;
+                    }
+                }
+
+                beadsHtml += `
+                    <div class="flex-1 min-w-[50px] flex flex-col items-center border rounded py-0.5 text-[9px] text-center font-bold leading-tight shadow-sm transition-all ${bgTheme}">
+                        <span class="opacity-75">P${stepIdx} (${p}K)</span>
+                        <span class="font-extrabold text-[8px] uppercase tracking-wider mt-0.5">${outcomeLabel}</span>
+                    </div>
+                `;
+            });
+            beadsContainer.innerHTML = beadsHtml;
+
+            // Update final summary card
+            renderFinalSummaryCard();
+        }
+
+        // Horizontal Final Summary Card presentation (Triggered on trace finalization)
+        function renderFinalSummaryCard() {
+            const card = document.getElementById('final-summary-card');
+            const dict = translations[state.lang];
+
+            if (state.currentStepIndex === -1 || state.currentStepIndex < state.traceSteps.length - 1) {
+                card.classList.add('hidden');
+                return;
+            }
+
+            card.classList.remove('hidden');
+
+            const statusBadge = document.getElementById('simulation-status-badge');
+            if (state.simulationSuccess) {
+                statusBadge.innerText = dict.allSuccess;
+                statusBadge.className = "px-2 py-0.5 rounded text-[9px] font-extrabold shadow-sm bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase";
+            } else {
+                statusBadge.innerText = dict.hasFailedProcs;
+                statusBadge.className = "px-2 py-0.5 rounded text-[9px] font-extrabold shadow-sm bg-rose-100 text-rose-800 border border-rose-200 uppercase";
+            }
+
+            // Summarize table outcomes mapping
+            const tableBody = document.getElementById('summary-table-body');
+            let tableHtml = "";
+            
+            state.processes.forEach((pSize, idx) => {
+                const stepIdx = idx + 1;
+                const trace = state.traceSteps[stepIdx];
+                let blockText = "None";
+                let statusText = dict.failedLabel;
+                let trClass = "bg-rose-50/20";
+                let textClass = "text-rose-600 font-bold";
+
+                if (trace && trace.success) {
+                    blockText = trace.chosenBlockId;
+                    statusText = dict.successLabel;
+                    trClass = "bg-emerald-50/10";
+                    textClass = "text-emerald-600 font-bold";
+                }
+
+                tableHtml += `
+                    <tr class="${trClass} hover:bg-slate-50">
+                        <td class="px-2 py-1 text-left font-bold text-slate-700">P${stepIdx}</td>
+                        <td class="px-2 py-1 font-mono">${pSize} KB</td>
+                        <td class="px-2 py-1 font-mono font-bold">${blockText}</td>
+                        <td class="px-2 py-1"><span class="${textClass}">${statusText}</span></td>
+                    </tr>
+                `;
+            });
+            tableBody.innerHTML = tableHtml;
+
+            // Free blocks list updates
+            const lastStep = state.traceSteps[state.traceSteps.length - 1];
+            const freeBlocksString = lastStep.blocksAfter.map(b => `${b.freeSize}KB`).join(', ');
+            document.getElementById('final-free-blocks-vector').innerText = freeBlocksString;
+        }
+
+        // Steps navigation handlers
+        function jumpToStep(idx) {
+            if (idx < 0 || idx >= state.traceSteps.length) return;
+            state.currentStepIndex = idx;
+            renderActiveStep();
+            renderMemoryBars();
+        }
+
+        function nextStep() {
+            if (state.currentStepIndex < state.traceSteps.length - 1) {
+                state.currentStepIndex++;
+                renderActiveStep();
+                renderMemoryBars();
+            } else {
+                stopPlayback();
+            }
+        }
+
+        function prevStep() {
+            if (state.currentStepIndex > 0) {
+                state.currentStepIndex--;
+                renderActiveStep();
+                renderMemoryBars();
+            }
+        }
+
+        // Auto Player core threads
+        function toggleAutoPlay() {
+            if (state.isPlaying) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        }
+
+        function startPlayback() {
+            state.isPlaying = true;
+            document.getElementById('lbl-play').innerText = translations[state.lang].lblPause;
+            document.getElementById('play-icon').innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                </svg>
+            `;
+
+            state.playInterval = setInterval(() => {
+                if (state.currentStepIndex >= state.traceSteps.length - 1) {
+                    jumpToStep(0);
+                } else {
+                    nextStep();
+                }
+            }, state.playSpeed);
+        }
+
+        function stopPlayback() {
+            state.isPlaying = false;
+            document.getElementById('lbl-play').innerText = translations[state.lang].lblPlay;
+            document.getElementById('play-icon').innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+            `;
+            if (state.playInterval) {
+                clearInterval(state.playInterval);
+            }
+        }
+
+        function setPlaySpeed(speed) {
+            state.playSpeed = speed;
+
+            document.getElementById('speed-slow').className = "px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition";
+            document.getElementById('speed-normal').className = "px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition";
+            document.getElementById('speed-fast').className = "px-1.5 py-0.5 border border-transparent hover:border-slate-200 rounded text-[10px] font-bold text-slate-500 transition";
+            
+            if (speed === 2000) {
+                document.getElementById('speed-slow').className = "px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition";
+            } else if (speed === 1000) {
+                document.getElementById('speed-normal').className = "px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition";
+            } else {
+                document.getElementById('speed-fast').className = "px-1.5 py-0.5 border border-indigo-600 bg-indigo-50 rounded text-[10px] font-bold text-indigo-700 transition";
+            }
+
+            if (state.isPlaying) {
+                stopPlayback();
+                startPlayback();
+            }
+        }
+
+        // Compare Mode panel activations
+        function toggleCompareMode() {
+            if (!syncInputs()) return;
+
+            stopPlayback();
+            state.viewMode = 'compare';
+
+            document.getElementById('welcome-viewport').classList.add('hidden');
+            document.getElementById('step-by-step-viewport').classList.add('hidden');
+            document.getElementById('compare-all-viewport').classList.remove('hidden');
+            document.getElementById('trace-controls').classList.add('hidden');
+            document.getElementById('final-summary-card').classList.add('hidden');
+
+            renderComparePanel();
+        }
+
+        function closeCompareMode() {
+            state.viewMode = 'step';
+            document.getElementById('compare-all-viewport').classList.add('hidden');
+            document.getElementById('step-by-step-viewport').classList.remove('hidden');
+            document.getElementById('trace-controls').classList.remove('hidden');
+            renderActiveStep();
+        }
+
+        // Perform parallel comparison metrics evaluations
+        function renderComparePanel() {
+            const container = document.getElementById('compare-rows-container');
+            const chartsContainer = document.getElementById('success-bars-chart');
+
+            const strategies = ['first', 'best', 'worst', 'next'];
+            let outcomes = [];
+
+            strategies.forEach(strat => {
+                const res = simulateAllAllocations(state.blocks, state.processes, strat);
+                
+                // Successful count
+                const successCount = res.steps.filter(st => st.type === 'allocation_try' && st.success).length;
+
+                // Sum remaining free size across final blocks
+                const finalRemainingSize = res.finalBlocksState.reduce((acc, curr) => acc + curr.freeSize, 0);
+
+                // Fragmented blocks count: partitions with allocations inside, but some free space left > 0 KB
+                const fragmentCount = res.finalBlocksState.filter(b => b.allocations.length > 0 && b.freeSize > 0).length;
+
+                outcomes.push({
+                    name: strat.toUpperCase() + '-FIT',
+                    success: successCount,
+                    totalCount: state.processes.length,
+                    remaining: finalRemainingSize,
+                    fragments: fragmentCount
+                });
+            });
+
+            // Populate Comparison Tables
+            let rowsHtml = "";
+            outcomes.forEach(out => {
+                rowsHtml += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-3 py-2.5 text-left font-bold text-slate-800">${out.name}</td>
+                        <td class="px-3 py-2.5 font-bold text-emerald-600">${out.success} / ${out.totalCount}</td>
+                        <td class="px-3 py-2.5 font-mono font-bold text-indigo-600">${out.remaining} KB</td>
+                        <td class="px-3 py-2.5 font-mono text-slate-700">${out.fragments}</td>
+                    </tr>
+                `;
+            });
+            container.innerHTML = rowsHtml;
+
+            // Populate Comparison Horizontals charts representation
+            let chartsHtml = "";
+            outcomes.forEach(out => {
+                let percent = (out.success / out.totalCount) * 100;
+                chartsHtml += `
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] font-bold">
+                            <span class="text-slate-700">${out.name}</span>
+                            <span class="text-slate-500">${out.success} of ${out.totalCount} Succeeded (${Math.round(percent)}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                            <div style="width: ${percent}%" class="bg-emerald-500 h-full rounded-full transition-all"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            chartsContainer.innerHTML = chartsHtml;
+        }
+
+        // Initialize viewport states on DOM-ready
+        window.onload = function() {
+            loadSamplePreset();
+            applyStaticTranslations();
+        };
+    </script>
+</body>
+</html>
