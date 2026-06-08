@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paging Memory Learning Tool</title>
+    <!-- Tailwind CSS for modern compact UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Premium Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        code, pre, .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Elegant custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden flex flex-col antialiased">
+
+    <!-- Compact Top Header -->
+    <header class="bg-white border-b border-slate-200 shrink-0 h-14 shadow-sm z-10">
+        <div class="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-indigo-600 text-white p-1.5 rounded-lg font-bold text-xs tracking-wider shadow-sm">PAGING</div>
+                <div>
+                    <h1 class="font-extrabold text-slate-900 text-sm sm:text-base leading-tight" id="header-title">Paging Memory Learning Tool</h1>
+                    <p class="text-[10px] text-slate-500" id="header-subtitle">Công cụ học Phân trang Bộ nhớ - Address Bitwise Calculator & Translations</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- Lang Toggle Button -->
+                <button onclick="toggleLanguage()" class="px-3 py-1 border border-slate-200 hover:border-indigo-600 rounded-lg text-[11px] font-bold text-slate-700 hover:text-indigo-600 transition flex items-center space-x-1 bg-white shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3.5 h-3.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 0-3.827-5.802" />
+                    </svg>
+                    <span id="lang-btn-text">Tiếng Việt</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs Bar -->
+    <nav class="bg-white border-b border-slate-200/80 shrink-0 h-12 shadow-sm z-10">
+        <div class="max-w-[1600px] mx-auto px-4 h-full flex items-center">
+            <div class="flex space-x-1.5 bg-slate-100 p-1 rounded-lg">
+                <button id="tab-calculator" onclick="switchMode('calculator')" class="px-3.5 py-1 text-xs font-bold rounded-md transition-all shadow-sm">
+                    Address Bits Calculator
+                </button>
+                <button id="tab-translation" onclick="switchMode('translation')" class="px-3.5 py-1 text-xs font-bold rounded-md transition-all">
+                    Address Translation
+                </button>
+                <button id="tab-practice" onclick="switchMode('practice')" class="px-3.5 py-1 text-xs font-bold rounded-md transition-all">
+                    Practice Generator
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace Container (Locks screen size for zero-scrolling fitting) -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden min-h-0">
+        
+        <!-- Left Column: Input Form (Changes per Tab) -->
+        <section class="lg:col-span-4 flex flex-col space-y-3 min-h-0 h-full">
+            
+            <!-- Dynamic Configurations Card -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm shrink-0">
+                <h2 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5 pb-2 border-b border-slate-100 mb-3" id="input-card-title">
+                    <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                    <span>Configuration Parameters</span>
+                </h2>
+
+                <!-- Input Fields for Mode 1: Address Calculator -->
+                <div id="inputs-calculator" class="space-y-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-calc-pages">Number of Pages (N<sub>p</sub>)</label>
+                        <input type="number" id="calc-pages" class="w-full text-xs font-mono px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white" value="32" min="1">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-calc-size">Page Size (S Bytes)</label>
+                        <input type="number" id="calc-size" class="w-full text-xs font-mono px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white" value="2048" min="1">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-calc-frames">Number of Frames (N<sub>f</sub>)</label>
+                        <input type="number" id="calc-frames" class="w-full text-xs font-mono px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white" value="16" min="1">
+                    </div>
+                    <button onclick="calculateBits()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg text-xs transition uppercase tracking-wide shadow-md" id="btn-calc-trigger">
+                        Calculate
+                    </button>
+                </div>
+
+                <!-- Input Fields for Mode 2: Address Translation -->
+                <div id="inputs-translation" class="hidden space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-trans-size">Page Size (S Bytes)</label>
+                            <input type="number" id="trans-size" class="w-full text-xs font-mono px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50" value="1024" min="1">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-trans-address">Logical Address (A<sub>log</sub>)</label>
+                            <input type="number" id="trans-address" class="w-full text-xs font-mono px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50" value="3249" min="0">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide" id="lbl-trans-table">Page Table (Page, Frame)</label>
+                            <button onclick="loadSamplePageTable()" class="text-[9px] text-indigo-600 hover:underline font-bold" id="btn-load-tbl-sample">Load Sample</button>
+                        </div>
+                        <textarea id="trans-table" rows="5" class="w-full text-xs font-mono p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white" placeholder="0,1&#10;1,5&#10;2,3&#10;3,6"></textarea>
+                    </div>
+                    <button onclick="translateAddress()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg text-xs transition uppercase tracking-wide shadow-md" id="btn-trans-trigger">
+                        Translate
+                    </button>
+                </div>
+
+                <!-- Input Fields for Mode 3: Practice Generator -->
+                <div id="inputs-practice" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wide" id="lbl-pract-diff">Difficulty Level</label>
+                        <div class="grid grid-cols-3 gap-1.5 bg-slate-50 p-1 border border-slate-200 rounded-lg">
+                            <button onclick="setDifficulty('easy')" id="diff-easy" class="py-1 text-[10px] font-bold rounded transition-all bg-white text-indigo-600 shadow-sm border border-indigo-100">Easy</button>
+                            <button onclick="setDifficulty('medium')" id="diff-medium" class="py-1 text-[10px] font-bold rounded transition-all text-slate-500">Medium</button>
+                            <button onclick="setDifficulty('hard')" id="diff-hard" class="py-1 text-[10px] font-bold rounded transition-all text-slate-500">Hard</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button onclick="generateNewExercise()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition uppercase tracking-wider" id="btn-pract-gen">
+                            Generate Exercise
+                        </button>
+                        <button onclick="togglePracticeSolution()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] transition uppercase tracking-wider" id="btn-pract-solve">
+                            Show Solution
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input Warnings / Errors box -->
+                <div id="input-error" class="hidden mt-2 p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[10px] flex items-start space-x-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 mt-0.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                    <span id="error-text">Formatting error. Please verify input variables.</span>
+                </div>
+            </div>
+
+            <!-- Academic Explanation Collapsible card -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col flex-1 min-h-0 overflow-y-auto">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0 mb-2">
+                    <h3 class="font-extrabold text-slate-800 text-xs tracking-wide uppercase flex items-center gap-1.5" id="edu-card-title">
+                        <span class="w-1.5 h-3 bg-indigo-600 rounded-full"></span>
+                        <span>Paging Educational Guide</span>
+                    </h3>
+                </div>
+                <div class="text-[11px] text-slate-600 leading-relaxed space-y-2 flex-1" id="edu-panel-text">
+                    <!-- Standard Bilingual descriptions (loaded dynamically in JS) -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Formula steps calculations, charts and diagrams -->
+        <section class="lg:col-span-8 flex flex-col space-y-3 min-h-0 h-full">
+            
+            <!-- Output Viewport (Calculator View) -->
+            <div id="view-calculator" class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col flex-1 min-h-0 overflow-y-auto gap-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2.5 shrink-0">
+                    <div>
+                        <span class="text-[9px] uppercase font-bold text-slate-400 font-mono">Mode 1 Output</span>
+                        <h3 class="font-extrabold text-slate-900 text-sm leading-none" id="calc-out-title">Calculation Trace Logs</h3>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold shadow-sm bg-blue-50 text-blue-700 border border-blue-200 uppercase" id="calc-badge">BITS</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
+                    <!-- Steps Trace Log -->
+                    <div class="lg:col-span-7 flex flex-col min-h-0 h-full">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2" id="calc-lbl-steps">Math Steps Proof</h4>
+                        <div id="calc-steps-log" class="flex-1 bg-slate-50 border border-slate-100 rounded-lg p-3 font-mono text-xs overflow-y-auto space-y-4 text-slate-700 leading-relaxed shadow-inner">
+                            <!-- Dynamic steps loads here -->
+                        </div>
+                    </div>
+
+                    <!-- Bitwise Summary Grid Matrix -->
+                    <div class="lg:col-span-5 flex flex-col space-y-3 min-h-0">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider" id="calc-lbl-summary">Final Variable Summary</h4>
+                        <div class="border border-slate-200 rounded-lg overflow-hidden bg-white shrink-0">
+                            <table class="min-w-full divide-y divide-slate-200 text-center text-xs">
+                                <thead class="bg-slate-50 text-slate-500 font-bold">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left" id="th-calc-item">Item</th>
+                                        <th class="px-3 py-2" id="th-calc-val">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 font-semibold" id="calc-summary-body">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Visual representation of virtual logical bit division mapping -->
+                        <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 space-y-2 flex-1 flex flex-col justify-center">
+                            <span class="text-[9px] uppercase font-bold text-slate-400" id="lbl-virtual-address-layout">Logical Address Formats (Logical Bits)</span>
+                            
+                            <div class="flex rounded-md border border-slate-300 text-center font-mono font-bold text-xs overflow-hidden h-9 shadow-sm shrink-0">
+                                <div id="lbl-p-bit-box" style="width: 35%" class="bg-indigo-500 text-white flex flex-col justify-center items-center leading-none border-r border-slate-300">
+                                    <span class="text-[8px] opacity-75">Page (p)</span>
+                                    <span id="p-bit-val">-- bits</span>
+                                </div>
+                                <div id="lbl-d-bit-box" style="width: 65%" class="bg-amber-500 text-white flex flex-col justify-center items-center leading-none">
+                                    <span class="text-[8px] opacity-75">Offset (d)</span>
+                                    <span id="d-bit-val">-- bits</span>
+                                </div>
+                            </div>
+
+                            <span class="text-[9px] uppercase font-bold text-slate-400 pt-1" id="lbl-physical-address-layout">Physical Address Formats (Physical Bits)</span>
+                            <div class="flex rounded-md border border-slate-300 text-center font-mono font-bold text-xs overflow-hidden h-9 shadow-sm shrink-0">
+                                <div id="lbl-f-bit-box" style="width: 30%" class="bg-emerald-500 text-white flex flex-col justify-center items-center leading-none border-r border-slate-300">
+                                    <span class="text-[8px] opacity-75">Frame (f)</span>
+                                    <span id="f-bit-val">-- bits</span>
+                                </div>
+                                <div id="lbl-df-bit-box" style="width: 70%" class="bg-amber-500 text-white flex flex-col justify-center items-center leading-none">
+                                    <span class="text-[8px] opacity-75">Offset (d)</span>
+                                    <span id="df-bit-val">-- bits</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Viewport (Translation View) -->
+            <div id="view-translation" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col flex-1 min-h-0 overflow-y-auto gap-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2.5 shrink-0">
+                    <div>
+                        <span class="text-[9px] uppercase font-bold text-slate-400 font-mono">Mode 2 Output</span>
+                        <h3 class="font-extrabold text-slate-900 text-sm leading-none" id="trans-out-title">Address Translation Walkthrough</h3>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold shadow-sm bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase" id="trans-badge">TRANSLATION</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
+                    <!-- Math Logic -->
+                    <div class="lg:col-span-6 flex flex-col min-h-0 h-full">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2" id="trans-lbl-steps">Math Formulation Stepwise</h4>
+                        <div id="trans-steps-log" class="flex-1 bg-slate-50 border border-slate-100 rounded-lg p-3 font-mono text-xs overflow-y-auto space-y-4 text-slate-700 leading-relaxed shadow-inner">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Flow Diagram of Mapping Lookup -->
+                    <div class="lg:col-span-6 flex flex-col min-h-0 space-y-3">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider" id="trans-lbl-diagram">Mapping Lookup Architecture</h4>
+                        <div class="border border-slate-150 rounded-lg p-3 bg-slate-50/50 flex flex-col justify-between flex-1 min-h-0">
+                            
+                            <!-- Logical Address Box Mapping -->
+                            <div class="space-y-1">
+                                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider leading-none" id="lbl-diag-logical">Logical Address Translation Breakdowns</span>
+                                <div class="flex justify-between items-center gap-1 bg-white p-1.5 border border-slate-200 rounded shadow-sm font-mono text-xs">
+                                    <div class="text-left">
+                                        <span class="block text-[8px] text-slate-400 uppercase font-sans">Full Address</span>
+                                        <span id="diag-logical-full" class="font-bold text-slate-700">3249</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <div class="bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded text-indigo-700 text-center font-bold">
+                                            <span class="block text-[7px] text-indigo-400 uppercase font-sans">Page (p)</span>
+                                            <span id="diag-logical-p">3</span>
+                                        </div>
+                                        <div class="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-amber-700 text-center font-bold">
+                                            <span class="block text-[7px] text-amber-400 uppercase font-sans">Offset (d)</span>
+                                            <span id="diag-logical-d">177</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Intermediate Page Table Mapping Arrow Box -->
+                            <div class="flex items-center justify-between gap-2 px-1 relative">
+                                <div class="w-1/3 text-center border-r border-dashed border-slate-300">
+                                    <div class="inline-flex flex-col items-center">
+                                        <div class="text-indigo-600 font-bold font-mono text-sm" id="diag-flow-p">Page 3</div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-slate-400 animate-bounce">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <!-- Center Page table micro-lookups panel -->
+                                <div class="w-1/3 bg-white border border-slate-200 rounded p-1 shadow-sm text-center font-mono text-[10px]">
+                                    <span class="block font-bold text-slate-400 border-b border-slate-100 text-[8px] uppercase tracking-wider pb-0.5" id="lbl-diag-table">Page Table</span>
+                                    <div id="diag-tbl-rows" class="space-y-0.5 max-h-16 overflow-y-auto pt-1">
+                                        <!-- Dynamically highlighted tables rows mapping -->
+                                    </div>
+                                </div>
+
+                                <div class="w-1/3 text-center border-l border-dashed border-slate-300">
+                                    <div class="inline-flex flex-col items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-slate-400 animate-bounce">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+                                        </svg>
+                                        <div class="text-emerald-600 font-bold font-mono text-sm" id="diag-flow-f">Frame 6</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Physical address compilation box -->
+                            <div class="space-y-1 pt-1 border-t border-slate-100">
+                                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider leading-none" id="lbl-diag-physical">Resulting Physical Address Layout</span>
+                                <div id="diag-phys-box" class="flex justify-between items-center gap-1 bg-white p-1.5 border border-slate-200 rounded shadow-sm font-mono text-xs">
+                                    <div class="flex gap-1">
+                                        <div id="diag-phys-f-box" class="bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-emerald-700 text-center font-bold">
+                                            <span class="block text-[7px] text-emerald-400 uppercase font-sans">Frame (f)</span>
+                                            <span id="diag-physical-f">6</span>
+                                        </div>
+                                        <div class="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-amber-700 text-center font-bold">
+                                            <span class="block text-[7px] text-amber-400 uppercase font-sans">Offset (d)</span>
+                                            <span id="diag-physical-d">177</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="block text-[8px] text-slate-400 uppercase font-sans">Physical Destination</span>
+                                        <span id="diag-physical-full" class="font-extrabold text-slate-800 text-sm">6321</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Viewport (Practice Generator View) -->
+            <div id="view-practice" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col flex-1 min-h-0 overflow-y-auto gap-3.5">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2.5 shrink-0">
+                    <div>
+                        <span class="text-[9px] uppercase font-bold text-slate-400 font-mono">Mode 3 Interactive Workstation</span>
+                        <h3 class="font-extrabold text-slate-900 text-sm leading-none" id="pract-out-title">Synthesized Evaluation Exercise</h3>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold shadow-sm bg-purple-50 text-purple-700 border border-purple-200 uppercase animate-pulse" id="pract-badge">PRACTICE</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0">
+                    <!-- Synthesized Question Card and Student Workspace -->
+                    <div class="lg:col-span-6 flex flex-col space-y-3 min-h-0 h-full">
+                        
+                        <!-- Exercise Description container -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
+                            <span class="text-[9px] font-extrabold text-indigo-600 uppercase tracking-wide block" id="lbl-question-title">QUESTION STATEMENT:</span>
+                            <div id="pract-question-text" class="text-xs font-semibold leading-relaxed space-y-2 text-slate-700">
+                                <!-- Generated practice texts -->
+                            </div>
+                        </div>
+
+                        <!-- Answer verification workstation (Multi-step input to understand the whole problem) -->
+                        <div class="bg-indigo-50/50 border border-indigo-100 p-3 rounded-lg flex flex-col shrink-0 gap-2.5">
+                            <span class="text-[9px] font-extrabold text-indigo-700 uppercase tracking-wider block" id="lbl-student-submit">Your Verification Workspace</span>
+                            
+                            <!-- Multi-inputs structure for detailed paging understanding -->
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <label class="block text-[9px] font-extrabold text-slate-500 mb-0.5 uppercase tracking-wide" id="lbl-pract-ans-p">Page Number (p)</label>
+                                    <input type="number" id="pract-ans-p" class="w-full text-xs font-mono px-2 py-1 border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white" placeholder="e.g. 3">
+                                </div>
+                                <div>
+                                    <label class="block text-[9px] font-extrabold text-slate-500 mb-0.5 uppercase tracking-wide" id="lbl-pract-ans-d">Offset (d)</label>
+                                    <input type="number" id="pract-ans-d" class="w-full text-xs font-mono px-2 py-1 border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white" placeholder="e.g. 177">
+                                </div>
+                                <div>
+                                    <label class="block text-[9px] font-extrabold text-slate-500 mb-0.5 uppercase tracking-wide" id="lbl-pract-ans-f">Frame Number (f)</label>
+                                    <input type="text" id="pract-ans-f" class="w-full text-xs font-mono px-2 py-1 border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white" placeholder="Frame (or 'Fault')">
+                                </div>
+                                <div>
+                                    <label class="block text-[9px] font-extrabold text-slate-500 mb-0.5 uppercase tracking-wide" id="lbl-pract-ans-phys">Physical Address</label>
+                                    <input type="text" id="pract-ans-phys" class="w-full text-xs font-mono px-2 py-1 border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white" placeholder="Address (or 'Fault')">
+                                </div>
+                            </div>
+
+                            <button onclick="checkStudentAnswer()" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg text-xs uppercase tracking-wide shadow-sm" id="btn-pract-check">
+                                Check Answer
+                            </button>
+
+                            <!-- Feedback alert message block -->
+                            <div id="pract-feedback-box" class="hidden rounded border p-2 text-[10px] space-y-1 bg-white">
+                                <!-- Detailed diagnostic table of results mapped dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Side step solution tracing inside practices -->
+                    <div class="lg:col-span-6 flex flex-col min-h-0 h-full">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2" id="pract-lbl-steps">Math Formulation Stepwise</h4>
+                        <div id="pract-steps-log" class="flex-1 bg-slate-50 border border-slate-100 rounded-lg p-3 font-mono text-xs overflow-y-auto space-y-4 text-slate-700 leading-relaxed shadow-inner">
+                            <div class="text-slate-400 text-center py-10" id="lbl-sol-hidden">Click "Show Solution" to reveal mathematical proofs.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Global snap feedback status footer -->
+    <footer class="bg-slate-100 border-t border-slate-200 py-2.5 px-4 shrink-0">
+        <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 gap-2">
+            <div class="flex items-center space-x-1.5">
+                <span class="font-bold text-slate-700 uppercase" id="footer-rules-lbl">Bilingual Interactive Tool:</span>
+                <span id="footer-rules-text">Select a mode tab from the navigation bar above to translate addresses and practice bitwise limits.</span>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 items-center font-bold">
+                <div class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded bg-indigo-500"></span>
+                    <span id="cc-page" class="text-slate-600">Page Bits</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded bg-emerald-500"></span>
+                    <span id="cc-frame" class="text-slate-600">Frame Bits</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded bg-amber-500"></span>
+                    <span id="cc-offset" class="text-slate-600">Offset Bits</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Master Application Engine -->
+    <script>
+        // System wide responsive configuration states
+        const state = {
+            lang: 'en',
+            activeMode: 'calculator', // 'calculator', 'translation', 'practice'
+            difficulty: 'easy',
+
+            // Mode 1: Calculators Memory Inputs
+            pages: 32,
+            size: 2048,
+            frames: 16,
+
+            // Mode 2: Translations Inputs
+            transSize: 1024,
+            transAddress: 3249,
+            transTableText: `0,1\n1,5\n2,3\n3,6`,
+            transTableMap: {}, // key-value maps: Page -> Frame
+
+            // Mode 3: Practice Generated State variables
+            exercise: {
+                pages: 32,
+                size: 2048,
+                frames: 16,
+                tableText: '',
+                tableMap: {},
+                logicalAddress: 7523,
+                correctPage: 3,
+                correctOffset: 1355,
+                correctFrame: 6,
+                correctPhysical: 0,
+                isPageFault: false
+            },
+            practiceSolutionVisible: false,
+        };
+
+        // Complete Translations Dictionary (English & Tiếng Việt)
+        const translations = {
+            en: {
+                headerTitle: "Paging Memory Learning Tool",
+                headerSubtitle: "Interactive Address Translation & Frame Mapping Sandbox",
+                langBtnText: "Tiếng Việt",
+                tabCalculator: "Address Bits Calculator",
+                tabTranslation: "Logical → Physical Translation",
+                tabPractice: "Practice Generator",
+                
+                inputCardTitle: "Configuration Parameters",
+                lblCalcPages: "Number of Pages (N<sub>p</sub>)",
+                lblCalcSize: "Page Size (S Bytes)",
+                lblCalcFrames: "Number of Frames (N<sub>f</sub>)",
+                btnCalcTrigger: "Calculate Parameters",
+                
+                lblTransSize: "Page Size (S Bytes)",
+                lblTransAddress: "Logical Address (A<sub>log</sub>)",
+                lblTransTable: "Page Table Rows (Page, Frame)",
+                btnLoadTblSample: "Load Standard Sample",
+                btnTransTrigger: "Translate Address",
+                
+                lblPractDiff: "Select Difficulty Level",
+                btnPractGen: "Generate Exercise",
+                btnPractSolve: "Show Solution",
+                btnPractSolveHide: "Hide Solution",
+                inputErrorText: "Invalid input values. Please verify all number parameters.",
+                
+                eduCardTitle: "Paging Educational Guide",
+                eduPanelText: `
+                    <p class="font-bold text-slate-800 text-[12px] mb-1">Core Paging Operations:</p>
+                    <p class="mb-2"><b>Paging</b> divides virtual memory into pages and physical memory into identical frames. To represent virtual maps:</p>
+                    <ul class="list-disc list-inside space-y-1 pl-1 text-[11px] text-slate-600">
+                        <li><b>Offset Bits (d):</b> Derived directly from the Page Size: d = log<sub>2</sub>(PageSize).</li>
+                        <li><b>Page Bits (p):</b> Index bits for logical page space: p = log<sub>2</sub>(NumPages).</li>
+                        <li><b>Frame Bits (f):</b> Index bits for physical RAM frames: f = log<sub>2</sub>(NumFrames).</li>
+                        <li><b>Logical Address Bits:</b> Total length of logical memory addresses: PageBits + OffsetBits.</li>
+                        <li><b>Physical Address Bits:</b> Total length of physical memory addresses: FrameBits + OffsetBits.</li>
+                    </ul>
+                    <p class="pt-2 border-t border-slate-100">Every address contains a Page number <b>p</b> and an offset <b>d</b>. The MMU uses <b>p</b> as an index in the Page Table to swap with a physical frame <b>f</b>.</p>
+                `,
+
+                calcOutTitle: "Calculations Stepwise Output Logs",
+                calcLblSteps: "Calculation Logs with Math Reasoning",
+                calcLblSummary: "Final Structural Variables Matrix",
+                thCalcItem: "Structural Variable",
+                thCalcVal: "Computed Value",
+                lblVirtualAddressLayout: "Logical Address Bits Structure",
+                lblPhysicalAddressLayout: "Physical Address Bits Structure",
+                
+                transOutTitle: "Translation Steps Walkthrough",
+                transLblSteps: "Translation Mathematical Resolution Steps",
+                transLblDiagram: "MMU Page Table Mapping Flowchart",
+                lblDiagLogical: "1. Logical Address Segment breakdown",
+                lblDiagTable: "Page Table",
+                lblDiagPhysical: "3. Formed Physical destination Address",
+                
+                practOutTitle: "Synthesized Self-Practice Evaluation",
+                lblQuestionTitle: "PAGING EXERCISE CHALLENGE QUESTION:",
+                lblStudentSubmit: "Student Answer Verification Panel",
+                btnPractCheck: "Verify Answer",
+                practLblSteps: "Practice Walkthrough Solution Details",
+                lblSolHidden: "Click 'Show Solution' to reveal mathematical proofs.",
+                footerRulesLbl: "Paging Trainer Console:",
+                footerRulesText: "Select tab targets above to evaluate address bits or generate random practice questions.",
+
+                ccPage: "Page Bits",
+                ccFrame: "Frame Bits",
+                ccOffset: "Offset Bits",
+
+                // Multi-Step Practice check texts
+                lblPractAnsP: "Page Number (p)",
+                lblPractAnsD: "Offset (d)",
+                lblPractAnsF: "Frame Number (f)",
+                lblPractAnsPhys: "Physical Address",
+                tblHeaderParameter: "Paging Parameter",
+                tblHeaderYourAnswer: "Your Ans",
+                tblHeaderCorrectValue: "Correct Value",
+                statusPass: "✓ Correct",
+                statusFail: "✗ Incorrect",
+                overallCorrectScore: "Overall Evaluation Score",
+
+                // Internal specific calculation and result terminology
+                correctFeedback: "✓ Excellent! All calculated parameters are correct.",
+                incorrectFeedback: "✗ Some intermediate calculated steps are incorrect. Please check the feedback below.",
+                tblEmpty: "Empty Map",
+                pageFaultWarning: "WARNING: PAGE FAULT! Page p is not mapped in the page table (Invalid mapping).",
+                stepSuccess: "Translation Success",
+                stepFailed: "Page Fault / Limit Failure"
+            },
+            vi: {
+                headerTitle: "Công cụ Học Phân trang Bộ nhớ",
+                headerSubtitle: "Trực quan hóa Dịch địa chỉ ảo thành Vật lý",
+                langBtnText: "English",
+                tabCalculator: "Bộ Tính Số bit Địa chỉ",
+                tabTranslation: "Dịch Địa chỉ Luận lý → Vật lý",
+                tabPractice: "Bộ Tạo Câu hỏi Luyện tập",
+                
+                inputCardTitle: "Tham số Cấu hình Dữ liệu",
+                lblCalcPages: "Số lượng Trang (N<sub>p</sub>)",
+                lblCalcSize: "Kích thước Trang (S Bytes)",
+                lblCalcFrames: "Số lượng Khung trang (N<sub>f</sub>)",
+                btnCalcTrigger: "Tính toán Tham số",
+                
+                lblTransSize: "Kích thước Trang (S Bytes)",
+                lblTransAddress: "Địa chỉ Luận lý (A<sub>log</sub>)",
+                lblTransTable: "Bảng Phân Trang (Page, Frame)",
+                btnLoadTblSample: "Nạp mẫu mặc định",
+                btnTransTrigger: "Dịch Địa chỉ",
+                
+                lblPractDiff: "Chọn Mức độ câu hỏi",
+                btnPractGen: "Tạo Câu hỏi",
+                btnPractSolve: "Xem Lời giải",
+                btnPractSolveHide: "Ẩn Lời giải",
+                inputErrorText: "Giá trị đầu vào không hợp lệ. Vui lòng kiểm tra lại số liệu.",
+                
+                eduCardTitle: "Hướng dẫn Học Phân trang",
+                eduPanelText: `
+                    <p class="font-bold text-slate-800 text-[12px] mb-1">Các Phép toán Phân trang Cơ bản:</p>
+                    <p class="mb-2"><b>Phân trang</b> chia bộ nhớ luận lý (ảo) thành các trang và bộ nhớ vật lý thành các khung trang có kích thước bằng nhau. Quy tắc dịch:</p>
+                    <ul class="list-disc list-inside space-y-1 pl-1 text-[11px] text-slate-600">
+                        <li><b>Số bit Độ dời (d):</b> Xác định từ kích thước trang: d = log<sub>2</sub>(PageSize).</li>
+                        <li><b>Số bit Số trang (p):</b> Số bit biểu thị không gian trang: p = log<sub>2</sub>(NumPages).</li>
+                        <li><b>Số bit Khung trang (f):</b> Số bit biểu thị RAM khung trang: f = log<sub>2</sub>(NumFrames).</li>
+                        <li><b>Tổng số bit Luận lý:</b> Chiều dài địa chỉ luận lý (ảo): PageBits + OffsetBits.</li>
+                        <li><b>Tổng số bit Vật lý:</b> Chiều dài địa chỉ vật lý (RAM): FrameBits + OffsetBits.</li>
+                    </ul>
+                    <p class="pt-2 border-t border-slate-100">Địa chỉ ảo gồm Số trang <b>p</b> và độ dời <b>d</b>. MMU tra cứu bảng phân trang để tìm khung trang <b>f</b> tương ứng, sau đó ghép với độ dời <b>d</b> để trỏ vào RAM vật lý.</p>
+                `,
+
+                calcOutTitle: "Lịch trình Log Tính toán",
+                calcLblSteps: "Chi tiết các Bước giải & Công thức",
+                calcLblSummary: "Bảng tóm tắt các Tham số",
+                thCalcItem: "Tham số Địa chỉ",
+                thCalcVal: "Giá trị tính được",
+                lblVirtualAddressLayout: "Cấu trúc Địa chỉ Luận lý (Logical Bits)",
+                lblPhysicalAddressLayout: "Cấu trúc Địa chỉ Vật lý (Physical Bits)",
+                
+                transOutTitle: "Chi tiết các Bước dịch Địa chỉ",
+                transLblSteps: "Quá trình tính toán chi tiết",
+                transLblDiagram: "Sơ đồ luồng Ánh xạ bảng Phân trang",
+                lblDiagLogical: "1. Phân tách Địa chỉ Luận lý ban đầu",
+                lblDiagTable: "Bảng phân trang",
+                lblDiagPhysical: "3. Biên dịch địa chỉ Vật lý đích",
+                
+                practOutTitle: "Bảng Luyện tập Tự kiểm tra Kiến thức",
+                lblQuestionTitle: "ĐỀ BÀI CÂU HỎI LUYỆN TẬP:",
+                lblStudentSubmit: "Bảng Nhập Đáp án và Kiểm tra",
+                btnPractCheck: "Kiểm tra Đáp án",
+                practLblSteps: "Lời giải chi tiết cho câu hỏi luyện tập",
+                lblSolHidden: "Click 'Xem Lời giải' để hiển thị các bước phân tích toán học.",
+                footerRulesLbl: "Phân trang Console:",
+                footerRulesText: "Nhấn các tab phía trên để đổi chế độ làm việc: Tính toán bit, dịch địa chỉ, hoặc tự tạo câu hỏi trắc nghiệm.",
+
+                ccPage: "Bit Trang (p)",
+                ccFrame: "Bit Khung (f)",
+                ccOffset: "Bit Độ dời (d)",
+
+                // Multi-Step Practice check texts
+                lblPractAnsP: "Số Trang (p)",
+                lblPractAnsD: "Độ dời (d)",
+                lblPractAnsF: "Khung trang (f)",
+                lblPractAnsPhys: "Địa chỉ Vật lý",
+                tblHeaderParameter: "Thông số Phân trang",
+                tblHeaderYourAnswer: "Bạn nhập",
+                tblHeaderCorrectValue: "Đáp án đúng",
+                statusPass: "✓ Chính xác",
+                statusFail: "✗ Sai rồi",
+                overallCorrectScore: "Điểm Đánh giá Chung",
+
+                correctFeedback: "✓ Tuyệt vời! Bạn đã tính đúng hoàn toàn tất cả các bước trung gian.",
+                incorrectFeedback: "✗ Một số bước tính toán trung gian chưa chính xác. Hãy kiểm tra lại bảng phân tích bên dưới.",
+                tblEmpty: "Bảng trống",
+                pageFaultWarning: "LỖI TRUY XUẤT: LỖI TRANG! Số trang p không được ánh xạ trong bảng phân trang (Invalid Page).",
+                stepSuccess: "Dịch Địa chỉ Thành công",
+                stepFailed: "Lỗi Trang / Vượt giới hạn"
+            }
+        };
+
+        // Toggle app locale
+        function toggleLanguage() {
+            state.lang = state.lang === 'en' ? 'vi' : 'en';
+            applyStaticTranslations();
+            updateTabStyles();
+            
+            // Re-render active views
+            if (state.activeMode === 'calculator') {
+                calculateBits();
+            } else if (state.activeMode === 'translation') {
+                translateAddress();
+            } else if (state.activeMode === 'practice') {
+                renderPracticeQuestion();
+                if (state.practiceSolutionVisible) {
+                    renderPracticeSolution();
+                }
+            }
+        }
+
+        // Apply translations on static layouts
+        function applyStaticTranslations() {
+            const dict = translations[state.lang];
+            
+            // Core headers
+            document.getElementById('header-title').innerText = dict.headerTitle;
+            document.getElementById('header-subtitle').innerText = dict.headerSubtitle;
+            document.getElementById('lang-btn-text').innerText = dict.langBtnText;
+            
+            // Nav tabs
+            document.getElementById('tab-calculator').innerText = dict.tabCalculator;
+            document.getElementById('tab-translation').innerText = dict.tabTranslation;
+            document.getElementById('tab-practice').innerText = dict.tabPractice;
+            
+            // Generic controls
+            document.getElementById('input-card-title').innerText = dict.inputCardTitle;
+            
+            // Calculator inputs
+            document.getElementById('lbl-calc-pages').innerHTML = dict.lblCalcPages;
+            document.getElementById('lbl-calc-size').innerHTML = dict.lblCalcSize;
+            document.getElementById('lbl-calc-frames').innerHTML = dict.lblCalcFrames;
+            document.getElementById('btn-calc-trigger').innerText = dict.btnCalcTrigger;
+            
+            // Translation inputs
+            document.getElementById('lbl-trans-size').innerHTML = dict.lblTransSize;
+            document.getElementById('lbl-trans-address').innerHTML = dict.lblTransAddress;
+            document.getElementById('lbl-trans-table').innerHTML = dict.lblTransTable;
+            document.getElementById('btn-load-tbl-sample').innerText = dict.btnLoadTblSample;
+            document.getElementById('btn-trans-trigger').innerText = dict.btnTransTrigger;
+            
+            // Practice inputs
+            document.getElementById('lbl-pract-diff').innerText = dict.lblPractDiff;
+            document.getElementById('btn-pract-gen').innerText = dict.btnPractGen;
+            document.getElementById('btn-pract-solve').innerText = state.practiceSolutionVisible ? dict.btnPractSolveHide : dict.btnPractSolve;
+            
+            // Cards & Panels
+            document.getElementById('edu-card-title').innerText = dict.eduCardTitle;
+            document.getElementById('edu-panel-text').innerHTML = dict.eduPanelText;
+            
+            // Output Panel Header Labels
+            document.getElementById('calc-out-title').innerText = dict.calcOutTitle;
+            document.getElementById('calc-lbl-steps').innerText = dict.calcLblSteps;
+            document.getElementById('calc-lbl-summary').innerText = dict.calcLblSummary;
+            document.getElementById('th-calc-item').innerText = dict.thOnesCol || dict.thCalcItem;
+            document.getElementById('th-calc-val').innerText = dict.thCalcVal;
+            document.getElementById('lbl-virtual-address-layout').innerText = dict.lblVirtualAddressLayout;
+            document.getElementById('lbl-physical-address-layout').innerText = dict.lblPhysicalAddressLayout;
+
+            document.getElementById('trans-out-title').innerText = dict.transOutTitle;
+            document.getElementById('trans-lbl-steps').innerText = dict.transLblSteps;
+            document.getElementById('trans-lbl-diagram').innerText = dict.transLblDiagram;
+            document.getElementById('lbl-diag-logical').innerText = dict.lblDiagLogical;
+            document.getElementById('lbl-diag-table').innerText = dict.lblDiagTable;
+            document.getElementById('lbl-diag-physical').innerText = dict.lblDiagPhysical;
+
+            document.getElementById('pract-out-title').innerText = dict.practOutTitle;
+            document.getElementById('lbl-question-title').innerText = dict.lblQuestionTitle;
+            document.getElementById('lbl-student-submit').innerText = dict.lblStudentSubmit;
+            document.getElementById('btn-pract-check').innerText = dict.btnPractCheck;
+            document.getElementById('pract-lbl-steps').innerText = dict.practLblSteps;
+            document.getElementById('lbl-sol-hidden').innerText = dict.lblSolHidden;
+            document.getElementById('footer-rules-lbl').innerText = dict.footerRulesLbl;
+            document.getElementById('footer-rules-text').innerText = dict.footerRulesText;
+
+            // Mode 3 Student Sub-labels Translation
+            document.getElementById('lbl-pract-ans-p').innerText = dict.lblPractAnsP;
+            document.getElementById('lbl-pract-ans-d').innerText = dict.lblPractAnsD;
+            document.getElementById('lbl-pract-ans-f').innerText = dict.lblPractAnsF;
+            document.getElementById('lbl-pract-ans-phys').innerText = dict.lblPractAnsPhys;
+
+            document.getElementById('cc-page').innerText = dict.ccPage;
+            document.getElementById('cc-frame').innerText = dict.ccFrame;
+            document.getElementById('cc-offset').innerText = dict.ccOffset;
+        }
+
+        // Standard Navigation Tab switches
+        function switchMode(mode) {
+            state.activeMode = mode;
+            updateTabStyles();
+
+            // Toggle panels
+            document.getElementById('inputs-calculator').classList.add('hidden');
+            document.getElementById('inputs-translation').classList.add('hidden');
+            document.getElementById('inputs-practice').classList.add('hidden');
+            
+            document.getElementById('view-calculator').classList.add('hidden');
+            document.getElementById('view-translation').classList.add('hidden');
+            document.getElementById('view-practice').classList.add('hidden');
+
+            if (mode === 'calculator') {
+                document.getElementById('inputs-calculator').classList.remove('hidden');
+                document.getElementById('view-calculator').classList.remove('hidden');
+                calculateBits();
+            } else if (mode === 'translation') {
+                document.getElementById('inputs-translation').classList.remove('hidden');
+                document.getElementById('view-translation').classList.remove('hidden');
+                loadSamplePageTable();
+                translateAddress();
+            } else if (mode === 'practice') {
+                document.getElementById('inputs-practice').classList.remove('hidden');
+                document.getElementById('view-practice').classList.remove('hidden');
+                generateNewExercise();
+            }
+        }
+
+        // Apply visual highlights to headers active tab
+        function updateTabStyles() {
+            const tabs = ['calculator', 'translation', 'practice'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (state.activeMode === t) {
+                    btn.className = "px-3.5 py-1 text-xs font-bold rounded-md transition-all bg-white text-indigo-600 shadow-sm border border-indigo-100/50";
+                } else {
+                    btn.className = "px-3.5 py-1 text-xs font-bold rounded-md transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-50";
+                }
+            });
+        }
+
+        // Helper: Finds integer power-of-two exponent (or returns ceiling approximation log2)
+        function getLog2(val) {
+            return Math.ceil(Math.log2(val));
+        }
+
+        // Validation Display
+        function showInputError(text) {
+            const errorBox = document.getElementById('input-error');
+            const errorText = document.getElementById('error-text');
+            errorBox.classList.remove('hidden');
+            errorText.innerText = text;
+        }
+
+        function hideInputError() {
+            document.getElementById('input-error').classList.add('hidden');
+        }
+
+        // ==========================================
+        // MODE 1: ADDRESS BITS CALCULATOR ENGINE
+        // ==========================================
+        function calculateBits() {
+            hideInputError();
+            
+            const numPages = parseInt(document.getElementById('calc-pages').value);
+            const pageSize = parseInt(document.getElementById('calc-size').value);
+            const numFrames = parseInt(document.getElementById('calc-frames').value);
+
+            if (isNaN(numPages) || isNaN(pageSize) || isNaN(numFrames) || numPages <= 0 || pageSize <= 0 || numFrames <= 0) {
+                showInputError(translations[state.lang].inputErrorText);
+                return;
+            }
+
+            state.pages = numPages;
+            state.size = pageSize;
+            state.frames = numFrames;
+
+            const offsetBits = getLog2(pageSize);
+            const pageBits = getLog2(numPages);
+            const frameBits = getLog2(numFrames);
+
+            const logicalBits = pageBits + offsetBits;
+            const physicalBits = frameBits + offsetBits;
+            const pte = numPages;
+
+            // Generate Steps using beautiful Unicode and HTML subscripts/superscripts (no LaTeX broken strings!)
+            let stepsHtml = "";
+            if (state.lang === 'en') {
+                stepsHtml += `
+                    <div class="space-y-1">
+                        <b class="text-indigo-600 text-sm">1. Offset Bits (d):</b><br>
+                        Page Size is <b>S = ${pageSize}</b> Bytes.<br>
+                        Since 2<sup>${offsetBits}</sup> = ${Math.pow(2, offsetBits)}, the number of offset bits is:<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            d = log<sub>2</sub>(${pageSize}) = ${offsetBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">2. Page Bits (p):</b><br>
+                        Number of virtual pages is <b>N<sub>p</sub> = ${numPages}</b>.<br>
+                        Since 2<sup>${pageBits}</sup> = ${Math.pow(2, pageBits)}, the number of page index bits is:<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            p = log<sub>2</sub>(${numPages}) = ${pageBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">3. Frame Bits (f):</b><br>
+                        Number of physical RAM frames is <b>N<sub>f</sub> = ${numFrames}</b>.<br>
+                        Since 2<sup>${frameBits}</sup> = ${Math.pow(2, frameBits)}, the number of frame index bits is:<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            f = log<sub>2</sub>(${numFrames}) = ${frameBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">4. Address Lengths:</b><br>
+                        <span class="text-slate-700 font-semibold">- Logical Address Length (L<sub>log</sub>):</span><br>
+                        <div class="my-1.5 p-2 bg-slate-100 rounded text-center font-bold text-slate-800">
+                            L<sub>log</sub> = p + d = ${pageBits} + ${offsetBits} = ${logicalBits} bits
+                        </div>
+                        <span class="text-slate-700 font-semibold">- Physical Address Length (L<sub>phys</sub>):</span><br>
+                        <div class="my-1.5 p-2 bg-slate-100 rounded text-center font-bold text-slate-800">
+                            L<sub>phys</sub> = f + d = ${frameBits} + ${offsetBits} = ${physicalBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">5. Page Table Entries (PTE):</b><br>
+                        The Page Table must map every virtual page into RAM.<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            Entries = N<sub>p</sub> = ${pte} rows
+                        </div>
+                    </div>
+                `;
+            } else {
+                stepsHtml += `
+                    <div class="space-y-1">
+                        <b class="text-indigo-600 text-sm">1. Số bit Độ dời (d):</b><br>
+                        Kích thước Trang bộ nhớ <b>S = ${pageSize}</b> Bytes.<br>
+                        Vì 2<sup>${offsetBits}</sup> = ${Math.pow(2, offsetBits)}, số bit độ dời d tính được là:<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            d = log<sub>2</sub>(${pageSize}) = ${offsetBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">2. Số bit Trang (p):</b><br>
+                        Tổng số trang ảo luận lý <b>N<sub>p</sub> = ${numPages}</b>.<br>
+                        Vì 2<sup>${pageBits}</sup> = ${Math.pow(2, pageBits)}, số bit chỉ số trang p là:<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            p = log<sub>2</sub>(${numPages}) = ${pageBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">3. Số bit Khung trang (f):</b><br>
+                        Tổng số khung trang vật lý ngoài RAM <b>N<sub>f</sub> = ${numFrames}</b>.<br>
+                        Vì 2<sup>${frameBits}</sup> = ${Math.pow(2, frameBits)}, số bit chỉ số khung trang f là:<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            f = log<sub>2</sub>(${numFrames}) = ${frameBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">4. Độ dài Địa chỉ:</b><br>
+                        <span class="text-slate-700 font-semibold">- Độ dài địa chỉ Luận lý (L<sub>log</sub>):</span><br>
+                        <div class="my-1.5 p-2 bg-slate-100 rounded text-center font-bold text-slate-800">
+                            L<sub>log</sub> = p + d = ${pageBits} + ${offsetBits} = ${logicalBits} bits
+                        </div>
+                        <span class="text-slate-700 font-semibold">- Độ dài địa chỉ Vật lý (L<sub>phys</sub>):</span><br>
+                        <div class="my-1.5 p-2 bg-slate-100 rounded text-center font-bold text-slate-800">
+                            L<sub>phys</sub> = f + d = ${frameBits} + ${offsetBits} = ${physicalBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">5. Kích thước Bản ghi bảng phân trang (PTE):</b><br>
+                        Mỗi trang ảo cần một bản ghi kiểm soát vị trí tương ứng trong RAM.<br>
+                        <div class="my-2 p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800 text-sm">
+                            Số dòng = N<sub>p</sub> = ${pte} dòng
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('calc-steps-log').innerHTML = stepsHtml;
+
+            // Render output matrix summaries
+            const summaryData = [
+                { item: state.lang === 'en' ? "Offset Bits (d)" : "Số bit Độ dời (d)", val: `${offsetBits} bits` },
+                { item: state.lang === 'en' ? "Page Bits (p)" : "Số bit Trang (p)", val: `${pageBits} bits` },
+                { item: state.lang === 'en' ? "Frame Bits (f)" : "Số bit Khung trang (f)", val: `${frameBits} bits` },
+                { item: state.lang === 'en' ? "Logical Address Length" : "Độ dài địa chỉ Luận lý", val: `${logicalBits} bits` },
+                { item: state.lang === 'en' ? "Physical Address Length" : "Độ dài địa chỉ Vật lý", val: `${physicalBits} bits` },
+                { item: state.lang === 'en' ? "Page Table Entries count" : "Số dòng bảng phân trang", val: pte }
+            ];
+
+            let tableHtml = "";
+            summaryData.forEach(row => {
+                tableHtml += `
+                    <tr>
+                        <td class="px-3 py-2 text-left text-slate-700 font-medium">${row.item}</td>
+                        <td class="px-3 py-2 font-mono text-indigo-600">${row.val}</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('calc-summary-body').innerHTML = tableHtml;
+
+            // Update visual format boxes
+            document.getElementById('p-bit-val').innerText = `${pageBits} bits`;
+            document.getElementById('d-bit-val').innerText = `${offsetBits} bits`;
+            document.getElementById('f-bit-val').innerText = `${frameBits} bits`;
+            document.getElementById('df-bit-val').innerText = `${offsetBits} bits`;
+
+            // Adjust width proportions of boxes dynamically
+            const logicalTotal = logicalBits || 1;
+            const physicalTotal = physicalBits || 1;
+            document.getElementById('lbl-p-bit-box').style.width = `${(pageBits / logicalTotal) * 100}%`;
+            document.getElementById('lbl-d-bit-box').style.width = `${(offsetBits / logicalTotal) * 100}%`;
+            document.getElementById('lbl-f-bit-box').style.width = `${(frameBits / physicalTotal) * 100}%`;
+            document.getElementById('lbl-df-bit-box').style.width = `${(offsetBits / physicalTotal) * 100}%`;
+        }
+
+        // ==========================================
+        // MODE 2: ADDRESS TRANSLATION ENGINE
+        // ==========================================
+        function loadSamplePageTable() {
+            document.getElementById('trans-table').value = `0,1\n1,5\n2,3\n3,6`;
+        }
+
+        // Helper: Parses page table text input into dynamic hash map
+        function parsePageTable(text) {
+            const map = {};
+            const lines = text.trim().split('\n');
+            lines.forEach(line => {
+                let trimmed = line.trim();
+                if (trimmed === '') return;
+                let parts = trimmed.split(/[\s,;\->:]+/).map(x => parseInt(x));
+                if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    map[parts[0]] = parts[1];
+                }
+            });
+            return map;
+        }
+
+        function translateAddress() {
+            hideInputError();
+            
+            const pageSize = parseInt(document.getElementById('trans-size').value);
+            const logicalAddress = parseInt(document.getElementById('trans-address').value);
+            const tableText = document.getElementById('trans-table').value;
+
+            if (isNaN(pageSize) || isNaN(logicalAddress) || pageSize <= 0 || logicalAddress < 0) {
+                showInputError(translations[state.lang].inputErrorText);
+                return;
+            }
+
+            state.transSize = pageSize;
+            state.transAddress = logicalAddress;
+            state.transTableText = tableText;
+            state.transTableMap = parsePageTable(tableText);
+
+            // Compute Page + Offset values
+            const offsetBits = getLog2(pageSize);
+            const p = Math.floor(logicalAddress / pageSize);
+            const d = logicalAddress % pageSize;
+
+            // Lookup frame from table
+            const f = state.transTableMap[p];
+            const isPageFault = (f === undefined);
+
+            let stepsHtml = "";
+            let physicalAddress = 0;
+
+            if (state.lang === 'en') {
+                stepsHtml += `
+                    <div class="space-y-1">
+                        <b class="text-indigo-600 text-sm">1. Parameter Check:</b><br>
+                        - Logical Address: <b>A<sub>log</sub> = ${logicalAddress}</b><br>
+                        - Page Size: <b>S = ${pageSize}</b> Bytes.<br>
+                        <div class="my-1.5 p-1.5 bg-slate-100 rounded text-slate-800">
+                            Offset Bits = log<sub>2</sub>(${pageSize}) = ${offsetBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">2. Extract Page Number (p) & Offset (d):</b><br>
+                        - <span class="text-slate-700 font-semibold">Page Number (p):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            p = floor(A<sub>log</sub> / S) = floor(${logicalAddress} / ${pageSize}) = ${p}
+                        </div>
+                        - <span class="text-slate-700 font-semibold">Offset (d):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            d = A<sub>log</sub> mod S = ${logicalAddress} mod ${pageSize} = ${d}
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">3. Page Table Lookup:</b><br>
+                        Searching Page Table for Page index <b>p = ${p}</b>...<br>
+                `;
+                if (isPageFault) {
+                    stepsHtml += `
+                        <div class="my-2 p-2.5 bg-rose-50 rounded border border-rose-200 text-rose-700 font-bold">
+                            Page Fault Error! Page ${p} is not mapped in the Page Table.
+                        </div>
+                    </div>
+                    `;
+                } else {
+                    physicalAddress = f * pageSize + d;
+                    stepsHtml += `
+                        Mapping found: <span class="text-emerald-600 font-bold">Page ${p} &rarr; Frame ${f}</span>.
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">4. Calculate Physical Address:</b><br>
+                        <div class="my-1.5 p-2 bg-emerald-50 rounded-lg border border-emerald-150 text-center font-bold text-emerald-800">
+                            A<sub>phys</sub> = (f &times; S) + d<br>
+                            A<sub>phys</sub> = (${f} &times; ${pageSize}) + ${d} = ${physicalAddress}
+                        </div>
+                    </div>
+                    `;
+                }
+            } else {
+                stepsHtml += `
+                    <div class="space-y-1">
+                        <b class="text-indigo-600 text-sm">1. Kiểm tra Tham số:</b><br>
+                        - Địa chỉ Luận lý: <b>A<sub>log</sub> = ${logicalAddress}</b><br>
+                        - Kích thước Trang: <b>S = ${pageSize}</b> Bytes.<br>
+                        <div class="my-1.5 p-1.5 bg-slate-100 rounded text-slate-800">
+                            Số bit Độ dời = log<sub>2</sub>(${pageSize}) = ${offsetBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">2. Tách số Trang (p) & Độ dời (d):</b><br>
+                        - <span class="text-slate-700 font-semibold">Số Trang (p):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            p = floor(A<sub>log</sub> / S) = floor(${logicalAddress} / ${pageSize}) = ${p}
+                        </div>
+                        - <span class="text-slate-700 font-semibold">Độ dời (d):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            d = A<sub>log</sub> mod S = ${logicalAddress} mod ${pageSize} = ${d}
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">3. Tra cứu Bảng Phân trang:</b><br>
+                        Tìm dòng cho trang ảo <b>p = ${p}</b>...<br>
+                `;
+                if (isPageFault) {
+                    stepsHtml += `
+                        <div class="my-2 p-2.5 bg-rose-50 rounded border border-rose-200 text-rose-700 font-bold">
+                            Lỗi Trang (Page Fault)! Trang ${p} chưa được ánh xạ vào RAM.
+                        </div>
+                    </div>
+                    `;
+                } else {
+                    physicalAddress = f * pageSize + d;
+                    stepsHtml += `
+                        Tìm thấy ánh xạ: <span class="text-emerald-600 font-bold">Trang ${p} &rarr; Khung trang ${f}</span>.
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">4. Tính Địa chỉ Vật lý đích:</b><br>
+                        <div class="my-1.5 p-2 bg-emerald-50 rounded-lg border border-emerald-150 text-center font-bold text-emerald-800">
+                            A<sub>phys</sub> = (f &times; S) + d<br>
+                            A<sub>phys</sub> = (${f} &times; ${pageSize}) + ${d} = ${physicalAddress}
+                        </div>
+                    </div>
+                    `;
+                }
+            }
+
+            document.getElementById('trans-steps-log').innerHTML = stepsHtml;
+
+            // Sync visual mapping components
+            document.getElementById('diag-logical-full').innerText = logicalAddress;
+            document.getElementById('diag-logical-p').innerText = p;
+            document.getElementById('diag-logical-d').innerText = d;
+            document.getElementById('diag-flow-p').innerText = `Page ${p}`;
+
+            // Reset Badge highlights
+            const badgeEl = document.getElementById('trans-badge');
+            if (isPageFault) {
+                badgeEl.innerText = translations[state.lang].stepFailed;
+                badgeEl.className = "px-2.5 py-0.5 rounded text-[10px] font-extrabold shadow-sm bg-rose-100 text-rose-700 border border-rose-200 uppercase";
+                
+                document.getElementById('diag-flow-f').innerText = "FAULT";
+                document.getElementById('diag-flow-f').className = "text-rose-600 font-extrabold font-mono text-sm";
+                document.getElementById('diag-physical-f').innerText = "✗";
+                document.getElementById('diag-physical-d').innerText = d;
+                document.getElementById('diag-physical-full').innerText = "Page Fault";
+                document.getElementById('diag-phys-box').className = "flex justify-between items-center gap-1 bg-rose-50 border border-rose-200 rounded shadow-sm font-mono text-xs";
+                document.getElementById('diag-phys-f-box').className = "bg-rose-100 border border-rose-200 px-2 py-0.5 rounded text-rose-700 text-center font-bold";
+            } else {
+                badgeEl.innerText = translations[state.lang].stepSuccess;
+                badgeEl.className = "px-2.5 py-0.5 rounded text-[10px] font-extrabold shadow-sm bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase";
+                
+                document.getElementById('diag-flow-f').innerText = `Frame ${f}`;
+                document.getElementById('diag-flow-f').className = "text-emerald-600 font-bold font-mono text-sm";
+                document.getElementById('diag-physical-f').innerText = f;
+                document.getElementById('diag-physical-d').innerText = d;
+                document.getElementById('diag-physical-full').innerText = physicalAddress;
+                document.getElementById('diag-phys-box').className = "flex justify-between items-center gap-1 bg-white p-1.5 border border-slate-200 rounded shadow-sm font-mono text-xs";
+                document.getElementById('diag-phys-f-box').className = "bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-emerald-700 text-center font-bold";
+            }
+
+            // Draw dynamic highlighted page table table lists
+            const tblContainer = document.getElementById('diag-tbl-rows');
+            let tblHtml = "";
+            let keys = Object.keys(state.transTableMap).map(Number).sort((a,b)=>a-b);
+            
+            if (keys.length === 0) {
+                tblHtml = `<span class="text-slate-400 text-[9px]">${translations[state.lang].tblEmpty}</span>`;
+            } else {
+                keys.forEach(k => {
+                    let mapDest = state.transTableMap[k];
+                    let highlightClass = (k === p) 
+                        ? (isPageFault ? "bg-rose-100 text-rose-700 font-bold border border-rose-200" : "bg-indigo-600 text-white font-bold") 
+                        : "text-slate-500 hover:bg-slate-50";
+                    tblHtml += `
+                        <div class="flex justify-between items-center px-1.5 py-0.5 rounded ${highlightClass} transition-all">
+                            <span>p: ${k}</span>
+                            <span>&rarr;</span>
+                            <span>f: ${mapDest}</span>
+                        </div>
+                    `;
+                });
+            }
+            tblContainer.innerHTML = tblHtml;
+        }
+
+        // ==========================================
+        // MODE 3: PRACTICE GENERATOR ENGINE
+        // ==========================================
+        function setDifficulty(level) {
+            state.difficulty = level;
+            
+            document.getElementById('diff-easy').className = "py-1 text-[10px] font-bold rounded transition-all text-slate-500";
+            document.getElementById('diff-medium').className = "py-1 text-[10px] font-bold rounded transition-all text-slate-500";
+            document.getElementById('diff-hard').className = "py-1 text-[10px] font-bold rounded transition-all text-slate-500";
+            
+            document.getElementById(`diff-${level}`).className = "py-1 text-[10px] font-bold rounded transition-all bg-white text-indigo-600 shadow-sm border border-indigo-100";
+            generateNewExercise();
+        }
+
+        function generateNewExercise() {
+            state.practiceSolutionVisible = false;
+            document.getElementById('btn-pract-solve').innerText = translations[state.lang].btnPractSolve;
+            
+            // Clear all 4 inputs
+            document.getElementById('pract-ans-p').value = '';
+            document.getElementById('pract-ans-d').value = '';
+            document.getElementById('pract-ans-f').value = '';
+            document.getElementById('pract-ans-phys').value = '';
+            
+            // Hide feedback box
+            document.getElementById('pract-feedback-box').classList.add('hidden');
+
+            // Set placeholder standard text in solution panel
+            document.getElementById('pract-steps-log').innerHTML = `
+                <div class="text-slate-400 text-center py-10" id="lbl-sol-hidden">
+                    ${translations[state.lang].lblSolHidden}
+                </div>
+            `;
+
+            // Setup parameters based on difficulties
+            let numPages = 16;
+            let pageSize = 1024;
+            let numFrames = 8;
+            
+            if (state.difficulty === 'easy') {
+                pageSize = 1024;
+                numPages = 16;
+                numFrames = 8;
+            } else if (state.difficulty === 'medium') {
+                pageSize = 2048;
+                numPages = 32;
+                numFrames = 16;
+            } else { // hard
+                pageSize = 4096;
+                numPages = 64;
+                numFrames = 32;
+            }
+
+            // Create random Page Table
+            const generatedMap = {};
+            const usedFrames = new Set();
+            for (let i = 0; i < numPages; i++) {
+                // partial sparse page mapping to allow empty zones
+                if (Math.random() > 0.35) {
+                    let randomFrame;
+                    do {
+                        randomFrame = Math.floor(Math.random() * numFrames);
+                    } while (usedFrames.has(randomFrame) && usedFrames.size < numFrames);
+                    
+                    generatedMap[i] = randomFrame;
+                    usedFrames.add(randomFrame);
+                }
+            }
+
+            // Always ensure page 1 & 2 are mapped/unmapped for variety
+            if (!generatedMap[1]) generatedMap[1] = Math.floor(Math.random() * numFrames);
+
+            // Determine if we want to generate a deliberate Page Fault question (25% chance)
+            let isPageFault = Math.random() < 0.25;
+            let randomPage = 0;
+
+            if (isPageFault) {
+                // Find an unmapped page index
+                let unmapped = [];
+                for (let i = 0; i < numPages; i++) {
+                    if (generatedMap[i] === undefined) unmapped.push(i);
+                }
+                if (unmapped.length > 0) {
+                    randomPage = unmapped[Math.floor(Math.random() * unmapped.length)];
+                } else {
+                    isPageFault = false; // fallback if fully mapped
+                }
+            }
+
+            if (!isPageFault) {
+                let activeKeys = Object.keys(generatedMap);
+                if (activeKeys.length > 0) {
+                    randomPage = parseInt(activeKeys[Math.floor(Math.random() * activeKeys.length)]);
+                } else {
+                    // Fallback ensure at least one mapped entry
+                    randomPage = 2;
+                    generatedMap[2] = 5;
+                }
+            }
+
+            let randomOffset = Math.floor(Math.random() * pageSize);
+            let logicalAddress = randomPage * pageSize + randomOffset;
+
+            // Save variables to state
+            state.exercise.pages = numPages;
+            state.exercise.size = pageSize;
+            state.exercise.frames = numFrames;
+            state.exercise.tableMap = generatedMap;
+            state.exercise.logicalAddress = logicalAddress;
+            
+            state.exercise.correctPage = randomPage;
+            state.exercise.correctOffset = randomOffset;
+            state.exercise.correctFrame = generatedMap[randomPage]; // undefined if Page Fault
+            state.exercise.isPageFault = isPageFault;
+            state.exercise.correctPhysical = isPageFault ? -1 : (generatedMap[randomPage] * pageSize + randomOffset);
+
+            // String representation for question display
+            let tblTextLines = [];
+            Object.keys(generatedMap).forEach(k => {
+                tblTextLines.push(`${k}&rarr;${generatedMap[k]}`);
+            });
+            state.exercise.tableText = tblTextLines.slice(0, 10).join(', ') + (tblTextLines.length > 10 ? ' ...' : '');
+
+            renderPracticeQuestion();
+        }
+
+        // Render dynamic generated questions text
+        function renderPracticeQuestion() {
+            const ex = state.exercise;
+            const dict = translations[state.lang];
+            let qText = "";
+
+            if (state.lang === 'en') {
+                qText = `
+                    <p class="text-xs">A virtual memory paging system operates with the following metrics:</p>
+                    <ul class="list-disc list-inside space-y-1 pl-1 pt-1 text-slate-600 font-mono text-[11px]">
+                        <li>Number of Pages (N<sub>p</sub>) = <span class="text-indigo-600 font-extrabold">${ex.pages}</span></li>
+                        <li>Page Size (S) = <span class="text-amber-600 font-extrabold">${ex.size} Bytes</span></li>
+                        <li>Number of Frames (N<sub>f</sub>) = <span class="text-emerald-600 font-extrabold">${ex.frames}</span></li>
+                    </ul>
+                    <p class="pt-1.5 text-xs">The active maps of the <b class="text-slate-800">Page Table</b> are given below (Page &rarr; Frame):</p>
+                    <div class="bg-white p-2 rounded border border-slate-200 font-mono text-[11px] font-bold text-indigo-700 text-center my-1.5">
+                        ${ex.tableText}
+                    </div>
+                    <p class="pt-1 text-slate-800 font-bold text-xs">Question: Translate the Logical Address <span class="text-indigo-600 font-extrabold font-mono text-sm underline">${ex.logicalAddress}</span>. 
+                    <span class="block text-[10px] text-slate-500 font-normal mt-0.5">(Note: If a Page Fault occurs, enter "Fault" for Frame Number and Physical Address.)</span></p>
+                `;
+            } else {
+                qText = `
+                    <p class="text-xs">Một hệ thống phân trang bộ nhớ ảo có các thông số hoạt động như sau:</p>
+                    <ul class="list-disc list-inside space-y-1 pl-1 pt-1 text-slate-600 font-mono text-[11px]">
+                        <li>Số lượng Trang (N<sub>p</sub>) = <span class="text-indigo-600 font-extrabold">${ex.pages}</span></li>
+                        <li>Kích thước Trang (S) = <span class="text-amber-600 font-extrabold">${ex.size} Bytes</span></li>
+                        <li>Số lượng Khung trang (N<sub>f</sub>) = <span class="text-emerald-600 font-extrabold">${ex.frames}</span></li>
+                    </ul>
+                    <p class="pt-1.5 text-xs">Ánh xạ hoạt động của <b class="text-slate-800">Bảng phân trang</b> như dưới đây (Page &rarr; Frame):</p>
+                    <div class="bg-white p-2 rounded border border-slate-200 font-mono text-[11px] font-bold text-indigo-700 text-center my-1.5">
+                        ${ex.tableText}
+                    </div>
+                    <p class="pt-1 text-slate-800 font-bold text-xs">Yêu cầu: Dịch Địa chỉ Luận lý <span class="text-indigo-600 font-extrabold font-mono text-sm underline">${ex.logicalAddress}</span> sang địa chỉ Vật lý đích.
+                    <span class="block text-[10px] text-slate-500 font-normal mt-0.5">(Chú ý: Nếu xảy ra Lỗi trang, hãy nhập chữ "Fault" hoặc "Lỗi" cho ô Số khung trang và Địa chỉ Vật lý.)</span></p>
+                `;
+            }
+
+            document.getElementById('pract-question-text').innerHTML = qText;
+        }
+
+        // Student submission multi-step answer checker
+        function checkStudentAnswer() {
+            const dict = translations[state.lang];
+            const feedbackBox = document.getElementById('pract-feedback-box');
+
+            // Retrieve all 4 inputs
+            const rawP = document.getElementById('pract-ans-p').value.trim();
+            const rawD = document.getElementById('pract-ans-d').value.trim();
+            const rawF = document.getElementById('pract-ans-f').value.trim();
+            const rawPhys = document.getElementById('pract-ans-phys').value.trim();
+
+            if (rawP === "" || rawD === "" || rawF === "" || rawPhys === "") {
+                feedbackBox.classList.remove('hidden');
+                feedbackBox.className = "rounded-lg p-2 bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold";
+                feedbackBox.innerHTML = dict.inputErrorText;
+                return;
+            }
+
+            const ansP = parseInt(rawP);
+            const ansD = parseInt(rawD);
+
+            // Correct values references
+            const correctP = state.exercise.correctPage;
+            const correctD = state.exercise.correctOffset;
+            const correctF = state.exercise.correctFrame; // number or undefined
+            const correctPhys = state.exercise.correctPhysical; // number or -1
+
+            // Logic matching page fault text strings (e.g. "fault", "Fault", "lỗi", "loi")
+            const isFaultInput = (str) => /fault|lỗi|loi|pf|-1/i.test(str);
+
+            // Diagnostic flags
+            const isPageCorrect = (ansP === correctP);
+            const isOffsetCorrect = (ansD === correctD);
+            
+            let isFrameCorrect = false;
+            if (state.exercise.isPageFault) {
+                isFrameCorrect = isFaultInput(rawF);
+            } else {
+                isFrameCorrect = (parseInt(rawF) === correctF);
+            }
+
+            let isPhysCorrect = false;
+            if (state.exercise.isPageFault) {
+                isPhysCorrect = isFaultInput(rawPhys);
+            } else {
+                isPhysCorrect = (parseInt(rawPhys) === correctPhys);
+            }
+
+            // Mapped overall score calculation
+            let totalCorrectSteps = (isPageCorrect ? 1 : 0) + (isOffsetCorrect ? 1 : 0) + (isFrameCorrect ? 1 : 0) + (isPhysCorrect ? 1 : 0);
+            const allPassed = (totalCorrectSteps === 4);
+
+            // Construct diagnostic evaluation result table
+            let correctFText = state.exercise.isPageFault ? "Fault" : correctF;
+            let correctPhysText = state.exercise.isPageFault ? "Fault" : correctPhys;
+
+            feedbackBox.classList.remove('hidden');
+            feedbackBox.innerHTML = `
+                <div class="mb-1.5 font-bold ${allPassed ? 'text-emerald-700' : 'text-rose-700'}">
+                    ${allPassed ? dict.correctFeedback : dict.incorrectFeedback}
+                    <span class="block text-[9px] text-slate-500 font-normal">${dict.overallCorrectScore}: ${totalCorrectSteps}/4</span>
+                </div>
+                <table class="min-w-full divide-y divide-slate-200 text-center text-[9px] font-mono">
+                    <thead class="bg-slate-100 font-sans font-bold text-slate-500">
+                        <tr>
+                            <th class="px-1.5 py-0.5 text-left">${dict.tblHeaderParameter}</th>
+                            <th class="px-1.5 py-0.5">${dict.tblHeaderYourAnswer}</th>
+                            <th class="px-1.5 py-0.5">${dict.tblHeaderCorrectValue}</th>
+                            <th class="px-1.5 py-0.5">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-medium">
+                        <tr>
+                            <td class="px-1.5 py-0.5 text-left font-sans font-semibold">${dict.lblPractAnsP}</td>
+                            <td>${rawP}</td>
+                            <td class="font-bold text-slate-600">${correctP}</td>
+                            <td><span class="${isPageCorrect ? 'text-emerald-600' : 'text-rose-600'} font-bold">${isPageCorrect ? '✓' : '✗'}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="px-1.5 py-0.5 text-left font-sans font-semibold">${dict.lblPractAnsD}</td>
+                            <td>${rawD}</td>
+                            <td class="font-bold text-slate-600">${correctD}</td>
+                            <td><span class="${isOffsetCorrect ? 'text-emerald-600' : 'text-rose-600'} font-bold">${isOffsetCorrect ? '✓' : '✗'}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="px-1.5 py-0.5 text-left font-sans font-semibold">${dict.lblPractAnsF}</td>
+                            <td>${rawF}</td>
+                            <td class="font-bold text-slate-600">${correctFText}</td>
+                            <td><span class="${isFrameCorrect ? 'text-emerald-600' : 'text-rose-600'} font-bold">${isFrameCorrect ? '✓' : '✗'}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="px-1.5 py-0.5 text-left font-sans font-semibold">${dict.lblPractAnsPhys}</td>
+                            <td>${rawPhys}</td>
+                            <td class="font-bold text-slate-600">${correctPhysText}</td>
+                            <td><span class="${isPhysCorrect ? 'text-emerald-600' : 'text-rose-600'} font-bold">${isPhysCorrect ? '✓' : '✗'}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+
+            // Always reveal solution on submission to reinforce teaching
+            state.practiceSolutionVisible = true;
+            document.getElementById('btn-pract-solve').innerText = dict.btnPractSolveHide;
+            renderPracticeSolution();
+        }
+
+        function togglePracticeSolution() {
+            state.practiceSolutionVisible = !state.practiceSolutionVisible;
+            const dict = translations[state.lang];
+            
+            document.getElementById('btn-pract-solve').innerText = state.practiceSolutionVisible ? dict.btnPractSolveHide : dict.btnPractSolve;
+            
+            if (state.practiceSolutionVisible) {
+                renderPracticeSolution();
+            } else {
+                document.getElementById('pract-steps-log').innerHTML = `
+                    <div class="text-slate-400 text-center py-10" id="lbl-sol-hidden">
+                        ${translations[state.lang].lblSolHidden}
+                    </div>
+                `;
+            }
+        }
+
+        // Renders complete math walkthrough inside practice workspace
+        function renderPracticeSolution() {
+            const ex = state.exercise;
+            const offsetBits = getLog2(ex.size);
+            const p = ex.correctPage;
+            const d = ex.correctOffset;
+            const f = ex.correctFrame;
+
+            let stepsHtml = "";
+
+            if (state.lang === 'en') {
+                stepsHtml += `
+                    <div class="space-y-1">
+                        <b class="text-indigo-600 text-sm">Step 1: Extract Parameters</b><br>
+                        - Logical Address: <b>A<sub>log</sub> = ${ex.logicalAddress}</b><br>
+                        - Page Size: <b>S = ${ex.size}</b> Bytes.<br>
+                        <div class="my-1 py-1 bg-slate-100 rounded text-center text-xs">
+                            Offset Bits = log<sub>2</sub>(${ex.size}) = ${offsetBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">Step 2: Division Calculations</b><br>
+                        - <span class="text-slate-700 font-semibold">Page Number (p):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            p = floor(A<sub>log</sub> / S) = floor(${ex.logicalAddress} / ${ex.size}) = ${p}
+                        </div>
+                        - <span class="text-slate-700 font-semibold">Offset (d):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            d = A<sub>log</sub> mod S = ${ex.logicalAddress} mod ${ex.size} = ${d}
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">Step 3: Lookup Page Table</b><br>
+                        Traverse maps for Page <b>p = ${p}</b>...<br>
+                `;
+                if (ex.isPageFault) {
+                    stepsHtml += `
+                        <div class="my-2 p-2.5 bg-rose-50 rounded border border-rose-200 text-rose-700 font-bold">
+                            Page Fault! Page ${p} is NOT mapped in the Page Table (Invalid Page mapping).
+                        </div>
+                    </div>
+                    `;
+                } else {
+                    stepsHtml += `
+                        Page ${p} maps to Frame <span class="text-emerald-600 font-extrabold">f = ${f}</span>.
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">Step 4: Form Physical Destination</b><br>
+                        <div class="my-1.5 p-2 bg-emerald-50 rounded-lg border border-emerald-150 text-center font-bold text-emerald-800">
+                            A<sub>phys</sub> = (f &times; S) + d<br>
+                            A<sub>phys</sub> = (${f} &times; ${ex.size}) + ${d} = ${ex.correctPhysical}
+                        </div>
+                    </div>
+                    `;
+                }
+            } else {
+                stepsHtml += `
+                    <div class="space-y-1">
+                        <b class="text-indigo-600 text-sm">Bước 1: Trích xuất tham số đề bài</b><br>
+                        - Địa chỉ ảo luận lý: <b>A<sub>log</sub> = ${ex.logicalAddress}</b><br>
+                        - Kích thước phân trang: <b>S = ${ex.size}</b> Bytes.<br>
+                        <div class="my-1 py-1 bg-slate-100 rounded text-center text-xs">
+                            Số bit Độ dời = log<sub>2</sub>(${ex.size}) = ${offsetBits} bits
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">Bước 2: Phân tách trang (p) & độ dời (d)</b><br>
+                        - <span class="text-slate-700 font-semibold">Tìm số trang (p):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            p = floor(A<sub>log</sub> / S) = floor(${ex.logicalAddress} / ${ex.size}) = ${p}
+                        </div>
+                        - <span class="text-slate-700 font-semibold">Tìm độ dời (d):</span><br>
+                        <div class="my-1.5 p-2 bg-indigo-50/50 rounded-lg border border-indigo-100/60 text-center font-bold text-indigo-800">
+                            d = A<sub>log</sub> mod S = ${ex.logicalAddress} mod ${ex.size} = ${d}
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">Bước 3: Tra cứu Bảng phân trang</b><br>
+                        Tra cứu khóa dòng chứa Page <b>p = ${p}</b>...<br>
+                `;
+                if (ex.isPageFault) {
+                    stepsHtml += `
+                        <div class="my-2 p-2.5 bg-rose-50 rounded border border-rose-200 text-rose-700 font-bold">
+                            Lỗi trang (Page Fault)! Trang ${p} KHÔNG có ánh xạ hợp lệ trong bảng.
+                        </div>
+                    </div>
+                    `;
+                } else {
+                    stepsHtml += `
+                        Ánh xạ tìm thấy: Page ${p} sang Frame <span class="text-emerald-600 font-extrabold">f = ${f}</span>.
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 space-y-1">
+                        <b class="text-indigo-600 text-sm">Bước 4: Tính toán Địa chỉ Vật lý</b><br>
+                        <div class="my-1.5 p-2 bg-emerald-50 rounded-lg border border-emerald-150 text-center font-bold text-emerald-800">
+                            A<sub>phys</sub> = (f &times; S) + d<br>
+                            A<sub>phys</sub> = (${f} &times; ${ex.size}) + ${d} = ${ex.correctPhysical}
+                        </div>
+                    </div>
+                    `;
+                }
+            }
+
+            document.getElementById('pract-steps-log').innerHTML = stepsHtml;
+        }
+
+        // Window entry point initializer loading
+        window.onload = function() {
+            applyStaticTranslations();
+            switchMode('calculator');
+        };
+    </script>
+</body>
+</html>
