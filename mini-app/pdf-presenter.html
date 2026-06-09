@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Presenter - Interactive Slide Deck & Annotation Suite</title>
+    
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- PDF.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <style>
+        /* Smooth Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Prevent Selection during active presentations */
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Slide Transition Animations */
+        .slide-container {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+
+        /* Drag Over Effect */
+        .drag-over {
+            border-color: #0ea5e9 !important;
+            background-color: rgba(14, 165, 233, 0.05) !important;
+        }
+
+        /* Laser pointer canvas style */
+        .laser-active, .spotlight-active {
+            cursor: none !important;
+        }
+
+        /* Interactive spotlight layer overlay */
+        #spotlight-canvas, #laser-canvas {
+            pointer-events: none;
+        }
+
+        /* Presentation Mode Style overrides */
+        body.virtual-fullscreen header {
+            display: none !important;
+        }
+        body.virtual-fullscreen #sidebar-thumbnails {
+            display: none !important;
+        }
+        body.virtual-fullscreen #sidebar-presenter {
+            display: none !important;
+        }
+        body.virtual-fullscreen #floating-toolbar {
+            bottom: 2rem !important;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3) !important;
+        }
+        body.virtual-fullscreen main {
+            height: 100vh !important;
+            width: 100vw !important;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col overflow-hidden no-select font-sans transition-colors duration-200">
+
+    <!-- TOP HEADER BAR -->
+    <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 flex items-center justify-between z-30 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-primary-500 text-white p-2 rounded-xl flex items-center justify-center">
+                <i data-lucide="presentation" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">PDF Presenter</h1>
+                <p class="text-xs text-slate-400 dark:text-slate-500 font-medium">PowerPoint Slideshow from PDFs</p>
+            </div>
+        </div>
+
+        <!-- Document Metadata Display -->
+        <div id="file-meta-container" class="hidden md:flex items-center gap-3 bg-slate-100 dark:bg-slate-900 px-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+            <i data-lucide="file-text" class="w-4 h-4 text-primary-500"></i>
+            <div class="text-left">
+                <p id="meta-filename" class="text-xs font-semibold max-w-xs truncate text-slate-700 dark:text-slate-200">No file loaded</p>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500"><span id="meta-pages">0</span> Pages • <span id="meta-size">0 KB</span></p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Theme toggle -->
+            <button id="btn-theme" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Toggle Theme">
+                <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+            </button>
+            
+            <!-- Keyboard shortcuts help -->
+            <button id="btn-shortcuts" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Keyboard Shortcuts">
+                <i data-lucide="keyboard" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Reset current session config -->
+            <button id="btn-reset-session" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Clear Session & Reload">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Upload PDF File Button -->
+            <label class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer text-sm font-medium transition-colors">
+                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                <span>Open PDF</span>
+                <input type="file" id="pdf-input" accept="application/pdf" class="hidden">
+            </label>
+
+            <!-- Presentation Trigger Button -->
+            <button id="btn-present-mode" class="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+                <span>Present</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- CORE WORKSPACE CONTAINER -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- INITIAL UPLOAD DROPZONE LAYER -->
+        <div id="dropzone" class="absolute inset-0 bg-slate-50 dark:bg-slate-900 z-20 flex flex-col items-center justify-center p-8 transition-colors">
+            <div class="max-w-md w-full bg-white dark:bg-slate-950 border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-primary-500 dark:hover:border-primary-500 rounded-2xl p-10 text-center shadow-xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300" id="drop-target">
+                <div class="w-16 h-16 bg-primary-50 dark:bg-primary-950/40 text-primary-500 rounded-2xl flex items-center justify-center mb-6 animate-pulse">
+                    <i data-lucide="file-up" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Upload your Slide Document</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Drag & drop your PDF presentation here or click the button below to browse local storage.</p>
+                
+                <button onclick="document.getElementById('pdf-input').click()" class="bg-primary-500 hover:bg-primary-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2 text-sm shadow-md">
+                    <i data-lucide="folder-open" class="w-4 h-4"></i>
+                    Browse Files
+                </button>
+                <div class="mt-8 flex items-center justify-center gap-6 text-xs text-slate-400 dark:text-slate-500">
+                    <span class="flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-green-500"></i> No upload limit</span>
+                    <span class="flex items-center gap-1.5"><i data-lucide="cpu" class="w-3.5 h-3.5 text-blue-500"></i> Offline local rendering</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEFT SIDEBAR: THUMBNAILS (Collapsible) -->
+        <aside id="sidebar-thumbnails" class="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col z-10 transition-all duration-300 shrink-0">
+            <div class="h-12 border-b border-slate-100 dark:border-slate-900 px-4 flex items-center justify-between shrink-0">
+                <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Slides Index</span>
+                <button id="btn-collapse-sidebar" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-900 rounded text-slate-500" title="Collapse Sidebar">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <!-- Live thumbnail preview index -->
+            <div id="thumbnails-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <!-- Programmatically populated dynamically loaded thumbnails -->
+            </div>
+        </aside>
+
+        <!-- MAIN VIEWING CANVAS STAGE -->
+        <main class="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
+            
+            <!-- Top Controls Toolbar -->
+            <div class="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-10">
+                <div class="flex items-center gap-2">
+                    <button id="btn-toggle-sidebar" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors hidden" title="Toggle Thumbnail Sidebar">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <div class="h-4 w-px bg-slate-200 dark:border-slate-800 hidden md:block"></div>
+                    <div class="flex items-center gap-1">
+                        <button id="btn-zoom-out" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500" title="Zoom Out"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+                        <span id="zoom-percentage" class="text-xs font-semibold px-2 min-w-14 text-center">100%</span>
+                        <button id="btn-zoom-in" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500" title="Zoom In"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                        <button id="btn-zoom-fit" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 ml-1 text-xs px-2 flex items-center gap-1 bg-slate-50 dark:bg-slate-900 font-medium border border-slate-200 dark:border-slate-800" title="Fit to Screen"><i data-lucide="maximize-2" class="w-3 h-3"></i> Fit</button>
+                    </div>
+                </div>
+
+                <!-- Page / Slide Quick Navigator -->
+                <div class="flex items-center gap-2">
+                    <button id="nav-first" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 disabled:opacity-30" title="First slide"><i data-lucide="chevrons-left" class="w-4 h-4"></i></button>
+                    <button id="nav-prev" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 disabled:opacity-30" title="Previous slide"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    
+                    <div class="flex items-center gap-1.5">
+                        <input type="number" id="nav-input" min="1" max="1" value="1" class="w-12 text-center text-sm font-semibold border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-950 px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                        <span class="text-sm text-slate-400 font-medium">/</span>
+                        <span id="nav-total" class="text-sm font-medium text-slate-500 dark:text-slate-400">1</span>
+                    </div>
+
+                    <button id="nav-next" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 disabled:opacity-30" title="Next slide"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    <button id="nav-last" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 disabled:opacity-30" title="Last slide"><i data-lucide="chevrons-right" class="w-4 h-4"></i></button>
+                </div>
+
+                <!-- Annotation project & Slide PNG exports -->
+                <div class="flex items-center gap-2">
+                    <button id="btn-export-json" class="text-xs hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1.5 transition-colors" title="Export Annotations Data">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Backup
+                    </button>
+                    <button id="btn-import-json" class="text-xs hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1.5 transition-colors" title="Import Annotation Data">
+                        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import Backup
+                    </button>
+                    <button id="btn-export-png" class="text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1.5 transition-colors" title="Save annotated page as image">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i> Save Slide Image
+                    </button>
+                </div>
+            </div>
+
+            <!-- THE CANVAS CONTAINER STAGE (Where slide is generated and fits) -->
+            <div id="slide-stage" class="flex-1 overflow-auto p-8 flex items-center justify-center relative select-none">
+                <div id="slide-viewport-wrapper" class="relative shadow-2xl bg-white rounded-lg overflow-hidden transition-all duration-300" style="width: 0px; height: 0px;">
+                    <!-- LAYER 1: Core PDF Page Canvas -->
+                    <canvas id="pdf-canvas" class="absolute inset-0 block"></canvas>
+                    
+                    <!-- LAYER 2: Drawing Canvas for Persistent Slides Annotation Vector -->
+                    <canvas id="annotation-canvas" class="absolute inset-0 block"></canvas>
+
+                    <!-- LAYER 3: Overlay Laser Pointer / Spotlight Canvas Layer -->
+                    <canvas id="interactive-canvas" class="absolute inset-0 block pointer-events-auto"></canvas>
+
+                    <!-- LAYER 4: Absolute Inline Text Box Overlay for Document Locking Text Note Tool -->
+                    <input type="text" id="floating-text-input" class="absolute hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-white border-2 border-primary-500 rounded px-2 py-1 shadow-2xl z-50 focus:outline-none text-sm font-semibold">
+                </div>
+            </div>
+
+            <!-- FLOATING PRESENTATION CONTROLLER TOOLBAR -->
+            <div id="floating-toolbar" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-full px-5 py-2.5 flex items-center gap-3.5 z-40 backdrop-blur-lg scale-100 opacity-100 transition-all duration-300">
+                
+                <!-- Tool Selectors -->
+                <div class="flex items-center gap-1">
+                    <!-- Navigation Tool (Pan/Select) -->
+                    <button id="tool-pan" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300 active-tool-style bg-slate-100 dark:bg-slate-800" title="Cursor Mode (Select/Navigate)">
+                        <i data-lucide="navigation" class="w-4 h-4 rotate-45"></i>
+                    </button>
+
+                    <!-- Red Laser Pointer Button -->
+                    <button id="tool-laser" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300" title="Laser Pointer Tool (L)">
+                        <i data-lucide="radial-receiver" class="w-4 h-4 text-rose-500 fill-rose-500/20"></i>
+                    </button>
+
+                    <!-- Spotlight Focus Area -->
+                    <button id="tool-spotlight" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300" title="Spotlight Mode">
+                        <i data-lucide="eye" class="w-4 h-4 text-amber-500"></i>
+                    </button>
+                    
+                    <div class="w-px h-5 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+
+                    <!-- Highlighter -->
+                    <button id="tool-highlighter" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300" title="Highlighter (H)">
+                        <i data-lucide="highlighter" class="w-4 h-4 text-yellow-500"></i>
+                    </button>
+
+                    <!-- Draw Free Pen -->
+                    <button id="tool-pen" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300" title="Pen Tool (P)">
+                        <i data-lucide="pencil" class="w-4 h-4 text-emerald-500"></i>
+                    </button>
+
+                    <!-- Draw Shapes Menu -->
+                    <div class="relative group">
+                        <button id="tool-shapes" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300 flex items-center gap-0.5" title="Draw Shapes">
+                            <i data-lucide="shapes" class="w-4 h-4 text-blue-500"></i>
+                            <i data-lucide="chevron-up" class="w-3 h-3 text-slate-400"></i>
+                        </button>
+                        <div class="absolute bottom-12 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 shadow-xl flex gap-1 hidden group-hover:flex z-50">
+                            <button id="shape-arrow" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-600 dark:text-slate-300" title="Arrow Vector"><i data-lucide="arrow-up-right" class="w-4 h-4"></i></button>
+                            <button id="shape-rectangle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-600 dark:text-slate-300" title="Rectangle"><i data-lucide="square" class="w-4 h-4"></i></button>
+                            <button id="shape-circle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-600 dark:text-slate-300" title="Circle"><i data-lucide="circle" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Text Note Layer -->
+                    <button id="tool-text" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300" title="Text Note (T)">
+                        <i data-lucide="type" class="w-4 h-4 text-violet-500"></i>
+                    </button>
+
+                    <!-- Eraser Brush -->
+                    <button id="tool-eraser" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300" title="Eraser Tool (E)">
+                        <i data-lucide="eraser" class="w-4 h-4 text-orange-500"></i>
+                    </button>
+                </div>
+
+                <div class="w-px h-5 bg-slate-200 dark:bg-slate-800"></div>
+
+                <!-- Customizer: Color Palette -->
+                <div class="flex items-center gap-1.5">
+                    <button class="color-swatch w-5 h-5 rounded-full border border-white dark:border-slate-800 ring-2 ring-primary-500/100" style="background-color: #ef4444;" data-color="#ef4444" title="Red"></button>
+                    <button class="color-swatch w-5 h-5 rounded-full border border-white dark:border-slate-800 hover:scale-110 transition-transform" style="background-color: #22c55e;" data-color="#22c55e" title="Green"></button>
+                    <button class="color-swatch w-5 h-5 rounded-full border border-white dark:border-slate-800 hover:scale-110 transition-transform" style="background-color: #3b82f6;" data-color="#3b82f6" title="Blue"></button>
+                    <button class="color-swatch w-5 h-5 rounded-full border border-white dark:border-slate-800 hover:scale-110 transition-transform" style="background-color: #eab308;" data-color="#eab308" title="Yellow"></button>
+                    <button class="color-swatch w-5 h-5 rounded-full border border-white dark:border-slate-800 hover:scale-110 transition-transform" style="background-color: #a855f7;" data-color="#a855f7" title="Purple"></button>
+                    <button class="color-swatch w-5 h-5 rounded-full border border-white dark:border-slate-800 hover:scale-110 transition-transform" style="background-color: #0f172a;" data-color="#0f172a" title="Dark Gray"></button>
+                    <!-- Custom Native Color Picker wrapper -->
+                    <label class="cursor-pointer flex items-center justify-center w-5 h-5 rounded-full border border-slate-300 dark:border-slate-700 hover:scale-110 transition-transform overflow-hidden relative" title="Custom Color">
+                        <i data-lucide="palette" class="w-3 h-3 text-slate-500 dark:text-slate-400 absolute"></i>
+                        <input type="color" id="picker-color" class="opacity-0 w-full h-full cursor-pointer absolute">
+                    </label>
+                </div>
+
+                <div class="w-px h-5 bg-slate-200 dark:bg-slate-800"></div>
+
+                <!-- Stroke thickness/size customizations -->
+                <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                    <span id="brush-size-indicator" class="w-4 text-center">4px</span>
+                    <input type="range" id="slider-size" min="2" max="40" value="4" class="w-16 h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500" title="Adjust Tool Diameter">
+                </div>
+
+                <div class="w-px h-5 bg-slate-200 dark:bg-slate-800"></div>
+
+                <!-- Slide Undo & Redo Actions -->
+                <div class="flex items-center gap-1">
+                    <button id="btn-undo" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 disabled:opacity-30 transition-colors" title="Undo Sketch Step" disabled>
+                        <i data-lucide="undo-2" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-redo" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 disabled:opacity-30 transition-colors" title="Redo Sketch Step" disabled>
+                        <i data-lucide="redo-2" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-clear-slide" class="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 hover:text-red-600 rounded transition-colors" title="Clear Canvas Layer">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div id="presentation-divider" class="w-px h-5 bg-slate-200 dark:bg-slate-800 hidden"></div>
+
+                <!-- Exit Present Mode Floating Button -->
+                <button id="btn-exit-presentation" class="hidden p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors flex items-center justify-center shrink-0" title="Exit Presentation Mode (Esc)">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR: PRESENTER NOTES & SESSION TIMER -->
+        <aside id="sidebar-presenter" class="w-72 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col z-10 shrink-0">
+            
+            <!-- SECTION 1: Presentation Timing System -->
+            <div class="p-4 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <i data-lucide="clock" class="w-3.5 h-3.5 text-primary-500"></i> Timing Control
+                    </span>
+                    <button id="btn-timer-toggle" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-500 rounded" title="Pause Timer">
+                        <i data-lucide="pause" id="timer-toggle-icon" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 p-3.5 rounded-xl text-center shadow-inner relative overflow-hidden">
+                    <!-- Session Duration -->
+                    <div class="text-xs text-slate-400 dark:text-slate-500 font-semibold mb-0.5">Session Timer</div>
+                    <div id="session-timer-display" class="text-2xl font-mono font-bold tracking-wider text-slate-800 dark:text-white">00:00:00</div>
+                    
+                    <!-- Countdown Settings -->
+                    <div class="mt-3.5 border-t border-dashed border-slate-200 dark:border-slate-800/80 pt-3 flex flex-col gap-2">
+                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                            <span>Slide Target Alert</span>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="countdown-minutes-input" value="10" min="1" max="180" class="w-10 text-center border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded py-0.5 font-bold focus:outline-none">
+                                <span>min</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <!-- Countdown display -->
+                            <div id="countdown-timer-display" class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400">10:00</div>
+                            <div class="flex items-center gap-1">
+                                <button id="btn-countdown-start" class="text-[10px] bg-primary-500 text-white font-semibold px-2 py-1 rounded shadow-sm hover:bg-primary-600 transition-colors">Start</button>
+                                <button id="btn-countdown-reset" class="text-[10px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Reset</button>
+                            </div>
+                        </div>
+                        <!-- Progress visual indicator -->
+                        <div class="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-1">
+                            <div id="countdown-progress-bar" class="w-full h-full bg-emerald-500 transition-all duration-1000"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: Persistent Slide Speaker Notes -->
+            <div class="flex-1 flex flex-col p-4 overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <i data-lucide="sticky-note" class="w-3.5 h-3.5 text-yellow-500"></i> Presenter's Notes
+                    </span>
+                    <span id="note-saved-badge" class="text-[10px] text-emerald-500 font-semibold opacity-0 transition-opacity flex items-center gap-1">
+                        <i data-lucide="check" class="w-3 h-3"></i> Saved
+                    </span>
+                </div>
+                <textarea id="speaker-notes-area" class="flex-1 w-full bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/60 dark:border-amber-500/20 rounded-xl p-3.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-yellow-500 dark:focus:ring-yellow-500/40 text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-600 shadow-sm" placeholder="Type presentation speaker notes for the current page here... (Automatically saved locally)"></textarea>
+                <div class="mt-2 text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 font-medium leading-relaxed">
+                    <i data-lucide="info" class="w-3 h-3 text-slate-400"></i>
+                    <span>These private lecture notes will reload when you open this file again on this browser.</span>
+                </div>
+            </div>
+            
+            <!-- Quick summary panel -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10">
+                <div class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Presentation Shortcuts</div>
+                <div class="grid grid-cols-2 gap-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                    <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1"><span>Next Slide:</span> <kbd class="px-1 bg-slate-200 dark:bg-slate-800 rounded font-mono">Space</kbd></div>
+                    <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1"><span>Laser:</span> <kbd class="px-1 bg-slate-200 dark:bg-slate-800 rounded font-mono">L</kbd></div>
+                    <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1"><span>Fullscreen:</span> <kbd class="px-1 bg-slate-200 dark:bg-slate-800 rounded font-mono">F</kbd></div>
+                    <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1"><span>Spotlight:</span> <kbd class="px-1 bg-slate-200 dark:bg-slate-800 rounded font-mono">S</kbd></div>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- AUDIO/ALERT ELEMENT FOR TIMERS -->
+    <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/911/911-84.wav" preload="auto"></audio>
+
+    <!-- KEYBOARD SHORTCUTS IN-APP DIALOG MODAL -->
+    <div id="modal-shortcuts" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300 transform scale-95 opacity-0" id="modal-content">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2 text-primary-500">
+                    <i data-lucide="keyboard" class="w-5 h-5"></i>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Keyboard Shortcuts & Hotkeys</h3>
+                </div>
+                <button id="btn-close-shortcuts" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-500">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 max-h-[70vh] overflow-y-auto space-y-4">
+                <p class="text-xs text-slate-500 dark:text-slate-400">Control your PDF slides smoothly without relying on precise mouse navigation using these intuitive hotkey shortcuts:</p>
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div class="space-y-3">
+                        <div class="font-bold text-primary-500 tracking-wide uppercase text-[10px]">Navigation</div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Next Slide</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">Space</kbd>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Next Page</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">→</kbd>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Previous Page</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">←</kbd>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Exit Present Mode</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">Esc</kbd>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="font-bold text-primary-500 tracking-wide uppercase text-[10px]">Presenter Tools</div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Laser Pointer</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">L</kbd>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Spotlight Mode</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">S</kbd>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Free Pen Draw</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">P</kbd>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <span>Highlighter Draw</span> <kbd class="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-bold">H</kbd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 flex justify-end">
+                <button id="btn-close-shortcuts-footer" class="bg-primary-500 hover:bg-primary-600 text-white font-medium px-5 py-2 rounded-lg text-xs shadow-sm transition-colors">Got it, thanks!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM DIALOG MODAL (REPLACES IFRAME-INCOMPATIBLE BROWSER ALERTS/CONFIRMS) -->
+    <div id="custom-dialog-modal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transition-all duration-300 transform scale-95 opacity-0" id="dialog-content">
+            <div class="p-6">
+                <div class="flex items-start gap-3">
+                    <div id="dialog-icon-container" class="p-2 rounded-lg bg-primary-50 dark:bg-primary-950/40 text-primary-500 shrink-0">
+                        <i id="dialog-icon" data-lucide="info" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 id="dialog-title" class="text-base font-bold text-slate-900 dark:text-white">Notification</h3>
+                        <p id="dialog-message" class="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">System feedback</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 flex justify-end gap-2">
+                <button id="dialog-btn-cancel" class="hidden px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+                <button id="dialog-btn-ok" class="bg-primary-500 hover:bg-primary-600 text-white font-semibold px-5 py-2 rounded-lg text-xs shadow-sm transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM USER INTERFACE SYSTEM ALERT BAR -->
+    <div id="toast-message" class="fixed bottom-6 right-6 bg-slate-900/95 dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm z-50 transform translate-y-20 opacity-0 transition-all duration-300 border border-slate-800 dark:border-slate-200">
+        <i data-lucide="info" class="w-5 h-5 text-primary-500"></i>
+        <span id="toast-text" class="font-semibold">Slide saved successfully!</span>
+    </div>
+
+    <!-- CORE PDF.JS PRESENTATION APPLICATION LOGIC -->
+    <script>
+        // Set PDF.js Global Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        // GLOBAL APPLICATION INSTANCE STATE
+        const AppState = {
+            pdfDoc: null,
+            pdfName: '',
+            pdfSizeFormatted: '0 KB',
+            pdfId: '', // calculated hash based on filename & size to uniquely tag localstorage assets
+            currentPage: 1,
+            totalPages: 1,
+            currentZoom: 1.0,
+            zoomMode: 'fit', // 'fit', 'custom'
+            
+            // Interaction State
+            currentTool: 'pan', // 'pan', 'laser', 'spotlight', 'pen', 'highlighter', 'arrow', 'rectangle', 'circle', 'text', 'eraser'
+            activeColor: '#ef4444',
+            activeSize: 4,
+            
+            // Annotations and Vector Paths (Stored in normalized, unscaled coordinate coordinates)
+            annotations: {}, // { pageNum: [ { type: 'path', points: [], color, size, isHighlight }, ... ] }
+            undoHistory: {}, // { pageNum: [ ... ] }
+            redoHistory: {}, // { pageNum: [ ... ] }
+            
+            // Lecture/Speaker notes
+            notes: {}, // { pageNum: "..." }
+            
+            // Presenter Mode Options
+            isPresenting: false,
+            
+            // Timer System Variables
+            sessionTimeElapsed: 0,
+            sessionTimerInterval: null,
+            countdownTimeRemaining: 600, // 10 minutes in seconds default
+            countdownTimerInterval: null,
+            countdownDurationTotal: 600,
+            timerPaused: false
+        };
+
+        // DOM elements
+        const pdfInput = document.getElementById('pdf-input');
+        const dropzone = document.getElementById('dropzone');
+        const dropTarget = document.getElementById('drop-target');
+        const sidebarThumbnails = document.getElementById('sidebar-thumbnails');
+        const thumbnailsContainer = document.getElementById('thumbnails-container');
+        const slideViewportWrapper = document.getElementById('slide-viewport-wrapper');
+        const pdfCanvas = document.getElementById('pdf-canvas');
+        const annotationCanvas = document.getElementById('annotation-canvas');
+        const interactiveCanvas = document.getElementById('interactive-canvas');
+        const floatingToolbar = document.getElementById('floating-toolbar');
+        
+        // Context layers
+        const pdfCtx = pdfCanvas.getContext('2d');
+        const annotCtx = annotationCanvas.getContext('2d');
+        const interCtx = interactiveCanvas.getContext('2d');
+
+        // Initial setup on window load
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initTheme();
+            setupEventListeners();
+            startSessionTimer();
+            setupDragAndDrop();
+        });
+
+        // Initialize User's Selected Dark/Light Theme Settings
+        function initTheme() {
+            if (localStorage.getItem('pdf_presenter_theme') === 'dark' || 
+                (!localStorage.getItem('pdf_presenter_theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        // Toggle Application Light / Dark Modes
+        document.getElementById('btn-theme').addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('pdf_presenter_theme', isDark ? 'dark' : 'light');
+        });
+
+        // Promise-based UI dialog box to replace standard browser alerts
+        function showCustomAlert(title, message, icon = 'info') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('custom-dialog-modal');
+                const content = document.getElementById('dialog-content');
+                const titleEl = document.getElementById('dialog-title');
+                const messageEl = document.getElementById('dialog-message');
+                const btnOk = document.getElementById('dialog-btn-ok');
+                const btnCancel = document.getElementById('dialog-btn-cancel');
+                const iconEl = document.getElementById('dialog-icon');
+                
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+                iconEl.setAttribute('data-lucide', icon);
+                lucide.createIcons();
+                
+                btnCancel.classList.add('hidden');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 50);
+
+                const handleOk = () => {
+                    content.classList.add('scale-95', 'opacity-0');
+                    content.classList.remove('scale-100', 'opacity-100');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        btnOk.removeEventListener('click', handleOk);
+                        resolve(true);
+                    }, 200);
+                };
+                btnOk.addEventListener('click', handleOk);
+            });
+        }
+
+        // Promise-based custom confirmation dialog component
+        function showCustomConfirm(title, message, icon = 'help-circle') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('custom-dialog-modal');
+                const content = document.getElementById('dialog-content');
+                const titleEl = document.getElementById('dialog-title');
+                const messageEl = document.getElementById('dialog-message');
+                const btnOk = document.getElementById('dialog-btn-ok');
+                const btnCancel = document.getElementById('dialog-btn-cancel');
+                const iconEl = document.getElementById('dialog-icon');
+                
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+                iconEl.setAttribute('data-lucide', icon);
+                lucide.createIcons();
+                
+                btnCancel.classList.remove('hidden');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 50);
+
+                const cleanUp = () => {
+                    content.classList.add('scale-95', 'opacity-0');
+                    content.classList.remove('scale-100', 'opacity-100');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                    }, 200);
+                };
+
+                const handleOk = () => {
+                    cleanUp();
+                    btnOk.removeEventListener('click', handleOk);
+                    btnCancel.removeEventListener('click', handleCancel);
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    cleanUp();
+                    btnOk.removeEventListener('click', handleOk);
+                    btnCancel.removeEventListener('click', handleCancel);
+                    resolve(false);
+                };
+
+                btnOk.addEventListener('click', handleOk);
+                btnCancel.addEventListener('click', handleCancel);
+            });
+        }
+
+        // Configure Presentation drag & drop actions
+        function setupDragAndDrop() {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropTarget.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropTarget.classList.add('drag-over');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropTarget.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropTarget.classList.remove('drag-over');
+                }, false);
+            });
+
+            dropTarget.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    validateAndLoadPDF(files[0]);
+                }
+            });
+        }
+
+        // Action routing based on chosen presenter tool
+        function setupEventListeners() {
+            pdfInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    validateAndLoadPDF(e.target.files[0]);
+                }
+            });
+
+            // UI Navigator Buttons
+            document.getElementById('nav-first').addEventListener('click', () => jumpToPage(1));
+            document.getElementById('nav-last').addEventListener('click', () => jumpToPage(AppState.totalPages));
+            document.getElementById('nav-prev').addEventListener('click', () => jumpToPage(AppState.currentPage - 1));
+            document.getElementById('nav-next').addEventListener('click', () => jumpToPage(AppState.currentPage + 1));
+            document.getElementById('nav-input').addEventListener('change', (e) => {
+                let val = parseInt(e.target.value);
+                if (isNaN(val) || val < 1) val = 1;
+                if (val > AppState.totalPages) val = AppState.totalPages;
+                jumpToPage(val);
+            });
+
+            // Sidebar and responsive interface collapse action
+            document.getElementById('btn-collapse-sidebar').addEventListener('click', toggleSidebar);
+            document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSidebar);
+
+            // Zoom Handlers
+            document.getElementById('btn-zoom-in').addEventListener('click', () => {
+                AppState.zoomMode = 'custom';
+                adjustZoom(0.1);
+            });
+            document.getElementById('btn-zoom-out').addEventListener('click', () => {
+                AppState.zoomMode = 'custom';
+                adjustZoom(-0.1);
+            });
+            document.getElementById('btn-zoom-fit').addEventListener('click', () => {
+                AppState.zoomMode = 'fit';
+                recalculateViewportScale();
+            });
+
+            // Dialog Modals Setup
+            const shortcutsModal = document.getElementById('modal-shortcuts');
+            const shortcutsContent = document.getElementById('modal-content');
+            
+            document.getElementById('btn-shortcuts').addEventListener('click', () => {
+                shortcutsModal.classList.remove('hidden');
+                setTimeout(() => {
+                    shortcutsContent.classList.remove('scale-95', 'opacity-0');
+                    shortcutsContent.classList.add('scale-100', 'opacity-100');
+                }, 50);
+            });
+
+            const closeShortcuts = () => {
+                shortcutsContent.classList.add('scale-95', 'opacity-0');
+                shortcutsContent.classList.remove('scale-100', 'opacity-100');
+                setTimeout(() => {
+                    shortcutsModal.classList.add('hidden');
+                }, 200);
+            };
+
+            document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
+            document.getElementById('btn-close-shortcuts-footer').addEventListener('click', closeShortcuts);
+            shortcutsModal.addEventListener('click', (e) => {
+                if (e.target === shortcutsModal) closeShortcuts();
+            });
+
+            // Resetting Session State Config
+            document.getElementById('btn-reset-session').addEventListener('click', async () => {
+                const confirmReset = await showCustomConfirm(
+                    'Reset Current Session',
+                    'Are you sure you want to clear all cached annotations, private notes, and metrics? This action is irreversible.'
+                );
+                if (confirmReset) {
+                    if (AppState.pdfId) {
+                        localStorage.removeItem(`pdf_presenter_notes_${AppState.pdfId}`);
+                        localStorage.removeItem(`pdf_presenter_ann_${AppState.pdfId}`);
+                        localStorage.removeItem(`pdf_presenter_page_${AppState.pdfId}`);
+                    }
+                    window.location.reload();
+                }
+            });
+
+            // Resize Stage Listener
+            window.addEventListener('resize', () => {
+                if (AppState.pdfDoc) {
+                    recalculateViewportScale();
+                }
+            });
+
+            // Speaker Notes System Synchronization
+            const notesArea = document.getElementById('speaker-notes-area');
+            const savedBadge = document.getElementById('note-saved-badge');
+            let notesDebounceTimer;
+            notesArea.addEventListener('input', () => {
+                savedBadge.classList.add('opacity-0');
+                clearTimeout(notesDebounceTimer);
+                notesDebounceTimer = setTimeout(() => {
+                    saveCurrentNotes();
+                    savedBadge.classList.remove('opacity-0');
+                    savedBadge.classList.add('opacity-100');
+                    setTimeout(() => savedBadge.classList.remove('opacity-100'), 1500);
+                }, 800);
+            });
+
+            // Drawing Toolbar Event Configurations
+            setupToolbarTools();
+            setupDrawingEngine();
+
+            // Slide PNG Capture Export Action
+            document.getElementById('btn-export-png').addEventListener('click', exportSlideAsImage);
+
+            // Annotation Backup Exports (JSON)
+            document.getElementById('btn-export-json').addEventListener('click', exportProjectJSON);
+            document.getElementById('btn-import-json').addEventListener('click', importProjectJSON);
+
+            // Trigger Presenter View / Fullscreen HTML Canvas API
+            document.getElementById('btn-present-mode').addEventListener('click', togglePresentationMode);
+            document.getElementById('btn-exit-presentation').addEventListener('click', exitPresentationMode);
+            
+            // Watch for HTML Fullscreen changes to reset states
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+            // Timer controller triggers
+            setupTimerActions();
+
+            // GLOBAL PRESENTATION KEYBOARD HOTKEYS CONTROL
+            document.addEventListener('keydown', handleGlobalKeydowns);
+        }
+
+        // Toast feedback alerts
+        function showToast(message) {
+            const toast = document.getElementById('toast-message');
+            document.getElementById('toast-text').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            clearTimeout(toast.timeout);
+            toast.timeout = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Format PDF Size values
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        // Validate local uploaded files, prevent system threats, parse PDF pages
+        function validateAndLoadPDF(file) {
+            if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+                showCustomAlert('Invalid Format', 'Please upload a valid slide presentation PDF.', 'alert-triangle');
+                return;
+            }
+
+            AppState.pdfName = file.name;
+            AppState.pdfSizeFormatted = formatBytes(file.size);
+            
+            // Uniquely identify the PDF based on metadata to load local storage configurations correctly
+            AppState.pdfId = btoa(file.name + file.size).substring(0, 32);
+
+            const fileReader = new FileReader();
+            fileReader.onload = function () {
+                const typedarray = new Uint8Array(this.result);
+                loadPDFjsDocument(typedarray);
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
+
+        // Process document with PDF.js engine
+        async function loadPDFjsDocument(pdfData) {
+            try {
+                // UI feedback
+                const presentBtn = document.getElementById('btn-present-mode');
+                presentBtn.innerHTML = '<span>Processing Slides...</span>';
+
+                // Core load
+                AppState.pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                AppState.totalPages = AppState.pdfDoc.numPages;
+                
+                // Update Metadata elements
+                document.getElementById('meta-filename').textContent = AppState.pdfName;
+                document.getElementById('meta-pages').textContent = AppState.totalPages;
+                document.getElementById('meta-size').textContent = AppState.pdfSizeFormatted;
+                document.getElementById('file-meta-container').classList.remove('hidden');
+                
+                document.getElementById('nav-total').textContent = AppState.totalPages;
+                document.getElementById('nav-input').max = AppState.totalPages;
+
+                // Load cached notes and vector annotations from localStorage
+                loadSavedNotesAndAnnotations();
+
+                // Trigger Interface UI view state changes
+                dropzone.classList.add('hidden');
+                document.getElementById('btn-toggle-sidebar').classList.remove('hidden');
+                presentBtn.disabled = false;
+                presentBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4 fill-white"></i><span>Present</span>';
+                lucide.createIcons();
+
+                // Build thumbnails dynamic container
+                buildThumbnailsIndex();
+
+                // Render first page or restored session page
+                const restoredPage = localStorage.getItem(`pdf_presenter_page_${AppState.pdfId}`);
+                const pageToLoad = restoredPage ? parseInt(restoredPage) : 1;
+                jumpToPage(pageToLoad);
+
+                showToast(`Loaded ${AppState.totalPages} presentation slides!`);
+            } catch (err) {
+                console.error("PDF engine crash detail: ", err);
+                showCustomAlert('Rendering Error', 'PDF rendering failed. Verify that your document is password protected, restricted, or corrupted.', 'alert-circle');
+                document.getElementById('btn-present-mode').disabled = true;
+            }
+        }
+
+        // Build lazy loaded visual thumbnail directory
+        function buildThumbnailsIndex() {
+            thumbnailsContainer.innerHTML = '';
+            
+            for (let i = 1; i <= AppState.totalPages; i++) {
+                const thumbWrapper = document.createElement('div');
+                thumbWrapper.className = `group cursor-pointer border border-slate-200 dark:border-slate-800 rounded-lg p-2 bg-slate-50 dark:bg-slate-900/30 hover:border-primary-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all ${i === AppState.currentPage ? 'ring-2 ring-primary-500 border-transparent bg-primary-50/50 dark:bg-primary-950/20' : ''}`;
+                thumbWrapper.setAttribute('data-page-index', i);
+                thumbWrapper.id = `thumb-item-${i}`;
+                
+                thumbWrapper.innerHTML = `
+                    <div class="relative aspect-[4/3] bg-white dark:bg-slate-950 rounded flex items-center justify-center border border-slate-100 dark:border-slate-900 overflow-hidden shadow-sm">
+                        <!-- Thumbnail canvas gets rendered on intersection scroll lazyload -->
+                        <canvas id="thumb-canvas-${i}" class="max-w-full max-h-full opacity-60 group-hover:opacity-100 transition-opacity"></canvas>
+                        <span class="absolute bottom-1 right-1 bg-slate-900/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded leading-none shadow-sm">${i}</span>
+                    </div>
+                `;
+
+                thumbWrapper.addEventListener('click', () => jumpToPage(i));
+                thumbnailsContainer.appendChild(thumbWrapper);
+            }
+
+            // Implement Visual Lazy Load to avoid memory leaks during huge presentation loading
+            lazyLoadThumbnails();
+        }
+
+        // Intersection observer to draw thumbnail canvases only when visible inside sidebar viewport
+        function lazyLoadThumbnails() {
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const element = entry.target;
+                        const pageNum = parseInt(element.getAttribute('data-page-index'));
+                        renderThumbnailCanvas(pageNum);
+                        obs.unobserve(element);
+                    }
+                });
+            }, { root: thumbnailsContainer, threshold: 0.1 });
+
+            for (let i = 1; i <= AppState.totalPages; i++) {
+                const item = document.getElementById(`thumb-item-${i}`);
+                if (item) observer.observe(item);
+            }
+        }
+
+        // Execute PDF.js renderer for single individual thumbnail element
+        async function renderThumbnailCanvas(pageNum) {
+            try {
+                const canvas = document.getElementById(`thumb-canvas-${pageNum}`);
+                if (!canvas) return;
+
+                const page = await AppState.pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 0.25 });
+                
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                const renderContext = {
+                    canvasContext: canvas.getContext('2d'),
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+            } catch (err) {
+                console.error("Thumbnail rendering engine failure:", err);
+            }
+        }
+
+        // Transition slide, store settings, clean stage wrappers
+        async function jumpToPage(pageNum) {
+            if (!AppState.pdfDoc) return;
+            if (pageNum < 1 || pageNum > AppState.totalPages) return;
+
+            // Save notes of current page before switching
+            saveCurrentNotes();
+
+            AppState.currentPage = pageNum;
+            document.getElementById('nav-input').value = pageNum;
+
+            // Synchronize Sidebar thumbnail highlights
+            for (let i = 1; i <= AppState.totalPages; i++) {
+                const item = document.getElementById(`thumb-item-${i}`);
+                if (item) {
+                    if (i === pageNum) {
+                        item.classList.add('ring-2', 'ring-primary-500', 'border-transparent', 'bg-primary-50/50', 'dark:bg-primary-950/20');
+                        // Auto scroll view inside thumbnails list
+                        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } else {
+                        item.classList.remove('ring-2', 'ring-primary-500', 'border-transparent', 'bg-primary-50/50', 'dark:bg-primary-950/20');
+                    }
+                }
+            }
+
+            // Sync navigation buttons disabled configurations
+            document.getElementById('nav-prev').disabled = pageNum === 1;
+            document.getElementById('nav-first').disabled = pageNum === 1;
+            document.getElementById('nav-next').disabled = pageNum === AppState.totalPages;
+            document.getElementById('nav-last').disabled = pageNum === AppState.totalPages;
+
+            // Load saved note values for new slide page
+            const savedNotes = AppState.notes[pageNum] || '';
+            document.getElementById('speaker-notes-area').value = savedNotes;
+
+            // Render presentation slide page to stage
+            await renderSlidePage(pageNum);
+            
+            // Save current slide sequence index locally
+            localStorage.setItem(`pdf_presenter_page_${AppState.pdfId}`, pageNum);
+        }
+
+        // Core PDF.js Page Renderer
+        async function renderSlidePage(pageNum) {
+            try {
+                const page = await AppState.pdfDoc.getPage(pageNum);
+                
+                // Read master sizes of target containers
+                const wrapper = document.getElementById('slide-stage');
+                const stageWidth = wrapper.clientWidth - 64; // pad offset
+                const stageHeight = wrapper.clientHeight - 64;
+
+                const unscaledViewport = page.getViewport({ scale: 1.0 });
+
+                // Calculate exact responsive bounds scaling
+                let calculatedScale = 1.0;
+                if (AppState.zoomMode === 'fit') {
+                    const scaleX = stageWidth / unscaledViewport.width;
+                    const scaleY = stageHeight / unscaledViewport.height;
+                    calculatedScale = Math.min(scaleX, scaleY);
+                    AppState.currentZoom = calculatedScale;
+                } else {
+                    calculatedScale = AppState.currentZoom;
+                }
+
+                // Update text zoom indicator
+                document.getElementById('zoom-percentage').textContent = `${Math.round(AppState.currentZoom * 100)}%`;
+
+                const finalViewport = page.getViewport({ scale: calculatedScale });
+
+                // Synchronize sizes of layered elements
+                slideViewportWrapper.style.width = `${finalViewport.width}px`;
+                slideViewportWrapper.style.height = `${finalViewport.height}px`;
+
+                // Set PDF Core layers and scale matching
+                const outputDpr = window.devicePixelRatio || 1;
+                
+                pdfCanvas.width = finalViewport.width * outputDpr;
+                pdfCanvas.height = finalViewport.height * outputDpr;
+                pdfCanvas.style.width = `${finalViewport.width}px`;
+                pdfCanvas.style.height = `${finalViewport.height}px`;
+                pdfCtx.scale(outputDpr, outputDpr);
+
+                // Set Annotations Layers
+                annotationCanvas.width = finalViewport.width * outputDpr;
+                annotationCanvas.height = finalViewport.height * outputDpr;
+                annotationCanvas.style.width = `${finalViewport.width}px`;
+                annotationCanvas.style.height = `${finalViewport.height}px`;
+                annotCtx.scale(outputDpr, outputDpr);
+
+                // Set Laser Spotlight Overlay Layers
+                interactiveCanvas.width = finalViewport.width;
+                interactiveCanvas.height = finalViewport.height;
+                interactiveCanvas.style.width = `${finalViewport.width}px`;
+                interactiveCanvas.style.height = `${finalViewport.height}px`;
+
+                // Execute rendering
+                const renderContext = {
+                    canvasContext: pdfCtx,
+                    viewport: finalViewport
+                };
+                await page.render(renderContext).promise;
+
+                // Draw existing vector annotations onto current layer
+                drawSavedAnnotations();
+
+            } catch (err) {
+                console.error("PDF presentation processing error:", err);
+            }
+        }
+
+        // Adjust Zoom scaling percentage
+        function adjustZoom(amount) {
+            AppState.currentZoom = Math.max(0.3, Math.min(4.0, AppState.currentZoom + amount));
+            renderSlidePage(AppState.currentPage);
+        }
+
+        // Toggle Sidebar state
+        function toggleSidebar() {
+            sidebarThumbnails.classList.toggle('w-64');
+            sidebarThumbnails.classList.toggle('w-0');
+            sidebarThumbnails.classList.toggle('opacity-0');
+            
+            // Adjust stage renderer scales
+            setTimeout(() => {
+                recalculateViewportScale();
+            }, 305);
+        }
+
+        // Re-align viewport scale metrics dynamically
+        function recalculateViewportScale() {
+            if (AppState.pdfDoc) {
+                renderSlidePage(AppState.currentPage);
+            }
+        }
+
+        /* TIMER MANAGEMENT SYSTEM CONTROLS */
+        function startSessionTimer() {
+            AppState.sessionTimerInterval = setInterval(() => {
+                if (AppState.timerPaused) return;
+                AppState.sessionTimeElapsed++;
+                const hrs = Math.floor(AppState.sessionTimeElapsed / 3600).toString().padStart(2, '0');
+                const mins = Math.floor((AppState.sessionTimeElapsed % 3600) / 60).toString().padStart(2, '0');
+                const secs = (AppState.sessionTimeElapsed % 60).toString().padStart(2, '0');
+                document.getElementById('session-timer-display').textContent = `${hrs}:${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function setupTimerActions() {
+            const toggleBtn = document.getElementById('btn-timer-toggle');
+            const toggleIcon = document.getElementById('timer-toggle-icon');
+            
+            toggleBtn.addEventListener('click', () => {
+                AppState.timerPaused = !AppState.timerPaused;
+                if (AppState.timerPaused) {
+                    toggleIcon.setAttribute('data-lucide', 'play');
+                    showToast('Timers paused');
+                } else {
+                    toggleIcon.setAttribute('data-lucide', 'pause');
+                    showToast('Timers resumed');
+                }
+                lucide.createIcons();
+            });
+
+            // Countdown Controllers
+            const countdownStartBtn = document.getElementById('btn-countdown-start');
+            const countdownResetBtn = document.getElementById('btn-countdown-reset');
+            const countdownInput = document.getElementById('countdown-minutes-input');
+            const countdownDisplay = document.getElementById('countdown-timer-display');
+            const progressBar = document.getElementById('countdown-progress-bar');
+            const alertSound = document.getElementById('alert-sound');
+
+            countdownStartBtn.addEventListener('click', () => {
+                if (AppState.countdownTimerInterval) {
+                    // Pause countdown timer trigger
+                    clearInterval(AppState.countdownTimerInterval);
+                    AppState.countdownTimerInterval = null;
+                    countdownStartBtn.textContent = 'Resume';
+                    countdownStartBtn.className = 'text-[10px] bg-emerald-500 text-white font-semibold px-2 py-1 rounded shadow-sm hover:bg-emerald-600 transition-colors';
+                } else {
+                    // Start countdown
+                    if (countdownStartBtn.textContent === 'Start') {
+                        let minsVal = parseInt(countdownInput.value);
+                        if (isNaN(minsVal) || minsVal < 1) minsVal = 10;
+                        AppState.countdownTimeRemaining = minsVal * 60;
+                        AppState.countdownDurationTotal = AppState.countdownTimeRemaining;
+                    }
+                    countdownStartBtn.textContent = 'Pause';
+                    countdownStartBtn.className = 'text-[10px] bg-red-500 text-white font-semibold px-2 py-1 rounded shadow-sm hover:bg-red-600 transition-colors';
+                    
+                    AppState.countdownTimerInterval = setInterval(() => {
+                        if (AppState.timerPaused) return;
+                        if (AppState.countdownTimeRemaining <= 0) {
+                            clearInterval(AppState.countdownTimerInterval);
+                            AppState.countdownTimerInterval = null;
+                            countdownStartBtn.textContent = 'Start';
+                            countdownStartBtn.className = 'text-[10px] bg-primary-500 text-white font-semibold px-2 py-1 rounded shadow-sm hover:bg-primary-600 transition-colors';
+                            
+                            // Visual & Audio Alert alert trigger
+                            progressBar.style.width = '0%';
+                            countdownDisplay.textContent = '00:00';
+                            countdownDisplay.classList.add('text-rose-500', 'animate-bounce');
+                            try { alertSound.play(); } catch(e){}
+                            showToast('Presentation Slide Target Time Limit Completed!');
+                            return;
+                        }
+                        
+                        AppState.countdownTimeRemaining--;
+                        const mins = Math.floor(AppState.countdownTimeRemaining / 60).toString().padStart(2, '0');
+                        const secs = (AppState.countdownTimeRemaining % 60).toString().padStart(2, '0');
+                        countdownDisplay.textContent = `${mins}:${secs}`;
+                        
+                        // Sync ProgressBar ratio
+                        const pct = (AppState.countdownTimeRemaining / AppState.countdownDurationTotal) * 100;
+                        progressBar.style.width = `${pct}%`;
+                    }, 1000);
+                }
+            });
+
+            countdownResetBtn.addEventListener('click', () => {
+                clearInterval(AppState.countdownTimerInterval);
+                AppState.countdownTimerInterval = null;
+                countdownDisplay.classList.remove('text-rose-500', 'animate-bounce');
+                countdownStartBtn.textContent = 'Start';
+                countdownStartBtn.className = 'text-[10px] bg-primary-500 text-white font-semibold px-2 py-1 rounded shadow-sm hover:bg-primary-600 transition-colors';
+                
+                let minsVal = parseInt(countdownInput.value);
+                if (isNaN(minsVal) || minsVal < 1) minsVal = 10;
+                AppState.countdownTimeRemaining = minsVal * 60;
+                AppState.countdownDurationTotal = AppState.countdownTimeRemaining;
+                
+                const mins = Math.floor(AppState.countdownTimeRemaining / 60).toString().padStart(2, '0');
+                const secs = (AppState.countdownTimeRemaining % 60).toString().padStart(2, '0');
+                countdownDisplay.textContent = `${mins}:${secs}`;
+                progressBar.style.width = '100%';
+            });
+        }
+
+
+        /* DRAWING & VECTOR ANNOTATION ENGINE */
+        
+        // Setup Toolbar Click Routing Actions
+        function setupToolbarTools() {
+            const toolButtons = {
+                'pan': document.getElementById('tool-pan'),
+                'laser': document.getElementById('tool-laser'),
+                'spotlight': document.getElementById('tool-spotlight'),
+                'highlighter': document.getElementById('tool-highlighter'),
+                'pen': document.getElementById('tool-pen'),
+                'arrow': document.getElementById('shape-arrow'),
+                'rectangle': document.getElementById('shape-rectangle'),
+                'circle': document.getElementById('shape-circle'),
+                'text': document.getElementById('tool-text'),
+                'eraser': document.getElementById('tool-eraser')
+            };
+
+            // Switch tools functionality
+            Object.keys(toolButtons).forEach(tool => {
+                const btn = toolButtons[tool];
+                if (!btn) return;
+                
+                btn.addEventListener('click', () => {
+                    // Update Active toolbar visual outline styling
+                    Object.values(toolButtons).forEach(b => b?.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'ring-1', 'ring-primary-500/50'));
+                    
+                    // Specific highlight for tools / menus
+                    btn.classList.add('bg-slate-100', 'dark:bg-slate-800', 'ring-1', 'ring-primary-500/50');
+                    if (tool === 'arrow' || tool === 'rectangle' || tool === 'circle') {
+                        document.getElementById('tool-shapes').classList.add('bg-slate-100', 'dark:bg-slate-800', 'ring-1', 'ring-primary-500/50');
+                    } else {
+                        document.getElementById('tool-shapes').classList.remove('bg-slate-100', 'dark:bg-slate-800', 'ring-1', 'ring-primary-500/50');
+                    }
+
+                    AppState.currentTool = tool;
+                    resetInteractiveOverlayCanvas();
+
+                    // Adjust body interaction style cursor
+                    if (tool === 'laser') {
+                        interactiveCanvas.className = "absolute inset-0 block pointer-events-auto laser-active";
+                    } else if (tool === 'spotlight') {
+                        interactiveCanvas.className = "absolute inset-0 block pointer-events-auto spotlight-active";
+                    } else {
+                        interactiveCanvas.className = "absolute inset-0 block pointer-events-auto";
+                    }
+
+                    showToast(`Switched to ${tool.toUpperCase()} mode`);
+                });
+            });
+
+            // Adjust Brush Colors
+            const swatches = document.querySelectorAll('.color-swatch');
+            swatches.forEach(swatch => {
+                swatch.addEventListener('click', (e) => {
+                    swatches.forEach(s => s.classList.remove('ring-2', 'ring-primary-500/100', 'scale-110'));
+                    swatch.classList.add('ring-2', 'ring-primary-500/100');
+                    AppState.activeColor = swatch.getAttribute('data-color');
+                });
+            });
+
+            // Color Custom native Picker synchronization
+            const picker = document.getElementById('picker-color');
+            picker.addEventListener('input', (e) => {
+                AppState.activeColor = e.target.value;
+                swatches.forEach(s => s.classList.remove('ring-2', 'ring-primary-500/100', 'scale-110'));
+            });
+
+            // Brush Size Range Slider
+            const slider = document.getElementById('slider-size');
+            const indicator = document.getElementById('brush-size-indicator');
+            slider.addEventListener('input', (e) => {
+                AppState.activeSize = parseInt(e.target.value);
+                indicator.textContent = `${AppState.activeSize}px`;
+            });
+
+            // Undo, Redo, and Clear Trigger Listeners
+            document.getElementById('btn-undo').addEventListener('click', undoStep);
+            document.getElementById('btn-redo').addEventListener('click', redoStep);
+            document.getElementById('btn-clear-slide').addEventListener('click', clearCurrentSlideAnnotations);
+        }
+
+        // Dynamic State Machine drawing coordinates structure
+        let drawState = {
+            isDrawing: false,
+            startX: 0,
+            startY: 0,
+            currentPath: []
+        };
+
+        // Complete Vector drawing coordinates capturing engine
+        function setupDrawingEngine() {
+            
+            // Interaction Canvas Event Routing
+            interactiveCanvas.addEventListener('mousedown', startDrawingInteraction);
+            interactiveCanvas.addEventListener('mousemove', dragDrawingInteraction);
+            interactiveCanvas.addEventListener('mouseup', stopDrawingInteraction);
+            interactiveCanvas.addEventListener('mouseleave', handleMouseLeave);
+
+            // Handle touch displays for tablets / mobile
+            interactiveCanvas.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                interactiveCanvas.dispatchEvent(mouseEvent);
+            }, { passive: true });
+
+            interactiveCanvas.addEventListener('touchmove', (e) => {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                interactiveCanvas.dispatchEvent(mouseEvent);
+            }, { passive: true });
+
+            interactiveCanvas.addEventListener('touchend', () => {
+                const mouseEvent = new MouseEvent('mouseup', {});
+                interactiveCanvas.dispatchEvent(mouseEvent);
+            }, { passive: true });
+        }
+
+        // Get coordinates adjusted based on Canvas scaling ratio sizes
+        function getCanvasMouseCoords(e) {
+            const rect = interactiveCanvas.getBoundingClientRect();
+            // Since interactive layer is sized directly identical to client width wrapper bounding dimensions:
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            return { x, y };
+        }
+
+        function startDrawingInteraction(e) {
+            const coords = getCanvasMouseCoords(e);
+            drawState.isDrawing = true;
+            drawState.startX = coords.x;
+            drawState.startY = coords.y;
+
+            if (AppState.currentTool === 'pen' || AppState.currentTool === 'highlighter') {
+                drawState.currentPath = [{ x: coords.x, y: coords.y }];
+            } else if (AppState.currentTool === 'text') {
+                placeTextNoteAt(coords.x, coords.y);
+                drawState.isDrawing = false;
+            } else if (AppState.currentTool === 'eraser') {
+                executeEraseAction(coords.x, coords.y);
+            }
+        }
+
+        function dragDrawingInteraction(e) {
+            const coords = getCanvasMouseCoords(e);
+
+            // Trigger Laser Glowing or Spotlight focusing visuals even if mouse clicks are not pressed
+            if (AppState.currentTool === 'laser' && !drawState.isDrawing) {
+                renderLaserPointer(coords.x, coords.y);
+                return;
+            }
+            if (AppState.currentTool === 'spotlight' && !drawState.isDrawing) {
+                renderSpotlightFocus(coords.x, coords.y);
+                return;
+            }
+
+            if (!drawState.isDrawing) return;
+
+            // Handle standard annotation tools
+            interCtx.clearRect(0, 0, interactiveCanvas.width, interactiveCanvas.height);
+
+            // Real-time temporary visuals scaled in proportion to the current zoom multiplier
+            if (AppState.currentTool === 'pen') {
+                drawState.currentPath.push({ x: coords.x, y: coords.y });
+                drawFreehandPath(interCtx, drawState.currentPath, AppState.activeColor, AppState.activeSize * AppState.currentZoom, false);
+            } 
+            else if (AppState.currentTool === 'highlighter') {
+                drawState.currentPath.push({ x: coords.x, y: coords.y });
+                drawFreehandPath(interCtx, drawState.currentPath, AppState.activeColor, AppState.activeSize * 3 * AppState.currentZoom, true);
+            } 
+            else if (AppState.currentTool === 'rectangle') {
+                drawRectangle(interCtx, drawState.startX, drawState.startY, coords.x, coords.y, AppState.activeColor, AppState.activeSize * AppState.currentZoom);
+            } 
+            else if (AppState.currentTool === 'circle') {
+                drawCircle(interCtx, drawState.startX, drawState.startY, coords.x, coords.y, AppState.activeColor, AppState.activeSize * AppState.currentZoom);
+            } 
+            else if (AppState.currentTool === 'arrow') {
+                drawArrow(interCtx, drawState.startX, drawState.startY, coords.x, coords.y, AppState.activeColor, AppState.activeSize * AppState.currentZoom);
+            } 
+            else if (AppState.currentTool === 'eraser') {
+                executeEraseAction(coords.x, coords.y);
+            }
+        }
+
+        function stopDrawingInteraction(e) {
+            if (!drawState.isDrawing) return;
+            drawState.isDrawing = false;
+            
+            const coords = getCanvasMouseCoords(e);
+            interCtx.clearRect(0, 0, interactiveCanvas.width, interactiveCanvas.height);
+
+            // Normalize and store coordinate mappings relative to unscaled (zoom = 1.0) PDF parameters
+            let newAnnotation = null;
+
+            if (AppState.currentTool === 'pen' && drawState.currentPath.length > 1) {
+                const unscaledPoints = drawState.currentPath.map(p => ({
+                    x: p.x / AppState.currentZoom,
+                    y: p.y / AppState.currentZoom
+                }));
+                newAnnotation = {
+                    type: 'path',
+                    points: unscaledPoints,
+                    color: AppState.activeColor,
+                    size: AppState.activeSize,
+                    isHighlight: false
+                };
+            } 
+            else if (AppState.currentTool === 'highlighter' && drawState.currentPath.length > 1) {
+                const unscaledPoints = drawState.currentPath.map(p => ({
+                    x: p.x / AppState.currentZoom,
+                    y: p.y / AppState.currentZoom
+                }));
+                newAnnotation = {
+                    type: 'path',
+                    points: unscaledPoints,
+                    color: AppState.activeColor,
+                    size: AppState.activeSize * 3,
+                    isHighlight: true
+                };
+            } 
+            else if (AppState.currentTool === 'rectangle') {
+                newAnnotation = {
+                    type: 'rectangle',
+                    x1: drawState.startX / AppState.currentZoom,
+                    y1: drawState.startY / AppState.currentZoom,
+                    x2: coords.x / AppState.currentZoom,
+                    y2: coords.y / AppState.currentZoom,
+                    color: AppState.activeColor,
+                    size: AppState.activeSize
+                };
+            } 
+            else if (AppState.currentTool === 'circle') {
+                newAnnotation = {
+                    type: 'circle',
+                    x1: drawState.startX / AppState.currentZoom,
+                    y1: drawState.startY / AppState.currentZoom,
+                    x2: coords.x / AppState.currentZoom,
+                    y2: coords.y / AppState.currentZoom,
+                    color: AppState.activeColor,
+                    size: AppState.activeSize
+                };
+            } 
+            else if (AppState.currentTool === 'arrow') {
+                newAnnotation = {
+                    type: 'arrow',
+                    x1: drawState.startX / AppState.currentZoom,
+                    y1: drawState.startY / AppState.currentZoom,
+                    x2: coords.x / AppState.currentZoom,
+                    y2: coords.y / AppState.currentZoom,
+                    color: AppState.activeColor,
+                    size: AppState.activeSize
+                };
+            }
+
+            if (newAnnotation) {
+                pushNewAnnotation(newAnnotation);
+            }
+        }
+
+        function handleMouseLeave() {
+            drawState.isDrawing = false;
+            resetInteractiveOverlayCanvas();
+        }
+
+        function resetInteractiveOverlayCanvas() {
+            interCtx.clearRect(0, 0, interactiveCanvas.width, interactiveCanvas.height);
+        }
+
+        // Pushes vector shape to master data model array
+        function pushNewAnnotation(ann) {
+            const page = AppState.currentPage;
+            if (!AppState.annotations[page]) {
+                AppState.annotations[page] = [];
+            }
+            AppState.annotations[page].push(ann);
+
+            // Clear redo list during fresh path additions
+            AppState.redoHistory[page] = [];
+
+            // Redraw persistent canvas layer
+            drawSavedAnnotations();
+            syncUndoRedoStates();
+            saveAnnotationsToLocalStorage();
+        }
+
+        // Redraw vector layers matching specific sizing scaling adjustments
+        function drawSavedAnnotations() {
+            // Clear annotation viewport fully
+            annotCtx.clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+
+            const page = AppState.currentPage;
+            const elements = AppState.annotations[page] || [];
+
+            // Context transformations scaled dynamically to support zooming
+            annotCtx.save();
+            const outputDpr = window.devicePixelRatio || 1;
+            annotCtx.scale(outputDpr * AppState.currentZoom, outputDpr * AppState.currentZoom);
+
+            elements.forEach(el => {
+                if (el.type === 'path') {
+                    drawFreehandPath(annotCtx, el.points, el.color, el.size, el.isHighlight);
+                } else if (el.type === 'rectangle') {
+                    drawRectangle(annotCtx, el.x1, el.y1, el.x2, el.y2, el.color, el.size);
+                } else if (el.type === 'circle') {
+                    drawCircle(annotCtx, el.x1, el.y1, el.x2, el.y2, el.color, el.size);
+                } else if (el.type === 'arrow') {
+                    drawArrow(annotCtx, el.x1, el.y1, el.x2, el.y2, el.color, el.size);
+                } else if (el.type === 'text') {
+                    drawTextElement(annotCtx, el.text, el.x, el.y, el.color, el.size);
+                }
+            });
+            annotCtx.restore();
+        }
+
+        // Draw individual paths with canvas drawing properties
+        function drawFreehandPath(ctx, points, color, size, isHighlight) {
+            if (points.length < 2) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (isHighlight) {
+                ctx.globalAlpha = 0.45;
+                ctx.globalCompositeOperation = 'multiply';
+            }
+
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawRectangle(ctx, x1, y1, x2, y2, color, size) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.beginPath();
+            ctx.rect(x1, y1, x2 - x1, y2 - y1);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCircle(ctx, x1, y1, x2, y2, color, size) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.beginPath();
+            const radiusX = Math.abs(x2 - x1) / 2;
+            const radiusY = Math.abs(y2 - y1) / 2;
+            const centerX = x1 + (x2 - x1) / 2;
+            const centerY = y1 + (y2 - y1) / 2;
+            ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawArrow(ctx, fromx, fromy, tox, toy, color, width) {
+            ctx.save();
+            const headlen = Math.max(10, width * 3); // arrowhead size proportional to brush size
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            
+            // Draw shaft
+            ctx.beginPath();
+            ctx.moveTo(fromx, fromy);
+            ctx.lineTo(tox, toy);
+            ctx.stroke();
+            
+            // Draw dynamic arrowhead
+            ctx.beginPath();
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawTextElement(ctx, text, x, y, color, size) {
+            ctx.save();
+            ctx.fillStyle = color;
+            const fontSize = Math.max(12, size * 3); // scale font size dynamically with current settings
+            ctx.font = `600 ${fontSize}px sans-serif`;
+            ctx.textBaseline = 'top';
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        // Floating dynamic Text Note placement container positioned relative to slide bounds
+        function placeTextNoteAt(x, y) {
+            const input = document.getElementById('floating-text-input');
+            
+            // Align input field over precise click positions directly in slide wrapper viewport
+            input.style.left = `${x}px`;
+            input.style.top = `${y}px`;
+            input.style.color = AppState.activeColor;
+            input.style.fontSize = `${Math.max(12, AppState.activeSize * 2.5)}px`;
+            input.classList.remove('hidden');
+            input.value = '';
+            input.focus();
+
+            const saveText = () => {
+                const textVal = input.value.trim();
+                input.classList.add('hidden');
+                input.removeEventListener('blur', saveText);
+                input.removeEventListener('keydown', handleKeyEnter);
+
+                if (textVal) {
+                    pushNewAnnotation({
+                        type: 'text',
+                        text: textVal,
+                        x: x / AppState.currentZoom,
+                        y: y / AppState.currentZoom,
+                        color: AppState.activeColor,
+                        size: AppState.activeSize
+                    });
+                }
+            };
+
+            const handleKeyEnter = (e) => {
+                if (e.key === 'Enter') {
+                    saveText();
+                } else if (e.key === 'Escape') {
+                    input.classList.add('hidden');
+                    input.removeEventListener('blur', saveText);
+                    input.removeEventListener('keydown', handleKeyEnter);
+                }
+            };
+
+            input.addEventListener('blur', saveText);
+            input.addEventListener('keydown', handleKeyEnter);
+        }
+
+        // Collide drawing paths with vector elements to erase entire objects on hover
+        function executeEraseAction(x, y) {
+            const page = AppState.currentPage;
+            const elements = AppState.annotations[page] || [];
+            let erasedAny = false;
+
+            const unscaledX = x / AppState.currentZoom;
+            const unscaledY = y / AppState.currentZoom;
+
+            // Threshold area to catch drawing curves
+            const eraseRadius = AppState.activeSize * 2;
+
+            const remaining = elements.filter(el => {
+                if (el.type === 'path') {
+                    const points = el.points;
+                    for (let i = 0; i < points.length; i++) {
+                        const dist = Math.hypot(points[i].x - unscaledX, points[i].y - unscaledY);
+                        if (dist <= eraseRadius) {
+                            erasedAny = true;
+                            return false; // delete shape
+                        }
+                    }
+                } else if (el.type === 'rectangle' || el.type === 'circle' || el.type === 'arrow') {
+                    const distStart = Math.hypot(el.x1 - unscaledX, el.y1 - unscaledY);
+                    const distEnd = Math.hypot(el.x2 - unscaledX, el.y2 - unscaledY);
+                    if (distStart <= eraseRadius || distEnd <= eraseRadius) {
+                        erasedAny = true;
+                        return false;
+                    }
+                } else if (el.type === 'text') {
+                    const dist = Math.hypot(el.x - unscaledX, el.y - unscaledY);
+                    if (dist <= eraseRadius * 3) {
+                        erasedAny = true;
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            if (erasedAny) {
+                AppState.annotations[page] = remaining;
+                drawSavedAnnotations();
+                saveAnnotationsToLocalStorage();
+                syncUndoRedoStates();
+            }
+        }
+
+        // Sync visual states of Undo / Redo controllers
+        function syncUndoRedoStates() {
+            const page = AppState.currentPage;
+            const undoList = AppState.annotations[page] || [];
+            const redoList = AppState.redoHistory[page] || [];
+            
+            document.getElementById('btn-undo').disabled = undoList.length === 0;
+            document.getElementById('btn-redo').disabled = redoList.length === 0;
+        }
+
+        function undoStep() {
+            const page = AppState.currentPage;
+            const current = AppState.annotations[page] || [];
+            if (current.length === 0) return;
+
+            if (!AppState.redoHistory[page]) {
+                AppState.redoHistory[page] = [];
+            }
+
+            const removed = current.pop();
+            AppState.redoHistory[page].push(removed);
+
+            drawSavedAnnotations();
+            syncUndoRedoStates();
+            saveAnnotationsToLocalStorage();
+        }
+
+        function redoStep() {
+            const page = AppState.currentPage;
+            const redos = AppState.redoHistory[page] || [];
+            if (redos.length === 0) return;
+
+            if (!AppState.annotations[page]) {
+                AppState.annotations[page] = [];
+            }
+
+            const restored = redos.pop();
+            AppState.annotations[page].push(restored);
+
+            drawSavedAnnotations();
+            syncUndoRedoStates();
+            saveAnnotationsToLocalStorage();
+        }
+
+        // Clean annotations of single target slide index
+        async function clearCurrentSlideAnnotations() {
+            const confirmClear = await showCustomConfirm(
+                'Clear Current Slide',
+                'Are you sure you want to delete all vector drawings from this slide?'
+            );
+            if (confirmClear) {
+                const page = AppState.currentPage;
+                AppState.annotations[page] = [];
+                AppState.redoHistory[page] = [];
+                drawSavedAnnotations();
+                syncUndoRedoStates();
+                saveAnnotationsToLocalStorage();
+                showToast('Slide canvas cleared');
+            }
+        }
+
+
+        /* PREMIUM PRESENTATION MODE EFFECTS */
+
+        // Render Red glowing laser pointer on overlays
+        function renderLaserPointer(x, y) {
+            interCtx.clearRect(0, 0, interactiveCanvas.width, interactiveCanvas.height);
+            interCtx.save();
+            
+            const radius = AppState.activeSize * 2.5;
+
+            // Outer Radial Gradient Glow
+            let grad = interCtx.createRadialGradient(x, y, 2, x, y, radius * 3);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(0.2, 'rgba(244, 63, 94, 1)');
+            grad.addColorStop(0.5, 'rgba(244, 63, 94, 0.4)');
+            grad.addColorStop(1, 'rgba(244, 63, 94, 0)');
+
+            interCtx.fillStyle = grad;
+            interCtx.beginPath();
+            interCtx.arc(x, y, radius * 3, 0, Math.PI * 2);
+            interCtx.fill();
+            interCtx.restore();
+        }
+
+        // Highlight screen segment while shading surrounding canvas
+        function renderSpotlightFocus(x, y) {
+            interCtx.clearRect(0, 0, interactiveCanvas.width, interactiveCanvas.height);
+            interCtx.save();
+
+            const width = interactiveCanvas.width;
+            const height = interactiveCanvas.height;
+
+            // Shade outer mask block
+            interCtx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+            interCtx.fillRect(0, 0, width, height);
+
+            // Cut transparent focal path out of masked layout
+            interCtx.globalCompositeOperation = 'destination-out';
+            interCtx.beginPath();
+
+            const spotlightRadius = AppState.activeSize * 15;
+
+            // Soft light feather gradient borders
+            let gradient = interCtx.createRadialGradient(x, y, spotlightRadius * 0.75, x, y, spotlightRadius);
+            gradient.addColorStop(0, 'rgba(0,0,0,1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+            interCtx.fillStyle = gradient;
+            interCtx.arc(x, y, spotlightRadius, 0, Math.PI * 2);
+            interCtx.fill();
+            interCtx.restore();
+        }
+
+
+        /* LOCAL CACHE & IMPORT-EXPORT INFRASTRUCTURE */
+
+        // Private speaker notes local save controller
+        function saveCurrentNotes() {
+            if (!AppState.pdfId) return;
+            const notes = document.getElementById('speaker-notes-area').value;
+            AppState.notes[AppState.currentPage] = notes;
+            localStorage.setItem(`pdf_presenter_notes_${AppState.pdfId}`, JSON.stringify(AppState.notes));
+        }
+
+        function saveAnnotationsToLocalStorage() {
+            if (!AppState.pdfId) return;
+            localStorage.setItem(`pdf_presenter_ann_${AppState.pdfId}`, JSON.stringify(AppState.annotations));
+        }
+
+        // Restores configurations from previous browse cycles
+        function loadSavedNotesAndAnnotations() {
+            if (!AppState.pdfId) return;
+
+            const savedNotes = localStorage.getItem(`pdf_presenter_notes_${AppState.pdfId}`);
+            if (savedNotes) {
+                AppState.notes = JSON.parse(savedNotes);
+            } else {
+                AppState.notes = {};
+            }
+
+            const savedAnn = localStorage.getItem(`pdf_presenter_ann_${AppState.pdfId}`);
+            if (savedAnn) {
+                AppState.annotations = JSON.parse(savedAnn);
+            } else {
+                AppState.annotations = {};
+            }
+
+            // Sync structural controls
+            AppState.undoHistory = {};
+            AppState.redoHistory = {};
+            syncUndoRedoStates();
+        }
+
+        // Merges PDF core background with drawing overlays and saves as high-res local image
+        function exportSlideAsImage() {
+            if (!AppState.pdfDoc) return;
+
+            const scale = 2.0; // Export in high fidelity double pixel density
+            const pageNum = AppState.currentPage;
+
+            AppState.pdfDoc.getPage(pageNum).then(async (page) => {
+                const exportViewport = page.getViewport({ scale: scale });
+
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = exportViewport.width;
+                exportCanvas.height = exportViewport.height;
+                const exportCtx = exportCanvas.getContext('2d');
+
+                // Render Background core PDF onto exporter
+                await page.render({ canvasContext: exportCtx, viewport: exportViewport }).promise;
+
+                // Scale drawing layers coordinates onto export context variables
+                exportCtx.save();
+                exportCtx.scale(scale, scale);
+
+                const currentAnnotations = AppState.annotations[pageNum] || [];
+                currentAnnotations.forEach(el => {
+                    if (el.type === 'path') {
+                        drawFreehandPath(exportCtx, el.points, el.color, el.size, el.isHighlight);
+                    } else if (el.type === 'rectangle') {
+                        drawRectangle(exportCtx, el.x1, el.y1, el.x2, el.y2, el.color, el.size);
+                    } else if (el.type === 'circle') {
+                        drawCircle(exportCtx, el.x1, el.y1, el.x2, el.y2, el.color, el.size);
+                    } else if (el.type === 'arrow') {
+                        drawArrow(exportCtx, el.x1, el.y1, el.x2, el.y2, el.color, el.size);
+                    } else if (el.type === 'text') {
+                        drawTextElement(exportCtx, el.text, el.x, el.y, el.color, el.size);
+                    }
+                });
+                exportCtx.restore();
+
+                // Trigger file download stream
+                const link = document.createElement('a');
+                link.download = `Slide_${pageNum}_Annotated_${AppState.pdfName.replace('.pdf', '')}.png`;
+                link.href = exportCanvas.toDataURL('image/png');
+                link.click();
+                showToast(`Slide ${pageNum} exported successfully!`);
+            });
+        }
+
+        // Export Vector annotation layouts as backup JSON
+        function exportProjectJSON() {
+            if (!AppState.pdfId) return;
+            const projectData = {
+                pdfName: AppState.pdfName,
+                pdfSize: AppState.pdfSizeFormatted,
+                annotations: AppState.annotations,
+                notes: AppState.notes,
+                exportDate: new Date().toISOString()
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `PDF_Presenter_Backup_${AppState.pdfName.replace('.pdf', '')}.json`);
+            dlAnchorElem.click();
+            showToast('Annotation configuration project backup downloaded!');
+        }
+
+        // Import Project Backup JSON configuration
+        function importProjectJSON() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+                
+                reader.onload = readerEvent => {
+                    try {
+                        const content = JSON.parse(readerEvent.target.result);
+                        if (content.annotations) {
+                            AppState.annotations = content.annotations;
+                        }
+                        if (content.notes) {
+                            AppState.notes = content.notes;
+                        }
+                        // Refresh display view layouts
+                        saveAnnotationsToLocalStorage();
+                        localStorage.setItem(`pdf_presenter_notes_${AppState.pdfId}`, JSON.stringify(AppState.notes));
+                        jumpToPage(AppState.currentPage);
+                        showToast('Presentation project backup restored successfully!');
+                    } catch (err) {
+                        showCustomAlert('Import Error', 'The selected backup file is corrupted or formatted incorrectly.', 'alert-circle');
+                    }
+                }
+            }
+            input.click();
+        }
+
+
+        /* PRESENTATION MODE CONTROLLER WITH INTEGRATED SAFELOCK FALLBACKS */
+        function togglePresentationMode() {
+            if (AppState.isPresenting) {
+                exitPresentationMode();
+            } else {
+                enterPresentationMode();
+            }
+        }
+
+        function enterPresentationMode() {
+            const container = document.body;
+            AppState.isPresenting = true;
+            
+            // Default select Laser tool for presenter focus
+            document.getElementById('tool-laser').click();
+
+            // Attempt Native Fullscreen Mode with Virtual fallback on sandboxed blocks
+            if (container.requestFullscreen) {
+                container.requestFullscreen()
+                    .then(() => {
+                        updatePresentationUIState(true);
+                    })
+                    .catch(err => {
+                        console.warn("Native Fullscreen blocked (expected inside iframes). Running Virtual Fullscreen.", err);
+                        updatePresentationUIState(true);
+                    });
+            } else {
+                updatePresentationUIState(true);
+            }
+        }
+
+        function exitPresentationMode() {
+            AppState.isPresenting = false;
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+            updatePresentationUIState(false);
+        }
+
+        function updatePresentationUIState(active) {
+            const exitBtn = document.getElementById('btn-exit-presentation');
+            const divider = document.getElementById('presentation-divider');
+
+            if (active) {
+                document.body.classList.add('virtual-fullscreen');
+                sidebarThumbnails.classList.add('hidden');
+                exitBtn.classList.remove('hidden');
+                divider.classList.remove('hidden');
+                document.getElementById('floating-toolbar').classList.add('shadow-rose-500/20', 'border-rose-500/40');
+                showToast('Presentation Active. Press Esc or click red logout icon to exit.');
+            } else {
+                document.body.classList.remove('virtual-fullscreen');
+                sidebarThumbnails.classList.remove('hidden');
+                exitBtn.classList.add('hidden');
+                divider.classList.add('hidden');
+                document.getElementById('floating-toolbar').classList.remove('shadow-rose-500/20', 'border-rose-500/40');
+            }
+            setTimeout(recalculateViewportScale, 300);
+        }
+
+        // Watch for standard HTML Fullscreen change triggers
+        function handleFullscreenChange() {
+            if (!document.fullscreenElement && AppState.isPresenting) {
+                // User pressed Esc inside native mode, synchronize with Virtual Exit State
+                exitPresentationMode();
+            }
+        }
+
+
+        /* KEYBOARD NAVIGATION SHORTCUTS INTERACTION HANDLERS */
+        function handleGlobalKeydowns(e) {
+            // Prevent interference if target is active textfields
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+
+            switch(e.key.toLowerCase()) {
+                case ' ': // Next slide page
+                    e.preventDefault();
+                    jumpToPage(AppState.currentPage + 1);
+                    break;
+                case 'arrowright':
+                    jumpToPage(AppState.currentPage + 1);
+                    break;
+                case 'arrowleft':
+                    jumpToPage(AppState.currentPage - 1);
+                    break;
+                case 'escape':
+                    if (AppState.isPresenting) {
+                        exitPresentationMode();
+                    }
+                    break;
+                case 'f': // Toggle presentation view
+                    togglePresentationMode();
+                    break;
+                case 'l': // Laser pointer shortcut
+                    document.getElementById('tool-laser').click();
+                    break;
+                case 's': // Spotlight shortcut
+                    document.getElementById('tool-spotlight').click();
+                    break;
+                case 'p': // Pen shortcut
+                    document.getElementById('tool-pen').click();
+                    break;
+                case 'h': // Highlighter shortcut
+                    document.getElementById('tool-highlighter').click();
+                    break;
+                case 'e': // Eraser shortcut
+                    document.getElementById('tool-eraser').click();
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>
