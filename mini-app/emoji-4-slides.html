@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Emoji Collection for Slides</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:Segoe UI,sans-serif;
+}
+
+body{
+    background:#f5f6fa;
+    padding:24px;
+}
+
+h1{
+    margin-bottom:16px;
+}
+
+.search{
+    width:100%;
+    padding:12px 16px;
+    font-size:16px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    margin-bottom:24px;
+}
+
+.category{
+    margin-bottom:32px;
+}
+
+.category h2{
+    margin-bottom:12px;
+    color:#333;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+    gap:12px;
+}
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:12px;
+    text-align:center;
+    cursor:pointer;
+    transition:.2s;
+    border:1px solid #eee;
+}
+
+.card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 5px 15px rgba(0,0,0,.1);
+}
+
+.emoji{
+    font-size:32px;
+    margin-bottom:8px;
+}
+
+.keyword{
+    font-size:12px;
+    color:#666;
+    word-break:break-word;
+}
+
+.toast{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    background:#222;
+    color:white;
+    padding:12px 16px;
+    border-radius:8px;
+    opacity:0;
+    transition:.3s;
+}
+
+.toast.show{
+    opacity:1;
+}
+
+</style>
+</head>
+<body>
+
+<h1>🎨 Emoji Collection for Slides</h1>
+
+<input
+    id="search"
+    class="search"
+    placeholder="Search: rocket, ai, chart, warning..."
+>
+
+<div id="container"></div>
+
+<div id="toast" class="toast">
+    Copied!
+</div>
+
+<script>
+
+const emojiData = {
+
+"⭐ Highlights":[
+["⭐","star"],
+["🌟","highlight"],
+["🔥","hot"],
+["💡","idea"],
+["🎯","goal"],
+["🏆","achievement"],
+["🚀","rocket"],
+["📌","pin"]
+],
+
+"📊 Business & Data":[
+["📊","chart"],
+["📈","growth"],
+["📉","decline"],
+["📋","report"],
+["📄","document"],
+["📑","summary"],
+["🧮","calculate"],
+["🔍","analysis"]
+],
+
+"💻 Technology":[
+["💻","computer"],
+["🖥️","system"],
+["📱","mobile"],
+["🌐","internet"],
+["☁️","cloud"],
+["🗄️","database"],
+["🔗","api"],
+["⚙️","settings"],
+["🤖","ai"],
+["🧠","machine learning"],
+["🐍","python"],
+["🐛","bug"],
+["🛠️","development"],
+["🔒","security"],
+["🔐","authentication"]
+],
+
+"🎓 Education":[
+["🎓","education"],
+["📚","books"],
+["📖","study"],
+["📝","note"],
+["✍️","writing"],
+["🧑‍🏫","teacher"],
+["🧑‍🎓","student"],
+["🔬","research"],
+["🧪","experiment"]
+],
+
+"📈 Project Management":[
+["🎯","objective"],
+["📅","timeline"],
+["⏳","progress"],
+["🔄","iteration"],
+["🏁","finish"],
+["✅","complete"],
+["⚠️","risk"],
+["❌","failed"]
+],
+
+"👥 Team":[
+["👤","user"],
+["👥","team"],
+["🤝","collaboration"],
+["💬","discussion"],
+["📣","announcement"],
+["🧑‍💼","manager"],
+["👨‍💻","developer"],
+["👩‍💻","developer female"]
+],
+
+"⚠️ Status":[
+["🟢","success"],
+["🟡","warning"],
+["🟠","attention"],
+["🔴","critical"],
+["⚠️","warning"],
+["🚨","alert"],
+["❗","important"],
+["❌","error"]
+]
+
+};
+
+const container = document.getElementById("container");
+
+function render(filter=""){
+
+    container.innerHTML="";
+
+    Object.entries(emojiData).forEach(([group,items])=>{
+
+        const filtered = items.filter(item=>{
+
+            return item[1]
+                .toLowerCase()
+                .includes(filter.toLowerCase())
+                ||
+                item[0].includes(filter);
+
+        });
+
+        if(filtered.length===0) return;
+
+        const section=document.createElement("div");
+        section.className="category";
+
+        section.innerHTML=`
+            <h2>${group}</h2>
+            <div class="grid"></div>
+        `;
+
+        const grid=section.querySelector(".grid");
+
+        filtered.forEach(([emoji,name])=>{
+
+            const card=document.createElement("div");
+            card.className="card";
+
+            card.innerHTML=`
+                <div class="emoji">${emoji}</div>
+                <div class="keyword">${name}</div>
+            `;
+
+            card.onclick=()=>copyEmoji(emoji);
+
+            grid.appendChild(card);
+
+        });
+
+        container.appendChild(section);
+
+    });
+
+}
+
+function copyEmoji(text){
+
+    navigator.clipboard.writeText(text);
+
+    const toast=document.getElementById("toast");
+
+    toast.innerText=`Copied ${text}`;
+
+    toast.classList.add("show");
+
+    setTimeout(()=>{
+        toast.classList.remove("show");
+    },1000);
+
+}
+
+document
+.getElementById("search")
+.addEventListener("input",e=>{
+
+    render(e.target.value);
+
+});
+
+render();
+
+</script>
+
+</body>
+</html>
