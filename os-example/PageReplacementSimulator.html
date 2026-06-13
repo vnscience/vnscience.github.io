@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Replacement Simulator - Trình Mô Phỏng Thay Thế Trang</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f5f3ff',
+                            100: '#edd8ff',
+                            200: '#d9b6ff',
+                            300: '#bd80ff',
+                            400: '#9b40ff',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        }
+                    },
+                    animation: {
+                        'pulse-subtle': 'pulseSubtle 2s infinite',
+                        'cell-update': 'cellUpdate 0.4s ease-out forwards',
+                        'bounce-slow': 'bounce 2s infinite',
+                    },
+                    keyframes: {
+                        pulseSubtle: {
+                            '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+                            '50%': { opacity: '.85', transform: 'scale(0.98)' },
+                        },
+                        cellUpdate: {
+                            '0%': { transform: 'scale(0.8)', opacity: '0.5' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom light scrollbar for horizontal table scrolling */
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Highlight effects */
+        .step-active-col {
+            background-color: rgba(139, 92, 246, 0.04);
+            position: relative;
+        }
+        .step-active-col::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: #8b5cf6;
+            border-radius: 1.5px 1.5px 0 0;
+        }
+        /* Elegant light glassmorphism components */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased selection:bg-primary-500 selection:text-white overflow-y-auto lg:overflow-hidden">
+
+    <!-- Wrapper (Full height compact layout for Desktop, auto flow for Mobile) -->
+    <div class="max-w-[1550px] mx-auto px-4 py-3 flex flex-col h-screen max-h-screen">
+        
+        <!-- Header Section -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 pb-3 border-b border-slate-200 flex-shrink-0">
+            <div>
+                <div class="flex items-center gap-2.5">
+                    <span class="p-2 bg-primary-50 text-primary-600 rounded-lg border border-primary-200 shadow-sm">
+                        <!-- Custom Embedded SVG: CPU/Memory -->
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                        </svg>
+                    </span>
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary-600 via-indigo-600 to-cyan-600">
+                            PAGE REPLACEMENT SIMULATOR
+                        </h1>
+                        <p class="text-[11px] text-slate-500 font-medium">Hệ Thống Phân Tích &amp; Nhận Diện Giải Thuật Thay Thế Trang - Khoa học Máy Tính</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="loadExamExample()" class="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-300 hover:border-slate-400 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 .364l-.707 .707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                    Tải đề thi mẫu
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Alert Box (Notification Toast) -->
+        <div id="toastNotification" class="hidden fixed bottom-6 right-6 z-50 flex items-center p-4 mb-4 text-sm text-primary-800 rounded-xl bg-white border border-primary-200 shadow-xl transition-all duration-300 transform translate-y-10" role="alert">
+            <svg class="flex-shrink-0 inline w-4 h-4 me-3 text-primary-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+            </svg>
+            <div class="font-bold" id="toastMessage">Nội dung thông báo</div>
+        </div>
+
+        <!-- Navigation Tabs & Compact Input Combined Row -->
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 mb-3 pb-2 border-b border-slate-200 flex-shrink-0">
+            <!-- Tabs -->
+            <ul class="flex flex-wrap -mb-px text-xs font-bold text-center gap-1" id="tabList" role="tablist">
+                <li role="presentation">
+                    <button class="inline-flex items-center gap-1.5 px-3 py-2 border-b-2 rounded-t-lg text-primary-600 border-primary-600 active-tab bg-white/50 transition-all" id="tab-simulator-btn" onclick="switchTab('simulator')" type="button">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.7 15.3a1 1 0 001.4 0l3-3a1 1 0 000-1.4l-3-3a1 1 0 10-1.4 1.4L16.6 11H3a1 1 0 100 2h13.6l-1.9 1.9a1 1 0 000 1.4z"></path></svg>
+                        Mô phỏng &amp; Học tập
+                    </button>
+                </li>
+                <li role="presentation">
+                    <button class="inline-flex items-center gap-1.5 px-3 py-2 border-b-2 rounded-t-lg border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-all" id="tab-comparison-btn" onclick="switchTab('comparison')" type="button">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        So sánh đồng thời
+                    </button>
+                </li>
+                <li role="presentation">
+                    <button class="inline-flex items-center gap-1.5 px-3 py-2 border-b-2 rounded-t-lg border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-all" id="tab-detective-btn" onclick="switchTab('detective')" type="button">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                        Thám tử thuật toán
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Compact Input bar on the right to maximize workspace -->
+            <div class="flex items-center gap-2 flex-wrap text-xs lg:w-auto w-full">
+                <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1 flex-1 lg:flex-none">
+                    <span class="text-slate-500 font-bold whitespace-nowrap uppercase text-[10px]">Chuỗi truy xuất:</span>
+                    <input type="text" id="referenceString" value="1,2,3,4,2,1,5,6,2,1,2,3,7,6,3" onchange="executeSimulation()" class="bg-transparent focus:outline-none text-slate-800 font-mono font-bold tracking-wider w-40" placeholder="1,2,3...">
+                    <button onclick="clearRefString()" class="text-slate-400 hover:text-slate-600 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1">
+                    <span class="text-slate-500 font-bold whitespace-nowrap uppercase text-[10px]">Khung RAM:</span>
+                    <input type="number" id="frameCount" min="1" max="10" value="4" onchange="executeSimulation()" class="bg-transparent focus:outline-none text-slate-800 font-mono font-bold text-center w-8">
+                </div>
+
+                <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1" id="algoSelectContainer">
+                    <span class="text-slate-500 font-bold whitespace-nowrap uppercase text-[10px]">Thuật toán:</span>
+                    <select id="algorithmSelect" onchange="onAlgoChange()" class="bg-transparent focus:outline-none font-bold text-slate-700 cursor-pointer">
+                        <option value="FIFO">FIFO</option>
+                        <option value="LRU">LRU</option>
+                        <option value="OPT">Optimal (OPT)</option>
+                        <option value="Random">Random</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace Area (Flex Grow to fit screen) -->
+        <main class="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden pb-4">
+            
+            <!-- TAB 1: Simulator View -->
+            <div id="panel-simulator" class="tab-panel h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
+                
+                <!-- Left Simulation Dashboard (8 cols) -->
+                <div class="lg:col-span-8 flex flex-col gap-3 h-full min-h-0">
+                    
+                    <!-- Micro Interaction Control Panel -->
+                    <div class="glass-card rounded-xl p-3 shadow-sm flex items-center justify-between gap-4 flex-shrink-0">
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="stepPrev()" id="btnPrev" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1" title="Bước trước">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                                Lùi
+                            </button>
+                            
+                            <button onclick="togglePlay()" id="btnPlay" class="px-3.5 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-white font-bold text-xs transition-all flex items-center gap-1 shadow-sm">
+                                <span id="playIcon">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+                                </span>
+                                <span id="playText">Tự Động</span>
+                            </button>
+
+                            <button onclick="stepNext()" id="btnNext" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1" title="Bước tiếp">
+                                Tiếp
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+
+                            <button onclick="resetSimulation()" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 hover:border-rose-200 text-xs font-bold transition-all flex items-center gap-1" title="Đặt lại trạng thái">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"></path></svg>
+                                Đặt lại
+                            </button>
+                        </div>
+
+                        <!-- Auto Play Speed Slider -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Tốc độ:</span>
+                            <input type="range" id="speedSlider" min="200" max="3000" step="200" value="1000" onchange="updateSpeed(this.value)" class="w-20 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-500">
+                            <span id="speedValue" class="text-[10px] font-mono font-bold text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded border border-primary-100">1.0s</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Simulation Matrix Sheet (Flex Grow to adjust nicely) -->
+                    <div class="glass-card rounded-xl p-4 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden relative">
+                        <div class="flex justify-between items-center mb-2.5 flex-shrink-0">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-primary-600 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                Bảng Mô Phỏng Trạng Thái Bộ Nhớ
+                            </h3>
+                            <div class="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded">
+                                <span class="w-2 h-2 bg-indigo-500 rounded-full animate-ping"></span>
+                                Bước: <span id="simActiveColLabel" class="font-mono text-slate-800">t-0</span>
+                            </div>
+                        </div>
+
+                        <!-- Scrollable Matrix View -->
+                        <div class="overflow-x-auto overflow-y-auto flex-1 min-h-0 border border-slate-150 rounded-lg bg-slate-50/50">
+                            <table class="w-full border-collapse border-spacing-0 table-fixed min-w-[700px]" id="simulationTable">
+                                <!-- Generated Dynamically -->
+                            </table>
+                        </div>
+
+                        <!-- Visual Legends (Compact footer) -->
+                        <div class="mt-2.5 pt-2 border-t border-slate-150 grid grid-cols-4 gap-2 text-[10px] font-bold text-slate-600 flex-shrink-0">
+                            <div class="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-md border border-emerald-100">
+                                <span class="w-2.5 h-2.5 rounded bg-emerald-500"></span>
+                                <span class="truncate">Page Hit (Trúng)</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-md border border-blue-100">
+                                <span class="w-2.5 h-2.5 rounded bg-blue-500"></span>
+                                <span class="truncate">Loaded (Nạp mới)</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 px-2 py-1 bg-rose-50 rounded-md border border-rose-100">
+                                <span class="w-2.5 h-2.5 rounded bg-rose-500"></span>
+                                <span class="truncate">Page Fault (Lỗi)</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-md border border-amber-100">
+                                <span class="w-2.5 h-2.5 rounded bg-amber-500"></span>
+                                <span class="truncate">Victim (Bị thay)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Bar (Grid rows) -->
+                    <div class="grid grid-cols-4 gap-3 flex-shrink-0" id="statsContainer">
+                        <div class="glass-card rounded-xl p-2.5 flex flex-col justify-between shadow-sm relative overflow-hidden">
+                            <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Faults (Lỗi)</span>
+                            <div class="flex items-baseline gap-1 mt-1">
+                                <span id="statFaults" class="text-xl font-black text-rose-600">0</span>
+                                <span class="text-[10px] text-rose-500 font-bold" id="statFaultRate">(0%)</span>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-rose-100">
+                                <div class="h-full bg-rose-500 transition-all duration-300" id="barFaultRate" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-xl p-2.5 flex flex-col justify-between shadow-sm relative overflow-hidden">
+                            <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Hits (Trúng)</span>
+                            <div class="flex items-baseline gap-1 mt-1">
+                                <span id="statHits" class="text-xl font-black text-emerald-600">0</span>
+                                <span class="text-[10px] text-emerald-500 font-bold" id="statHitRate">(0%)</span>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-100">
+                                <div class="h-full bg-emerald-500 transition-all duration-300" id="barHitRate" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-xl p-2.5 flex flex-col justify-between shadow-sm">
+                            <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Tổng số chu kỳ</span>
+                            <span id="statTotalSteps" class="text-xl font-black mt-1 text-slate-700">0</span>
+                        </div>
+                        <div class="glass-card rounded-xl p-2.5 flex flex-col justify-between shadow-sm">
+                            <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Tiến trình</span>
+                            <span id="statProgress" class="text-xl font-black mt-1 text-primary-600">0/0</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Learning Mode sidebar (4 cols) -->
+                <div class="lg:col-span-4 flex flex-col gap-3 h-full min-h-0">
+                    <div class="glass-card rounded-xl p-4 shadow-sm flex-1 min-h-0 flex flex-col">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-150 mb-3 flex-shrink-0">
+                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <span class="bg-amber-100 text-amber-700 border border-amber-200 p-1 rounded-lg">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                </span>
+                                Chế độ học tập
+                            </h3>
+                            <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded" id="stepCounterLabel">Bước 0/0</span>
+                        </div>
+
+                        <!-- Step Details (Scrollable explanation block to preserve heights) -->
+                        <div class="flex-1 overflow-y-auto pr-1 text-xs text-slate-600 min-h-0" id="learningExplanation">
+                            <!-- Filled dynamically -->
+                        </div>
+
+                        <!-- RAM Visual State Model -->
+                        <div id="memoryVisualizer" class="mt-3 pt-3 border-t border-slate-150 hidden flex-shrink-0">
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Mô hình hóa dữ liệu RAM ảo:</h4>
+                            <div class="grid grid-cols-4 gap-2" id="ramGrid">
+                                <!-- Dynamic slots -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 2: Algorithm Comparison View -->
+            <div id="panel-comparison" class="tab-panel hidden h-full flex flex-col gap-3 min-h-0">
+                <div class="glass-card rounded-xl p-4 shadow-sm flex-1 min-h-0 flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 pb-2 border-b border-slate-200 flex-shrink-0">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">Bảng So Sánh Các Giải Thuật Đồng Thời</h3>
+                            <p class="text-[10px] text-slate-500">Đối chiếu tỷ lệ lỗi/trúng trang trên cùng dữ liệu đầu vào.</p>
+                        </div>
+                        <button onclick="runComparison()" class="flex items-center gap-1 bg-primary-600 hover:bg-primary-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-all shadow-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"></path></svg>
+                            Tính toán &amp; So Sánh
+                        </button>
+                    </div>
+
+                    <!-- Statistics Summary Table -->
+                    <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white mb-3 flex-shrink-0">
+                        <table class="w-full text-xs text-left">
+                            <thead class="text-[10px] text-slate-500 uppercase bg-slate-50 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2.5">Giải thuật</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Faults</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Hits</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Tỷ lệ Lỗi</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Tỷ lệ Trúng</th>
+                                    <th scope="col" class="px-4 py-2.5">Đồ thị hiệu năng</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparisonTableBody" class="font-medium text-slate-700">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Detailed side-by-side matrices (Scrollable grid row) -->
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-primary-600 mb-2 flex-shrink-0 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        Chi tiết trạng thái thay thế của các thuật toán
+                    </h4>
+                    <div class="flex-1 overflow-y-auto pr-1 min-h-0">
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4" id="comparisonDetailedGrids">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Algorithm Detective -->
+            <div id="panel-detective" class="tab-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+                
+                <!-- Inputs parameters (5 cols) -->
+                <div class="lg:col-span-5 h-full flex flex-col min-h-0">
+                    <div class="glass-card rounded-xl p-4 shadow-sm flex-1 flex flex-col overflow-y-auto">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span class="p-1 bg-cyan-50 text-cyan-700 rounded border border-cyan-200">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                            </span>
+                            Thám tử nhận diện giải thuật
+                        </h3>
+                        <p class="text-[11px] text-slate-500 mb-4 leading-relaxed">
+                            Nhập một số dữ kiện đã biết của bài tập bên dưới. Hệ thống sẽ phân tích, mô phỏng và xác định thuật toán tương ứng cho bạn.
+                        </p>
+
+                        <div class="space-y-3 text-xs">
+                            <!-- Detective specific inputs synchronized -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Chuỗi truy xuất:</label>
+                                    <input type="text" id="detRefString" oninput="syncRefString('detRefString')" class="w-full bg-slate-100 border border-slate-200 text-slate-800 rounded-lg p-2 font-mono font-bold" placeholder="1,2,3...">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Số frame:</label>
+                                    <input type="number" id="detFrameCount" oninput="syncFrameCount('detFrameCount')" min="1" max="10" class="w-full bg-slate-100 border border-slate-200 text-slate-800 rounded-lg p-2 text-center font-mono font-bold">
+                                </div>
+                            </div>
+
+                            <hr class="border-slate-150 my-2">
+
+                            <!-- Target criteria 1: Fault count -->
+                            <div>
+                                <label for="detectiveFaults" class="block text-[10px] font-bold text-slate-600 uppercase mb-1 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+                                    Dữ kiện 1: Tổng số Page Fault:
+                                </label>
+                                <input type="number" id="detectiveFaults" min="0" placeholder="Ví dụ: 9 (bỏ trống nếu chưa rõ)" class="w-full bg-slate-100 border border-slate-200 text-slate-800 rounded-lg p-2 font-mono">
+                            </div>
+
+                            <!-- Target criteria 2: Hit/Fault pattern string -->
+                            <div>
+                                <label for="detectivePattern" class="block text-[10px] font-bold text-slate-600 uppercase mb-1 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                                    Dữ kiện 2: Chuỗi Lỗi/Trúng (Hit/Fault):
+                                </label>
+                                <input type="text" id="detectivePattern" placeholder="Ví dụ: F, F, F, F, H, H, F..." class="w-full bg-slate-100 border border-slate-200 text-slate-800 rounded-lg p-2 font-mono">
+                                <span class="text-[9px] text-slate-400 mt-0.5 block">Sử dụng: <b>F</b> (Fault/Lỗi), <b>H</b> (Hit/Trúng) phân tách bằng dấu phẩy.</span>
+                            </div>
+
+                            <!-- Target criteria 3: Final memory frames state -->
+                            <div>
+                                <label for="detectiveFinalFrames" class="block text-[10px] font-bold text-slate-600 uppercase mb-1 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                    Dữ kiện 3: Trạng thái RAM cuối cùng:
+                                </label>
+                                <input type="text" id="detectiveFinalFrames" placeholder="Ví dụ: 6, 3, 7 (các trang trong RAM cuối cùng)" class="w-full bg-slate-100 border border-slate-200 text-slate-800 rounded-lg p-2 font-mono">
+                            </div>
+
+                            <!-- Submit button -->
+                            <button onclick="runDetective()" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white rounded-lg font-bold transition-all shadow-md mt-2 flex items-center justify-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h4m-4-3h4m-7-10a9 9 0 1118 0c0 4.137-2.673 7.649-6.425 8.87L13 18.5V21h-2v-2.5l-.575-.63A8.96 8.96 0 017 10z"></path></svg>
+                                Giải Mã Nhận Diện
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Results (7 cols) -->
+                <div class="lg:col-span-7 h-full flex flex-col min-h-0">
+                    <div class="glass-card rounded-xl p-4 shadow-sm flex-1 flex flex-col overflow-y-auto">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider pb-2 border-b border-slate-200 mb-3 flex items-center justify-between flex-shrink-0">
+                            <span>Kết quả giải mã</span>
+                            <span class="text-[10px] text-slate-400 font-bold" id="detectiveStatusLabel">Chưa khởi chạy</span>
+                        </h3>
+
+                        <div id="detectiveOutput" class="flex-1 flex flex-col justify-center items-center text-center">
+                            <div class="max-w-md space-y-2">
+                                <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-1">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <h4 class="text-xs font-bold text-slate-600">Sẵn sàng điều tra</h4>
+                                <p class="text-[11px] text-slate-500 leading-relaxed">
+                                    Cung cấp dữ liệu đã biết của bài toán vào khung bên trái rồi nhấn nút <b>"Giải Mã Nhận Diện"</b>. Thuật toán thám tử sẽ tính toán tỉ lệ trùng khớp để truy vết chính xác thuật toán gốc.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <!-- Javascript Logical Simulation Module -->
+    <script>
+        // Data states
+        let globalRefString = [1, 2, 3, 4, 2, 1, 5, 6, 2, 1, 2, 3, 7, 6, 3];
+        let globalFrameCount = 4;
+        let currentAlgorithm = 'FIFO';
+        
+        // Simulation execution results cache
+        let simData = null; 
+        
+        // Step-by-step playback states
+        let currentStepIndex = -1; // -1 means initial, empty state
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 1000; // ms
+
+        // Sync inputs between elements
+        function syncInputsToUI() {
+            document.getElementById('referenceString').value = globalRefString.join(',');
+            document.getElementById('frameCount').value = globalFrameCount;
+            document.getElementById('detRefString').value = globalRefString.join(',');
+            document.getElementById('detFrameCount').value = globalFrameCount;
+        }
+
+        // Window load
+        window.onload = function() {
+            syncInputsToUI();
+            executeSimulation();
+        }
+
+        // Notification Helper
+        function showNotification(msg) {
+            const toast = document.getElementById('toastNotification');
+            const toastMsg = document.getElementById('toastMessage');
+            toastMsg.innerText = msg;
+            toast.classList.remove('hidden');
+            toast.classList.remove('translate-y-10');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-10');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 300);
+            }, 3000);
+        }
+
+        // Preset exam loader
+        function loadExamExample() {
+            globalRefString = [1, 2, 3, 4, 2, 1, 5, 6, 2, 1, 2, 3, 7, 6, 3];
+            globalFrameCount = 4;
+            syncInputsToUI();
+            
+            showNotification("Đã nạp dữ liệu mẫu của đề thi: 1,2,3,4,2,1,5,6,2,1,2,3,7,6,3 và 4 frames.");
+            
+            // Re-run simulator logic
+            executeSimulation();
+            
+            // If detective panel is active, run it too
+            const activeTab = document.querySelector('.active-tab');
+            if (activeTab && activeTab.id === 'tab-detective-btn') {
+                runDetective();
+            }
+        }
+
+        // Clear reference string
+        function clearRefString() {
+            document.getElementById('referenceString').value = '';
+            document.getElementById('detRefString').value = '';
+        }
+
+        // Detect manual changes on inputs
+        function getInputs() {
+            const refStrInput = document.getElementById('referenceString').value;
+            const framesInput = parseInt(document.getElementById('frameCount').value, 10);
+
+            if (!refStrInput.trim()) {
+                showNotification("Vui lòng nhập chuỗi tham chiếu trang!");
+                return false;
+            }
+
+            if (isNaN(framesInput) || framesInput <= 0) {
+                showNotification("Số khung trang (Frame Count) phải là số dương lớn hơn 0!");
+                return false;
+            }
+            if (framesInput > 10) {
+                showNotification("Số lượng frame giới hạn từ 1 đến 10 để bảo đảm giao diện!");
+                return false;
+            }
+
+            // Parse ref string
+            globalRefString = refStrInput.split(/[\s,]+/)
+                .map(s => s.trim())
+                .filter(s => s !== "")
+                .map(s => {
+                    const num = parseInt(s, 10);
+                    return isNaN(num) ? s : num; // supports characters too
+                });
+
+            globalFrameCount = framesInput;
+            return true;
+        }
+
+        function syncRefString(elementId) {
+            const val = document.getElementById(elementId).value;
+            document.getElementById('referenceString').value = val;
+            document.getElementById('detRefString').value = val;
+        }
+
+        function syncFrameCount(elementId) {
+            const val = document.getElementById(elementId).value;
+            document.getElementById('frameCount').value = val;
+            document.getElementById('detFrameCount').value = val;
+        }
+
+        function onAlgoChange() {
+            currentAlgorithm = document.getElementById('algorithmSelect').value;
+            executeSimulation();
+        }
+
+        // Main Switch Tabs Logic
+        function switchTab(tabName) {
+            // Remove active classes
+            document.querySelectorAll('#tabList button').forEach(btn => {
+                btn.classList.remove('text-primary-600', 'border-primary-600', 'active-tab', 'bg-white/50');
+                btn.classList.add('border-transparent', 'text-slate-500');
+            });
+
+            // Add active class to corresponding button
+            const activeBtn = document.getElementById(`tab-${tabName}-btn`);
+            activeBtn.classList.remove('border-transparent', 'text-slate-500');
+            activeBtn.classList.add('text-primary-600', 'border-primary-600', 'active-tab', 'bg-white/50');
+
+            // Hide all panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+
+            // Show current panel
+            document.getElementById(`panel-${tabName}`).classList.remove('hidden');
+
+            // Toggle select algorithm visibility since it's only needed for simulator
+            if (tabName === 'simulator') {
+                document.getElementById('algoSelectContainer').classList.remove('hidden');
+                executeSimulation();
+            } else if (tabName === 'comparison') {
+                document.getElementById('algoSelectContainer').classList.add('hidden');
+                runComparison();
+            } else if (tabName === 'detective') {
+                document.getElementById('algoSelectContainer').classList.add('hidden');
+            }
+        }
+
+        // Playback speed controller
+        function updateSpeed(val) {
+            playSpeed = parseInt(val, 10);
+            document.getElementById('speedValue').innerText = `${(playSpeed / 1000).toFixed(1)}s`;
+            if (isPlaying) {
+                // Restart timer with new speed
+                clearInterval(playInterval);
+                playInterval = setInterval(stepNext, playSpeed);
+            }
+        }
+
+        // Core execution router
+        function executeSimulation() {
+            if (!getInputs()) return;
+
+            stopAutoPlay();
+
+            // Run chosen algorithm
+            if (currentAlgorithm === 'FIFO') {
+                simData = simulateFIFO(globalRefString, globalFrameCount);
+            } else if (currentAlgorithm === 'LRU') {
+                simData = simulateLRU(globalRefString, globalFrameCount);
+            } else if (currentAlgorithm === 'OPT') {
+                simData = simulateOPT(globalRefString, globalFrameCount);
+            } else if (currentAlgorithm === 'Random') {
+                simData = simulateRandom(globalRefString, globalFrameCount);
+            }
+
+            // Reset stepper pointer to the end by default for initial display, or keep 0
+            currentStepIndex = globalRefString.length - 1; // display full table
+            renderSimulationUI();
+        }
+
+        // ==========================================
+        // ALGORITHM IMPLEMENTATIONS
+        // ==========================================
+
+        /**
+         * First In First Out (FIFO) Page Replacement
+         */
+        function simulateFIFO(refString, frameCount) {
+            let frames = Array(frameCount).fill(null);
+            let steps = [];
+            let hitCount = 0;
+            let faultCount = 0;
+            let queue = []; // Keeps track of loading order of frame slots
+            let loadedAtStep = Array(frameCount).fill(-1); // Stores step index where currently loaded page was inserted
+
+            for (let t = 0; t < refString.length; t++) {
+                const page = refString[t];
+                const preFrames = [...frames];
+                let isHit = false;
+                let hitIndex = frames.indexOf(page);
+                let replacedIndex = -1;
+                let loadedIndex = -1;
+                let replacedVal = null;
+                let explanation = "";
+
+                if (hitIndex !== -1) {
+                    isHit = true;
+                    hitCount++;
+                    explanation = `Trang <b>${page}</b> đã tồn tại trong bộ nhớ RAM tại Slot ${hitIndex + 1}. Đây là một <b>Page Hit (Trúng Trang)</b>. Không cần thay thế.`;
+                } else {
+                    faultCount++;
+                    let emptyIndex = frames.indexOf(null);
+                    if (emptyIndex !== -1) {
+                        frames[emptyIndex] = page;
+                        loadedIndex = emptyIndex;
+                        queue.push(emptyIndex); // Record frame index as filled
+                        loadedAtStep[emptyIndex] = t;
+                        explanation = `Trang <b>${page}</b> chưa tồn tại trong RAM. Nhận thấy <b>Slot ${emptyIndex + 1} vẫn còn trống</b>, nạp trực tiếp trang này vào bộ nhớ.`;
+                    } else {
+                        // Replace oldest loaded frame index
+                        let oldestFrameIndex = queue.shift();
+                        replacedVal = frames[oldestFrameIndex];
+                        replacedIndex = oldestFrameIndex;
+                        
+                        frames[oldestFrameIndex] = page;
+                        loadedIndex = oldestFrameIndex;
+                        queue.push(oldestFrameIndex); // Queue new usage order
+                        
+                        let prevLoadStep = loadedAtStep[oldestFrameIndex];
+                        loadedAtStep[oldestFrameIndex] = t;
+
+                        explanation = `Trang <b>${page}</b> chưa tồn tại trong RAM và bộ nhớ đã đầy. Theo cơ chế <b>FIFO</b>, trang <b>${replacedVal}</b> tại Slot ${oldestFrameIndex + 1} (nạp sớm nhất từ bước ${prevLoadStep + 1}) bị thay thế bởi trang mới <b>${page}</b>.`;
+                    }
+                }
+
+                steps.push({
+                    step: t,
+                    page: page,
+                    preFrames: preFrames,
+                    postFrames: [...frames],
+                    isHit: isHit,
+                    replacedIndex: replacedIndex,
+                    loadedIndex: loadedIndex,
+                    replacedVal: replacedVal,
+                    explanation: explanation
+                });
+            }
+
+            return {
+                algorithm: "FIFO",
+                steps: steps,
+                totalFaults: faultCount,
+                totalHits: hitCount,
+                hitRate: ((hitCount / refString.length) * 100).toFixed(1),
+                faultRate: ((faultCount / refString.length) * 100).toFixed(1)
+            };
+        }
+
+        /**
+         * Least Recently Used (LRU) Page Replacement
+         */
+        function simulateLRU(refString, frameCount) {
+            let frames = Array(frameCount).fill(null);
+            let steps = [];
+            let hitCount = 0;
+            let faultCount = 0;
+            let lastUsedStep = Array(frameCount).fill(-1); // Stores step index of the last access for each slot
+
+            for (let t = 0; t < refString.length; t++) {
+                const page = refString[t];
+                const preFrames = [...frames];
+                let isHit = false;
+                let hitIndex = frames.indexOf(page);
+                let replacedIndex = -1;
+                let loadedIndex = -1;
+                let replacedVal = null;
+                let explanation = "";
+
+                if (hitIndex !== -1) {
+                    isHit = true;
+                    hitCount++;
+                    lastUsedStep[hitIndex] = t; // update last accessed time
+                    explanation = `Trang <b>${page}</b> đã có sẵn tại Slot ${hitIndex + 1}. Xảy ra một <b>Page Hit</b>. Cập nhật thời điểm sử dụng gần nhất của Slot này là bước ${t + 1}.`;
+                } else {
+                    faultCount++;
+                    let emptyIndex = frames.indexOf(null);
+                    if (emptyIndex !== -1) {
+                        frames[emptyIndex] = page;
+                        loadedIndex = emptyIndex;
+                        lastUsedStep[emptyIndex] = t;
+                        explanation = `Trang <b>${page}</b> chưa được nạp. Phát hiện <b>Slot ${emptyIndex + 1} còn trống</b>, nạp trang <b>${page}</b> vào đây.`;
+                    } else {
+                        // Find slot with minimum lastUsed value
+                        let lruIndex = 0;
+                        let minLastUsed = lastUsedStep[0];
+                        for (let i = 1; i < frameCount; i++) {
+                            if (lastUsedStep[i] < minLastUsed) {
+                                minLastUsed = lastUsedStep[i];
+                                lruIndex = i;
+                            }
+                        }
+
+                        replacedVal = frames[lruIndex];
+                        replacedIndex = lruIndex;
+                        frames[lruIndex] = page;
+                        loadedIndex = lruIndex;
+                        
+                        // Prep detail of steps
+                        let detailUsed = preFrames.map((p, idx) => `trang <b>${p}</b> (Slot ${idx + 1}, dùng cuối ở bước ${lastUsedStep[idx] + 1})`).join(", ");
+                        lastUsedStep[lruIndex] = t;
+
+                        explanation = `Trang <b>${page}</b> chưa có trong bộ nhớ. Xét thời điểm sử dụng gần nhất của các trang đang chạy: ${detailUsed}. Trang <b>${replacedVal}</b> đã không được dùng lâu nhất (từ bước ${minLastUsed + 1}), nên bị thay thế bởi <b>${page}</b> theo cơ chế <b>LRU</b>.`;
+                    }
+                }
+
+                steps.push({
+                    step: t,
+                    page: page,
+                    preFrames: preFrames,
+                    postFrames: [...frames],
+                    isHit: isHit,
+                    replacedIndex: replacedIndex,
+                    loadedIndex: loadedIndex,
+                    replacedVal: replacedVal,
+                    explanation: explanation
+                });
+            }
+
+            return {
+                algorithm: "LRU",
+                steps: steps,
+                totalFaults: faultCount,
+                totalHits: hitCount,
+                hitRate: ((hitCount / refString.length) * 100).toFixed(1),
+                faultRate: ((faultCount / refString.length) * 100).toFixed(1)
+            };
+        }
+
+        /**
+         * Optimal (OPT) Page Replacement
+         */
+        function simulateOPT(refString, frameCount) {
+            let frames = Array(frameCount).fill(null);
+            let steps = [];
+            let hitCount = 0;
+            let faultCount = 0;
+            let loadedAt = Array(frameCount).fill(-1); // To resolve ties using FIFO
+
+            for (let t = 0; t < refString.length; t++) {
+                const page = refString[t];
+                const preFrames = [...frames];
+                let isHit = false;
+                let hitIndex = frames.indexOf(page);
+                let replacedIndex = -1;
+                let loadedIndex = -1;
+                let replacedVal = null;
+                let explanation = "";
+
+                if (hitIndex !== -1) {
+                    isHit = true;
+                    hitCount++;
+                    explanation = `Trang <b>${page}</b> đã có mặt tại Slot ${hitIndex + 1}. Một <b>Page Hit</b> xảy ra!`;
+                } else {
+                    faultCount++;
+                    let emptyIndex = frames.indexOf(null);
+                    if (emptyIndex !== -1) {
+                        frames[emptyIndex] = page;
+                        loadedIndex = emptyIndex;
+                        loadedAt[emptyIndex] = t;
+                        explanation = `Trang <b>${page}</b> chưa có trong RAM. Hệ thống nạp thẳng vào <b>Slot trống ${emptyIndex + 1}</b>.`;
+                    } else {
+                        // Look ahead to find next usage index for each page currently in RAM
+                        let nextUse = Array(frameCount).fill(Infinity);
+                        for (let i = 0; i < frameCount; i++) {
+                            const currentFramePage = frames[i];
+                            for (let k = t + 1; k < refString.length; k++) {
+                                if (refString[k] === currentFramePage) {
+                                    nextUse[i] = k;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Select page with maximum next occurrence step (optimal)
+                        let optIndex = 0;
+                        let maxDistance = nextUse[0];
+                        for (let i = 1; i < frameCount; i++) {
+                            if (nextUse[i] > maxDistance) {
+                                maxDistance = nextUse[i];
+                                optIndex = i;
+                            } else if (nextUse[i] === maxDistance) {
+                                // Tie-breaker: replace the one loaded earliest (FIFO)
+                                if (loadedAt[i] < loadedAt[optIndex]) {
+                                    optIndex = i;
+                                }
+                            }
+                        }
+
+                        replacedVal = frames[optIndex];
+                        replacedIndex = optIndex;
+                        frames[optIndex] = page;
+                        loadedIndex = optIndex;
+                        loadedAt[optIndex] = t;
+
+                        // Prep explanation
+                        let lookAheadDetails = preFrames.map((p, idx) => {
+                            let dist = nextUse[idx];
+                            let text = (dist === Infinity) ? "không bao giờ được dùng lại" : `sẽ dùng lại ở bước ${dist + 1}`;
+                            return `trang <b>${p}</b> (${text})`;
+                        }).join(", ");
+
+                        explanation = `Trang <b>${page}</b> chưa có trong bộ nhớ. Phân tích tương lai: ${lookAheadDetails}. Trang <b>${replacedVal}</b> ở Slot ${optIndex + 1} được tối ưu hóa lựa chọn thay thế vì nó ${maxDistance === Infinity ? 'sẽ không bao giờ được sử dụng lại nữa' : 'sẽ được gọi lại trễ nhất ở tương lai'}.`;
+                    }
+                }
+
+                steps.push({
+                    step: t,
+                    page: page,
+                    preFrames: preFrames,
+                    postFrames: [...frames],
+                    isHit: isHit,
+                    replacedIndex: replacedIndex,
+                    loadedIndex: loadedIndex,
+                    replacedVal: replacedVal,
+                    explanation: explanation
+                });
+            }
+
+            return {
+                algorithm: "OPT",
+                steps: steps,
+                totalFaults: faultCount,
+                totalHits: hitCount,
+                hitRate: ((hitCount / refString.length) * 100).toFixed(1),
+                faultRate: ((faultCount / refString.length) * 100).toFixed(1)
+            };
+        }
+
+        /**
+         * Random Page Replacement
+         * Keeps trace of pseudo-random choices in step-by-step so scrolling is deterministic
+         */
+        function simulateRandom(refString, frameCount, preGeneratedChoices = null) {
+            let frames = Array(frameCount).fill(null);
+            let steps = [];
+            let hitCount = 0;
+            let faultCount = 0;
+            let choices = preGeneratedChoices || [];
+
+            for (let t = 0; t < refString.length; t++) {
+                const page = refString[t];
+                const preFrames = [...frames];
+                let isHit = false;
+                let hitIndex = frames.indexOf(page);
+                let replacedIndex = -1;
+                let loadedIndex = -1;
+                let replacedVal = null;
+                let explanation = "";
+
+                if (hitIndex !== -1) {
+                    isHit = true;
+                    hitCount++;
+                    explanation = `Trang <b>${page}</b> đã nằm sẵn trong bộ nhớ tại Slot ${hitIndex + 1}. Ghi nhận một <b>Page Hit</b> ngẫu nhiên.`;
+                } else {
+                    faultCount++;
+                    let emptyIndex = frames.indexOf(null);
+                    if (emptyIndex !== -1) {
+                        frames[emptyIndex] = page;
+                        loadedIndex = emptyIndex;
+                        explanation = `Trang <b>${page}</b> chưa có trong RAM. Hệ thống nạp trực tiếp vào <b>Slot trống ${emptyIndex + 1}</b>.`;
+                    } else {
+                        // Random slot selection
+                        let randIndex;
+                        if (choices[t] !== undefined) {
+                            randIndex = choices[t];
+                        } else {
+                            randIndex = Math.floor(Math.random() * frameCount);
+                            choices[t] = randIndex;
+                        }
+
+                        replacedVal = frames[randIndex];
+                        replacedIndex = randIndex;
+                        frames[randIndex] = page;
+                        loadedIndex = randIndex;
+
+                        explanation = `Trang <b>${page}</b> chưa có sẵn trong RAM. Theo cơ chế <b>Random Replacement</b>, hệ thống đã tung xúc xắc và quyết định chọn ngẫu nhiên Slot ${randIndex + 1} đang chứa trang <b>${replacedVal}</b> để thế chỗ bởi trang <b>${page}</b>.`;
+                    }
+                }
+
+                steps.push({
+                    step: t,
+                    page: page,
+                    preFrames: preFrames,
+                    postFrames: [...frames],
+                    isHit: isHit,
+                    replacedIndex: replacedIndex,
+                    loadedIndex: loadedIndex,
+                    replacedVal: replacedVal,
+                    explanation: explanation
+                });
+            }
+
+            return {
+                algorithm: "Random",
+                steps: steps,
+                totalFaults: faultCount,
+                totalHits: hitCount,
+                hitRate: ((hitCount / refString.length) * 100).toFixed(1),
+                faultRate: ((faultCount / refString.length) * 100).toFixed(1),
+                choices: choices
+            };
+        }
+
+        // ==========================================
+        // GRAPHICS & UI RENDERING FOR SIMULATOR
+        // ==========================================
+
+        function renderSimulationUI() {
+            if (!simData) return;
+
+            const table = document.getElementById('simulationTable');
+            table.innerHTML = ''; // reset
+
+            // Generate header columns
+            const headerRow = document.createElement('tr');
+            headerRow.className = "bg-slate-100 font-bold border-b border-slate-200 text-xs tracking-wider text-slate-700";
+            
+            // Ref header
+            const refHeader = document.createElement('th');
+            refHeader.className = "px-3 py-2 text-left text-slate-500 w-24 border-r border-slate-200 bg-slate-50/70";
+            refHeader.innerText = "Tham chiếu";
+            headerRow.appendChild(refHeader);
+
+            // Access sequence numbers
+            for (let i = 0; i < globalRefString.length; i++) {
+                const th = document.createElement('th');
+                th.id = `header-col-${i}`;
+                th.className = "px-1.5 py-2 text-center border-r border-slate-200 relative";
+                
+                // Add tiny indicator arrow for current step
+                if (i === currentStepIndex) {
+                    th.classList.add('step-active-col');
+                }
+                
+                th.innerHTML = `
+                    <div class="font-mono text-xs font-bold text-slate-800">${globalRefString[i]}</div>
+                    <div class="text-[8px] text-slate-400 font-normal">t-${i + 1}</div>
+                `;
+                headerRow.appendChild(th);
+            }
+            table.appendChild(headerRow);
+
+            // Generate rows for each page frame slot
+            for (let f = 0; f < globalFrameCount; f++) {
+                const row = document.createElement('tr');
+                row.className = "border-b border-slate-100 text-xs hover:bg-slate-100/50 transition-colors";
+                
+                // Frame Label Column
+                const frameLabelCol = document.createElement('td');
+                frameLabelCol.className = "px-3 py-1.5 font-bold text-slate-500 border-r border-slate-200 bg-slate-50/50";
+                frameLabelCol.innerText = `Slot RAM ${f + 1}`;
+                row.appendChild(frameLabelCol);
+
+                // Add grid value cells
+                for (let i = 0; i < globalRefString.length; i++) {
+                    const cell = document.createElement('td');
+                    cell.className = "p-1 text-center font-mono font-black border-r border-slate-200/50 transition-all duration-300 relative text-slate-700";
+                    
+                    // Style column active highlight
+                    if (i === currentStepIndex) {
+                        cell.classList.add('step-active-col');
+                    }
+
+                    // Apply visual dimming to steps ahead of current index for learning focus
+                    if (i > currentStepIndex) {
+                        cell.classList.add('opacity-30', 'blur-[0.3px]');
+                    }
+
+                    const stepData = simData.steps[i];
+                    const pageVal = stepData.postFrames[f];
+
+                    if (pageVal !== null && pageVal !== undefined) {
+                        cell.innerText = pageVal;
+                        
+                        // Check if this slot was modified/inserted at this step
+                        if (i === currentStepIndex) {
+                            if (stepData.isHit) {
+                                // Hit column highlighting is green for the frame containing the hit page
+                                if (stepData.postFrames.indexOf(stepData.page) === f) {
+                                    cell.className += " bg-emerald-500/20 text-emerald-700 border border-emerald-400 animate-cell-update rounded";
+                                }
+                            } else {
+                                // Fault Column highlighting
+                                if (stepData.loadedIndex === f) {
+                                    cell.className += " bg-blue-500/20 text-blue-700 border border-blue-400 animate-cell-update rounded";
+                                } else if (stepData.replacedIndex === f) {
+                                    // Visual victim tag highlight
+                                    cell.className += " bg-amber-500/20 text-amber-700 border border-amber-400 rounded";
+                                }
+                            }
+                        } else {
+                            if (!stepData.isHit && stepData.loadedIndex === f) {
+                                // Highlight page replacement column slightly even on non-active cells
+                                cell.className += " bg-slate-100 text-slate-800";
+                            }
+                        }
+                    } else {
+                        cell.innerHTML = '<span class="text-slate-300">-</span>';
+                    }
+
+                    row.appendChild(cell);
+                }
+                table.appendChild(row);
+            }
+
+            // Generate "Lỗi Trang / Trúng" indicator status row at bottom
+            const statusRow = document.createElement('tr');
+            statusRow.className = "bg-slate-100/50 font-bold text-[10px] border-b border-slate-200";
+            
+            const statusLabelCol = document.createElement('td');
+            statusLabelCol.className = "px-3 py-1.5 font-bold text-slate-500 border-r border-slate-200";
+            statusLabelCol.innerText = "Kết Quả";
+            statusRow.appendChild(statusLabelCol);
+
+            for (let i = 0; i < globalRefString.length; i++) {
+                const cell = document.createElement('td');
+                cell.className = "p-1 text-center border-r border-slate-200/50 font-bold transition-all duration-300";
+
+                if (i === currentStepIndex) {
+                    cell.classList.add('step-active-col');
+                }
+
+                if (i > currentStepIndex) {
+                    cell.classList.add('opacity-30', 'blur-[0.3px]');
+                }
+
+                const stepData = simData.steps[i];
+                if (stepData.isHit) {
+                    cell.innerHTML = `
+                        <div class="mx-auto w-5.5 h-5.5 flex items-center justify-center rounded text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-300 shadow-xs" title="Page Hit (Trúng Trang)">
+                            H
+                        </div>
+                    `;
+                } else {
+                    cell.innerHTML = `
+                        <div class="mx-auto w-5.5 h-5.5 flex items-center justify-center rounded text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300 shadow-xs" title="Page Fault (Lỗi Trang)">
+                            F
+                        </div>
+                    `;
+                }
+                statusRow.appendChild(cell);
+            }
+            table.appendChild(statusRow);
+
+            // Update stats counter & progress
+            updateStatsUI();
+
+            // Render current step learning mode description
+            renderLearningExplanation();
+
+            // Sync navigation buttons
+            document.getElementById('btnPrev').disabled = (currentStepIndex <= -1);
+            document.getElementById('btnNext').disabled = (currentStepIndex >= globalRefString.length - 1);
+            document.getElementById('simActiveColLabel').innerText = currentStepIndex > -1 ? `t-${currentStepIndex + 1}` : 'Bắt đầu';
+        }
+
+        function updateStatsUI() {
+            if (!simData) return;
+
+            // Compute metrics up to current step
+            let faultsCount = 0;
+            let hitsCount = 0;
+            let totalSteps = currentStepIndex + 1;
+
+            for (let i = 0; i <= currentStepIndex; i++) {
+                if (simData.steps[i].isHit) {
+                    hitsCount++;
+                } else {
+                    faultsCount++;
+                }
+            }
+
+            const total = totalSteps || 1;
+            const hitRatePct = ((hitsCount / total) * 100).toFixed(1);
+            const faultRatePct = ((faultsCount / total) * 100).toFixed(1);
+
+            // Write variables
+            document.getElementById('statFaults').innerText = faultsCount;
+            document.getElementById('statFaultRate').innerText = `(${faultRatePct}%)`;
+            document.getElementById('barFaultRate').style.width = `${faultRatePct}%`;
+
+            document.getElementById('statHits').innerText = hitsCount;
+            document.getElementById('statHitRate').innerText = `(${hitRatePct}%)`;
+            document.getElementById('barHitRate').style.width = `${hitRatePct}%`;
+
+            document.getElementById('statTotalSteps').innerText = globalRefString.length;
+            document.getElementById('statProgress').innerText = `${currentStepIndex + 1}/${globalRefString.length}`;
+        }
+
+        function renderLearningExplanation() {
+            const expDiv = document.getElementById('learningExplanation');
+            const ramGrid = document.getElementById('ramGrid');
+            const memoryVisualizer = document.getElementById('memoryVisualizer');
+            const stepLabel = document.getElementById('stepCounterLabel');
+
+            if (currentStepIndex <= -1) {
+                stepLabel.innerText = "Chưa Khởi Chạy";
+                expDiv.innerHTML = `
+                    <div class="flex flex-col items-center justify-center text-center py-12 text-slate-400">
+                        <svg class="w-10 h-10 mb-2 text-slate-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.7 15.3a1 1 0 001.4 0l3-3a1 1 0 000-1.4l-3-3a1 1 0 10-1.4 1.4L16.6 11H3a1 1 0 100 2h13.6l-1.9 1.9a1 1 0 000 1.4z"></path></svg>
+                        <p class="font-bold text-slate-500 text-xs">Mô hình đã sẵn sàng</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Sử dụng nút điều khiển "Tiếp" hoặc "Tự Động" để học cơ chế phân bổ trang theo thuật toán.</p>
+                    </div>
+                `;
+                memoryVisualizer.classList.add('hidden');
+                return;
+            }
+
+            stepLabel.innerText = `Bước ${currentStepIndex + 1}/${globalRefString.length}`;
+            const stepData = simData.steps[currentStepIndex];
+
+            let headerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3.5 mb-3">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[10px] font-bold text-slate-400 tracking-wider">THAM CHIẾU</span>
+                        <span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded ${stepData.isHit ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}">
+                            ${stepData.isHit ? 'PAGE HIT (TRÚNG)' : 'PAGE FAULT (LỖI)'}
+                        </span>
+                    </div>
+                    <div class="text-xl font-black text-slate-800">Yêu cầu Trang: <span class="text-primary-600 font-mono">${stepData.page}</span></div>
+                </div>
+            `;
+
+            let bodyHTML = `
+                <div class="space-y-2 text-[11.5px] leading-relaxed text-slate-600">
+                    <p>${stepData.explanation}</p>
+                </div>
+            `;
+
+            expDiv.innerHTML = headerHTML + bodyHTML;
+
+            // Show real RAM grid mapping
+            memoryVisualizer.classList.remove('hidden');
+            ramGrid.innerHTML = ''; // reset
+
+            for (let i = 0; i < globalFrameCount; i++) {
+                const pg = stepData.postFrames[i];
+                const item = document.createElement('div');
+                item.className = "flex flex-col items-center justify-center p-2 rounded-lg border font-bold text-center transition-all text-xs";
+                
+                if (pg === null) {
+                    item.className += " bg-slate-50 text-slate-400 border-slate-200 border-dashed";
+                    item.innerHTML = `
+                        <span class="text-[8px] text-slate-400 font-normal">Slot ${i + 1}</span>
+                        <span class="text-[10px] font-bold mt-0.5">Trống</span>
+                    `;
+                } else {
+                    // Highlight loaded or hit
+                    if (stepData.isHit && pg === stepData.page) {
+                        item.className += " bg-emerald-50 text-emerald-700 border-emerald-400 ring-1 ring-emerald-300 scale-102 font-black";
+                    } else if (!stepData.isHit && pg === stepData.page) {
+                        item.className += " bg-blue-50 text-blue-700 border-blue-400 ring-1 ring-blue-300 scale-102 font-black";
+                    } else if (!stepData.isHit && i === stepData.replacedIndex) {
+                        item.className += " bg-amber-50 text-amber-700 border-amber-300 font-black";
+                    } else {
+                        item.className += " bg-white text-slate-700 border-slate-200";
+                    }
+
+                    item.innerHTML = `
+                        <span class="text-[8px] text-slate-400 font-normal">Slot ${i + 1}</span>
+                        <span class="text-sm font-mono mt-0.5">${pg}</span>
+                    `;
+                }
+                ramGrid.appendChild(item);
+            }
+        }
+
+        // Stepper Navigation Core Controls
+        function stepPrev() {
+            if (currentStepIndex > -1) {
+                currentStepIndex--;
+                renderSimulationUI();
+            }
+        }
+
+        function stepNext() {
+            if (currentStepIndex < globalRefString.length - 1) {
+                currentStepIndex++;
+                renderSimulationUI();
+            } else {
+                stopAutoPlay();
+                showNotification("Quá trình mô phỏng hoàn tất!");
+            }
+        }
+
+        function resetSimulation() {
+            stopAutoPlay();
+            currentStepIndex = -1;
+            renderSimulationUI();
+            showNotification("Đã đặt lại trạng thái mô phỏng ban đầu.");
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        function startAutoPlay() {
+            if (currentStepIndex >= globalRefString.length - 1) {
+                currentStepIndex = -1; // restart from scratch if done
+            }
+            isPlaying = true;
+            document.getElementById('playText').innerText = "Tạm Dừng";
+            document.getElementById('playIcon').innerHTML = `
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+            `;
+            playInterval = setInterval(stepNext, playSpeed);
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            document.getElementById('playText').innerText = "Tự Động";
+            document.getElementById('playIcon').innerHTML = `
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+            `;
+            clearInterval(playInterval);
+        }
+
+        // ==========================================
+        // TAB 2: ALGORITHM COMPARISON SUITE
+        // ==========================================
+
+        function runComparison() {
+            if (!getInputs()) return;
+
+            // Run all 4 simulations
+            const fifo = simulateFIFO(globalRefString, globalFrameCount);
+            const lru = simulateLRU(globalRefString, globalFrameCount);
+            const opt = simulateOPT(globalRefString, globalFrameCount);
+            const rand = simulateRandom(globalRefString, globalFrameCount);
+
+            const algos = [fifo, lru, opt, rand];
+
+            // Determine minimum fault count
+            const minFaults = Math.min(...algos.map(a => a.totalFaults));
+
+            // Populate summary table
+            const tbody = document.getElementById('comparisonTableBody');
+            tbody.innerHTML = ''; // Clear
+
+            algos.forEach(alg => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-150 hover:bg-slate-50 transition-all";
+
+                const isBest = alg.totalFaults === minFaults;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-2 font-bold text-slate-700 flex items-center gap-1.5">
+                        ${alg.algorithm === 'Random' ? 'Ngẫu nhiên (Random)' : alg.algorithm}
+                        ${isBest ? `
+                            <span class="inline-flex items-center gap-0.5 bg-amber-50 text-amber-700 border border-amber-300 text-[8px] px-1.5 py-0.5 rounded font-black">
+                                <svg class="w-2 h-2 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                Tối ưu nhất
+                            </span>
+                        ` : ''}
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold font-mono text-xs ${isBest ? 'text-emerald-600' : 'text-slate-600'}">${alg.totalFaults}</td>
+                    <td class="px-4 py-2 text-center font-bold font-mono text-slate-500">${alg.totalHits}</td>
+                    <td class="px-4 py-2 text-center font-mono text-slate-500">${alg.faultRate}%</td>
+                    <td class="px-4 py-2 text-center font-mono text-slate-500">${alg.hitRate}%</td>
+                    <td class="px-4 py-2">
+                        <div class="w-24 bg-slate-100 rounded-full h-1.5">
+                            <div class="bg-primary-500 h-1.5 rounded-full" style="width: ${alg.hitRate}%"></div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Populate side-by-side grids comparison
+            const container = document.getElementById('comparisonDetailedGrids');
+            container.innerHTML = ''; // Clear
+
+            algos.forEach(alg => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-xl p-3 shadow-xs border border-slate-200";
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h5 class="font-bold text-xs uppercase text-slate-700 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
+                            Giải thuật ${alg.algorithm === 'Random' ? 'Ngẫu nhiên (Random)' : alg.algorithm}
+                        </h5>
+                        <div class="text-[9px] text-slate-500 font-bold">
+                            Lỗi trang: <span class="text-rose-600 font-mono">${alg.totalFaults}</span> | Trúng: <span class="text-emerald-600 font-mono">${alg.totalHits}</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto pb-1.5">
+                        <table class="w-full text-center border-collapse table-fixed min-w-[450px] text-[10px]">
+                            <tr class="bg-slate-50 font-bold border-b border-slate-200 text-slate-500">
+                                <td class="px-2 py-1 text-left w-20 border-r border-slate-200">Truy xuất</td>
+                                ${globalRefString.map(p => `<td class="px-1 py-1 border-r border-slate-200/50 text-slate-700 font-mono">${p}</td>`).join('')}
+                            </tr>
+                            ${Array(globalFrameCount).fill(0).map((_, f) => `
+                                <tr class="border-b border-slate-100">
+                                    <td class="px-2 py-1 font-bold text-left text-slate-400 border-r border-slate-200">Slot ${f + 1}</td>
+                                    ${alg.steps.map(step => {
+                                        const pg = step.postFrames[f];
+                                        let classVal = "px-1 py-1 border-r border-slate-200/20 font-mono font-bold ";
+                                        if (pg !== null) {
+                                            if (!step.isHit && step.loadedIndex === f) {
+                                                classVal += "bg-blue-100 text-blue-800";
+                                            } else if (step.isHit && step.postFrames.indexOf(step.page) === f) {
+                                                classVal += "bg-emerald-100 text-emerald-800";
+                                            } else {
+                                                classVal += "text-slate-500";
+                                            }
+                                        }
+                                        return `<td class="${classVal}">${pg !== null ? pg : '-'}</td>`;
+                                    }).join('')}
+                                </tr>
+                            `).join('')}
+                            <tr class="bg-slate-50/50 font-bold text-[9px]">
+                                <td class="px-2 py-1 text-left text-slate-500 border-r border-slate-200">Trạng Thái</td>
+                                ${alg.steps.map(step => `
+                                    <td class="p-1 border-r border-slate-200/20 font-black ${step.isHit ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}">
+                                        ${step.isHit ? 'H' : 'F'}
+                                    </td>
+                                `).join('')}
+                            </tr>
+                        </table>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // ==========================================
+        // TAB 3: ALGORITHM DETECTIVE (SOLVER)
+        // ==========================================
+
+        function runDetective() {
+            // Read specific Detective parameters
+            const refStrInput = document.getElementById('detRefString').value;
+            const framesInput = parseInt(document.getElementById('detFrameCount').value, 10);
+
+            if (!refStrInput.trim() || isNaN(framesInput) || framesInput <= 0) {
+                showNotification("Vui lòng nhập đầy đủ Chuỗi truy xuất và Số Frame trong mục thám tử.");
+                return;
+            }
+
+            const refList = refStrInput.split(/[\s,]+/)
+                .map(s => s.trim())
+                .filter(s => s !== "")
+                .map(s => {
+                    const num = parseInt(s, 10);
+                    return isNaN(num) ? s : num;
+                });
+
+            const detectiveFaults = parseInt(document.getElementById('detectiveFaults').value, 10);
+            const detectivePattern = document.getElementById('detectivePattern').value.trim();
+            const detectiveFinalFrames = document.getElementById('detectiveFinalFrames').value.trim();
+
+            if (isNaN(detectiveFaults) && !detectivePattern && !detectiveFinalFrames) {
+                showNotification("Vui lòng cung cấp ít nhất MỘT trong ba dữ kiện thám tử để giải mã!");
+                return;
+            }
+
+            // Sync with main parameters safely
+            globalRefString = refList;
+            globalFrameCount = framesInput;
+            syncInputsToUI();
+
+            // Run standard candidates
+            const fifo = simulateFIFO(refList, framesInput);
+            const lru = simulateLRU(refList, framesInput);
+            const opt = simulateOPT(refList, framesInput);
+            
+            // For Random, let's run 50 times to check matches
+            let randomSample = simulateRandom(refList, framesInput);
+            let randomRuns = [];
+            for (let i = 0; i < 50; i++) {
+                randomRuns.push(simulateRandom(refList, framesInput));
+            }
+
+            // Scoring system
+            let candidates = [
+                { name: "FIFO", sim: fifo, score: 0, matchLog: [], confidence: 0 },
+                { name: "LRU", sim: lru, score: 0, matchLog: [], confidence: 0 },
+                { name: "OPT", sim: opt, score: 0, matchLog: [], confidence: 0 },
+                { name: "Random (Ngẫu nhiên)", sim: randomSample, score: 0, matchLog: [], confidence: 0 }
+            ];
+
+            // 1. Evaluate total fault count target (weight: 35)
+            if (!isNaN(detectiveFaults)) {
+                candidates.forEach(c => {
+                    if (c.name.startsWith("Random")) {
+                        const matchesCount = randomRuns.some(r => r.totalFaults === detectiveFaults);
+                        if (matchesCount) {
+                            c.score += 35;
+                            c.matchLog.push(`Khớp hoàn hảo số lượng lỗi trang (${detectiveFaults} Faults) ở một số kịch bản ngẫu nhiên.`);
+                        } else {
+                            const minDiff = Math.min(...randomRuns.map(r => Math.abs(r.totalFaults - detectiveFaults)));
+                            if (minDiff <= 2) {
+                                c.score += 15;
+                                c.matchLog.push(`Số lỗi trang lệch nhỏ (${minDiff} lỗi) so với kịch bản ngẫu nhiên.`);
+                            }
+                        }
+                    } else {
+                        if (c.sim.totalFaults === detectiveFaults) {
+                            c.score += 35;
+                            c.matchLog.push(`Khớp chính xác 100% tổng số lỗi trang (${detectiveFaults} Faults).`);
+                        } else {
+                            const diff = Math.abs(c.sim.totalFaults - detectiveFaults);
+                            if (diff <= 1) {
+                                c.score += 15;
+                                c.matchLog.push(`Gần khớp số lỗi trang (Lệch chỉ ${diff} lỗi, thực tế là ${c.sim.totalFaults}).`);
+                            } else {
+                                c.matchLog.push(`Không khớp số lỗi trang (Đề bài: ${detectiveFaults} vs Thực tế thuật toán: ${c.sim.totalFaults}).`);
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 2. Evaluate Hit/Fault Pattern matching (weight: 40)
+            if (detectivePattern) {
+                const rawArray = detectivePattern.split(/[\s,]+/).map(x => x.trim().toUpperCase()).filter(x => x !== "");
+                const stdPattern = rawArray.map(x => {
+                    if (x === 'L' || x === 'FAULT' || x === 'F') return 'F';
+                    if (x === 'T' || x === 'HIT' || x === 'H') return 'H';
+                    return null;
+                }).filter(x => x !== null);
+
+                if (stdPattern.length > 0) {
+                    candidates.forEach(c => {
+                        let matchCount = 0;
+                        const len = Math.min(stdPattern.length, c.sim.steps.length);
+                        
+                        for (let i = 0; i < len; i++) {
+                            const simStatus = c.sim.steps[i].isHit ? 'H' : 'F';
+                            if (simStatus === stdPattern[i]) {
+                                matchCount++;
+                            }
+                        }
+
+                        const matchPct = len > 0 ? (matchCount / len) * 100 : 0;
+                        if (matchPct === 100) {
+                            c.score += 40;
+                            c.matchLog.push(`Khớp chính xác tuyệt đối 100% chuỗi Lỗi/Trúng tại cả ${len} bước so sánh.`);
+                        } else if (matchPct >= 70) {
+                            c.score += 20;
+                            c.matchLog.push(`Tương đồng cao (${matchPct.toFixed(0)}%) chuỗi Lỗi/Trúng (${matchCount}/${len} bước khớp).`);
+                        } else {
+                            c.matchLog.push(`Mức độ trùng khớp chuỗi Lỗi/Trúng thấp (chỉ ${matchPct.toFixed(0)}% trùng khớp).`);
+                        }
+                    });
+                }
+            }
+
+            // 3. Evaluate final memory frame content alignment (weight: 25)
+            if (detectiveFinalFrames) {
+                const targetFinalList = detectiveFinalFrames.split(/[\s,]+/)
+                    .map(s => s.trim())
+                    .filter(s => s !== "")
+                    .map(s => {
+                        const num = parseInt(s, 10);
+                        return isNaN(num) ? s : num;
+                    });
+
+                if (targetFinalList.length > 0) {
+                    candidates.forEach(c => {
+                        const simFinalState = c.sim.steps[c.sim.steps.length - 1].postFrames.filter(x => x !== null);
+                        
+                        let exactOrdered = true;
+                        if (simFinalState.length !== targetFinalList.length) {
+                            exactOrdered = false;
+                        } else {
+                            for (let i = 0; i < simFinalState.length; i++) {
+                                if (simFinalState[i] !== targetFinalList[i]) exactOrdered = false;
+                            }
+                        }
+
+                        let simSorted = [...simFinalState].sort().toString();
+                        let targetSorted = [...targetFinalList].sort().toString();
+                        let unorderedMatch = (simSorted === targetSorted);
+
+                        if (exactOrdered) {
+                            c.score += 25;
+                            c.matchLog.push(`Khớp hoàn hảo thứ tự RAM ở bước cuối cùng: [${simFinalState.join(', ')}].`);
+                        } else if (unorderedMatch) {
+                            c.score += 20;
+                            c.matchLog.push(`Khớp tập hợp trang ở RAM cuối cùng: [${simFinalState.join(', ')}] (sai khác thứ tự).`);
+                        } else {
+                            const intersect = simFinalState.filter(x => targetFinalList.includes(x));
+                            if (intersect.length > 0) {
+                                c.score += 8;
+                                c.matchLog.push(`Giao nhau một phần RAM cuối: trùng các trang [${intersect.join(', ')}].`);
+                            } else {
+                                c.matchLog.push(`Trạng thái bộ nhớ cuối hoàn toàn khác biệt.`);
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Compute overall confidence out of 100
+            let maxPossibleScore = 0;
+            if (!isNaN(detectiveFaults)) maxPossibleScore += 35;
+            if (detectivePattern) maxPossibleScore += 40;
+            if (detectiveFinalFrames) maxPossibleScore += 25;
+            if (maxPossibleScore === 0) maxPossibleScore = 1;
+
+            candidates.forEach(c => {
+                c.confidence = Math.min(100, Math.round((c.score / maxPossibleScore) * 100));
+            });
+
+            // Sort candidates by score descending
+            candidates.sort((a, b) => b.score - a.score);
+
+            // Print Detective results
+            displayDetectiveResults(candidates);
+        }
+
+        function displayDetectiveResults(candidates) {
+            const outputDiv = document.getElementById('detectiveOutput');
+            const statusLabel = document.getElementById('detectiveStatusLabel');
+
+            statusLabel.innerText = "Đã phân tích xong";
+            statusLabel.className = "text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shadow-xs";
+
+            const bestCandidate = candidates[0];
+            const isMatchCertain = bestCandidate.confidence >= 75;
+
+            let html = `
+                <div class="w-full text-left space-y-4">
+                    <!-- Champion Reveal Card -->
+                    <div class="bg-gradient-to-br ${isMatchCertain ? 'from-emerald-50 via-white to-primary-50/50 border-emerald-300' : 'from-slate-50 to-white border-slate-200'} p-4 rounded-xl border shadow-xs relative overflow-hidden">
+                        
+                        ${isMatchCertain ? `
+                            <div class="absolute right-2 top-2 text-emerald-500/10">
+                                <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                            </div>
+                        ` : ''}
+
+                        <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Ứng viên phù hợp nhất:</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <h4 class="text-xl font-black text-slate-800 tracking-tight">${bestCandidate.name}</h4>
+                            <span class="text-sm font-black text-emerald-600 font-mono">${bestCandidate.confidence}% khớp</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1">
+                            ${isMatchCertain 
+                                ? "Độ tin cậy rất cao. Trình thám tử kết luận giải thuật này hoàn toàn tương thích với các dữ kiện đầu ra của đề bài." 
+                                : "Độ tương khớp thấp hoặc xuất hiện nhiều giải thuật cùng đáp án. Cung cấp thêm dữ kiện để định dạng chính xác hơn."}
+                        </p>
+                    </div>
+
+                    <!-- Other candidates ranked -->
+                    <div class="space-y-2">
+                        <h5 class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Xếp hạng các khả năng:</h5>
+                        <div class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                            ${candidates.map((cand, idx) => {
+                                return `
+                                    <div class="bg-white border border-slate-200 rounded-lg p-3 transition-all hover:border-slate-300">
+                                        <div class="flex justify-between items-center mb-1.5">
+                                            <span class="text-xs font-bold text-slate-700">${cand.name}</span>
+                                            <span class="text-[10px] font-mono font-bold text-primary-600">${cand.confidence}% khớp</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1 mb-2">
+                                            <div class="bg-gradient-to-r from-primary-500 to-indigo-500 h-1 rounded-full" style="width: ${cand.confidence}%"></div>
+                                        </div>
+                                        <ul class="space-y-0.5 text-[10px] text-slate-500 list-disc list-inside pl-0.5">
+                                            ${cand.matchLog.map(log => `<li>${log}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            outputDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
