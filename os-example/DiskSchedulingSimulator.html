@@ -1,0 +1,2103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mô phỏng & Luyện tập Điều phối đĩa - Hệ điều hành</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Vue 3 Global Build CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbar for modern feel */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Print Styles */
+    @media print {
+      .print\:hidden {
+        display: none !important;
+      }
+      .print\:block {
+        display: block !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      .print\:border {
+        border: 1px solid #000 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <div id="app" v-cloak class="flex-1 flex flex-col">
+    
+    <!-- HEADER SECTION -->
+    <header class="bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 py-6 px-4 md:px-8 shadow-xl border-b border-indigo-500/20 print:hidden">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            <span>💿</span> HỆ THỐNG MÔ PHỎNG & LUYỆN TẬP ĐIỀU PHỐI ĐĨA
+          </h1>
+          <p class="text-indigo-200 mt-1 text-sm md:text-base">
+            Mô phỏng trực quan đầu đọc, so sánh hiệu năng 6 thuật toán và ngân hàng câu hỏi ôn thi Hệ điều hành.
+          </p>
+        </div>
+        <button 
+          @click="handlePrint"
+          class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg border border-slate-600 transition shadow-md whitespace-nowrap text-sm"
+        >
+          🖨️ Xuất PDF / In Lời Giải
+        </button>
+      </div>
+    </header>
+
+    <!-- TABS SELECTOR -->
+    <div class="bg-slate-800 border-b border-slate-700 px-4 md:px-8 sticky top-0 z-30 shadow-md print:hidden">
+      <div class="max-w-7xl mx-auto flex overflow-x-auto gap-1 py-2 scrollbar-none">
+        <button
+          @click="changeTab('simulation')"
+          :class="['px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', activeTab === 'simulation' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-700']"
+        >
+          🧭 Mô Phỏng & Đồ Thị
+        </button>
+        <button
+          @click="changeTab('comparison')"
+          :class="['px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', activeTab === 'comparison' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-700']"
+        >
+          📊 So Sánh 6 Thuật Toán
+        </button>
+        <button
+          @click="changeTab('practice')"
+          :class="['px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', activeTab === 'practice' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-700']"
+        >
+          ✏️ Luyện Tập Trắc Nghiệm
+        </button>
+        <button
+          @click="changeTab('identify')"
+          :class="['px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', activeTab === 'identify' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-700']"
+        >
+          🔍 Nhận Diện Thuật Toán
+        </button>
+        <button
+          @click="changeTab('quiz_mode')"
+          :class="['px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', activeTab === 'quiz_mode' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-700']"
+        >
+          🏆 Thi Thử OS (10 Câu)
+        </button>
+      </div>
+    </div>
+
+    <!-- CORE WORKSPACE -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
+      
+      <!-- SIDEBAR: INPUT CONFIGURATIONS -->
+      <div class="lg:col-span-1 bg-slate-800 p-5 rounded-2xl border border-slate-700 h-fit space-y-6 shadow-xl">
+        <div class="border-b border-slate-700 pb-3">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            ⚙️ Cấu Hình Thông Số Đĩa
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Thay đổi dữ liệu đầu vào để lập tức cập nhật hệ thống.</p>
+        </div>
+
+        <!-- Error Banner -->
+        <div v-if="errorMsg" class="bg-red-900/40 border border-red-500/50 p-3 rounded-lg text-red-200 text-sm flex gap-2 items-start">
+          <span>⚠️</span>
+          <p>{{ errorMsg }}</p>
+        </div>
+
+        <!-- Input Requests Queue -->
+        <div>
+          <label class="block text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">
+            Hàng đợi yêu cầu (Track list)
+          </label>
+          <input
+            type="text"
+            v-model="inputRequests"
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+            placeholder="Ví dụ: 98, 183, 37, 122, 14, 124, 65, 67"
+          />
+          <span class="text-[11px] text-slate-400 mt-1 block">Ngăn cách các track bằng dấu phẩy.</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Initial Head Position -->
+          <div>
+            <label class="block text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">
+              Vị trí đầu đọc (Head)
+            </label>
+            <input
+              type="number"
+              v-model.number="headPosition"
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+            />
+          </div>
+
+          <!-- Max Tracks -->
+          <div>
+            <label class="block text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">
+              Tổng số track (0 → Max)
+            </label>
+            <input
+              type="number"
+              v-model.number="maxTrack"
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+            />
+          </div>
+        </div>
+
+        <!-- Algorithm selection -->
+        <div>
+          <label class="block text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">
+            Chọn Thuật Toán Điều Phối
+          </label>
+          <select
+            v-model="selectedAlgo"
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-sm cursor-pointer"
+          >
+            <option value="FCFS">FCFS (First-Come First-Served)</option>
+            <option value="SSTF">SSTF (Shortest Seek Time First)</option>
+            <option value="SCAN">SCAN (Thuật toán Thang máy)</option>
+            <option value="C-SCAN">C-SCAN (Circular SCAN)</option>
+            <option value="LOOK">LOOK (Tiết kiệm biên SCAN)</option>
+            <option value="C-LOOK">C-LOOK (Circular LOOK)</option>
+          </select>
+        </div>
+
+        <!-- Direction choice -->
+        <div v-if="['SCAN', 'C-SCAN', 'LOOK', 'C-LOOK'].includes(selectedAlgo)" class="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+          <label class="block text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">
+            Hướng quét ban đầu (Direction)
+          </label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-300 hover:text-white">
+              <input
+                type="radio"
+                name="direction"
+                value="left"
+                v-model="direction"
+                class="accent-indigo-500 h-4 w-4"
+              />
+              ⬅️ Trái (Về phía 0)
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-300 hover:text-white">
+              <input
+                type="radio"
+                name="direction"
+                value="right"
+                v-model="direction"
+                class="accent-indigo-500 h-4 w-4"
+              />
+              ➡️ Phải (Về phía {{maxTrack}})
+            </label>
+          </div>
+        </div>
+
+        <!-- Quick Preset Generator -->
+        <div class="pt-2">
+          <button
+            @click="resetToDefault"
+            class="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-3 rounded-lg text-xs transition"
+          >
+            🔄 Khôi Phục Dữ Liệu Ví Dụ Gốc
+          </button>
+        </div>
+
+        <!-- Mini Theoretical card -->
+        <div class="bg-indigo-950/30 border border-indigo-800/40 p-4 rounded-xl text-xs space-y-2 text-indigo-200">
+          <h4 class="font-bold text-indigo-300 text-sm">💡 Lý thuyết về {{selectedAlgo}}:</h4>
+          <p class="leading-relaxed">
+            <span v-if="selectedAlgo === 'FCFS'">Đơn giản nhất, phục vụ các track theo đúng trình tự xuất hiện trong hàng đợi. Công bằng tuyệt đối nhưng quãng đường di chuyển đầu đọc thường cực kỳ lớn.</span>
+            <span v-if="selectedAlgo === 'SSTF'">Chọn track gần vị trí đầu đọc nhất tại mọi thời điểm. Giảm thời gian tìm kiếm đáng kể nhưng có thể gây hiện tượng "đói dịch vụ" (starvation) cho các track ở xa.</span>
+            <span v-if="selectedAlgo === 'SCAN'">Đầu đọc di chuyển liên tục về một hướng cho tới khi đụng biên đĩa cứng (0 hoặc Max), sau đó đổi chiều quét ngược lại. Giải quyết triệt để starvation.</span>
+            <span v-if="selectedAlgo === 'C-SCAN'">Chỉ phục vụ yêu cầu theo một chiều nhất định. Khi chạm biên, nó nhảy lập tức về biên đối diện (không phục vụ dọc đường đi nhảy) rồi quét tiếp theo chiều cũ. Đảm bảo thời gian chờ đồng đều.</span>
+            <span v-if="selectedAlgo === 'LOOK'">Tương tự SCAN nhưng thông minh hơn: chỉ di chuyển xa nhất đến yêu cầu cuối cùng ở hướng hiện tại rồi tự động quay đầu ngay mà không cần đi tiếp ra đến tận biên đĩa.</span>
+            <span v-if="selectedAlgo === 'C-LOOK'">Kết hợp ưu điểm của C-SCAN và LOOK: chỉ quét theo một chiều đến yêu cầu ngoài cùng, sau đó nhảy thẳng về yêu cầu ngoài cùng phía bên kia để quét tiếp mà không tốn lực chạy ra biên.</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- MAIN WORKSPACE DETAILS -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- TAB 1: SIMULATION & ANIMATION -->
+        <div v-if="activeTab === 'simulation'" class="space-y-6">
+          
+          <!-- Animation Controller Panel -->
+          <div class="bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-700 shadow-lg">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 pb-3 border-b border-slate-700">
+              <div>
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                  🎬 Trình Diễn Chuyển Động Đầu Đọc
+                </h3>
+                <p class="text-xs text-slate-400">Xem hoạt ảnh gạt đầu đọc của cơ cấu đĩa vật lý trực quan.</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-300 font-medium">Tốc độ:</span>
+                <input
+                  type="range"
+                  min="200"
+                  max="2000"
+                  step="200"
+                  v-model.number="reversedSpeed"
+                  class="accent-indigo-500 h-1.5 w-24 bg-slate-950 rounded-lg cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <!-- Simulated Linear Track Bar -->
+            <div class="bg-slate-950 p-4 rounded-xl relative overflow-hidden mb-5">
+              <div class="flex justify-between text-[10px] text-slate-500 mb-1.5 font-mono">
+                <span>TRACK 0</span>
+                <span class="text-indigo-400 font-bold">ĐẦU ĐỌC HIỆN TẠI: {{ currentResult.path[currentStepIdx] }}</span>
+                <span>TRACK {{maxTrack}}</span>
+              </div>
+              
+              <!-- Track Line -->
+              <div class="h-3 w-full bg-slate-800 rounded-full relative">
+                <!-- Highlight requests on track bar -->
+                <div
+                  v-for="(req, idx) in parsedRequests"
+                  :key="idx"
+                  :class="['absolute top-0 h-full w-0.5 z-10 transition-all', req === currentResult.path[currentStepIdx] ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]' : 'bg-indigo-500/60']"
+                  :style="{ left: (req / maxTrack) * 100 + '%' }"
+                  :title="'Track cần truy cập: ' + req"
+                ></div>
+
+                <!-- Disk Head Pin -->
+                <div
+                  class="absolute -top-1.5 h-6 w-6 bg-rose-500 border-2 border-white rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ease-out z-20"
+                  :style="{ left: `calc(${(currentResult.path[currentStepIdx] / maxTrack) * 100}% - 12px)` }"
+                >
+                  <div class="h-2 w-2 bg-white rounded-full animate-ping"></div>
+                </div>
+              </div>
+
+              <!-- Legend info -->
+              <div class="flex justify-between text-[10px] text-slate-400 mt-2">
+                <div class="flex items-center gap-1.5">
+                  <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                  <span>Track trong hàng đợi</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <div class="w-2.5 h-2.5 rounded-full bg-rose-500 border border-white"></div>
+                  <span>Vị trí đầu đọc thực tế</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex flex-wrap justify-between items-center gap-3">
+              <div class="flex items-center gap-2">
+                <button
+                  @click="handlePrevStep"
+                  :disabled="currentStepIdx === 0"
+                  class="p-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded-lg text-slate-100 transition text-sm flex items-center gap-1 font-semibold"
+                >
+                  ⏮️ Trở Lại
+                </button>
+                <button
+                  @click="handlePlayPause"
+                  :class="['py-2.5 px-5 rounded-lg font-bold text-sm transition text-white flex items-center gap-2 shadow-md', isPlaying ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500']"
+                >
+                  {{ isPlaying ? '⏸️ Tạm Dừng' : '▶️ Chạy Tự Động' }}
+                </button>
+                <button
+                  @click="handleNextStep"
+                  :disabled="currentStepIdx >= currentResult.path.length - 1"
+                  class="p-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded-lg text-slate-100 transition text-sm flex items-center gap-1 font-semibold"
+                >
+                  Kế Tiếp ⏭️
+                </button>
+                <button
+                  @click="handleResetAnim"
+                  class="p-2.5 bg-slate-900 hover:bg-slate-950 rounded-lg text-slate-400 hover:text-white transition text-xs font-semibold"
+                >
+                  🔄 Reset
+                </button>
+              </div>
+
+              <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700/60 font-mono text-xs text-slate-300">
+                Bước <strong class="text-white">{{currentStepIdx}}</strong> / {{currentResult.path.length - 1}}
+              </div>
+            </div>
+          </div>
+
+          <!-- VISUAL CHART AREA (SVG) -->
+          <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+            <div class="mb-4">
+              <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                📈 Biểu Đồ Hành Trình Tìm Kiếm Đầu Đọc
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">Trục hoành: Track (0 → {{maxTrack}}). Trục tung: Tiến trình thời gian phục vụ (từ trên xuống dưới).</p>
+            </div>
+
+            <!-- SVG PLOTTING container -->
+            <div class="bg-slate-950 rounded-xl p-2 border border-slate-800 relative">
+              <div v-if="!parsedRequests.length" class="h-64 flex items-center justify-center text-slate-500 text-sm">
+                Vui lòng nhập hàng đợi hợp lệ để vẽ biểu đồ hành trình.
+              </div>
+              <svg v-else viewBox="0 0 800 450" class="w-full h-auto block select-none">
+                <!-- Vertical grid guide lines -->
+                <g v-for="ratio in [0, 0.25, 0.5, 0.75, 1]" :key="ratio" class="opacity-20">
+                  <line
+                    :x1="mapTrackToX(Math.round(ratio * maxTrack))"
+                    y1="40"
+                    :x2="mapTrackToX(Math.round(ratio * maxTrack))"
+                    y2="410"
+                    stroke="#6366f1"
+                    stroke-width="1"
+                    stroke-dasharray="4 4"
+                  />
+                  <text
+                    :x="mapTrackToX(Math.round(ratio * maxTrack))"
+                    y="30"
+                    fill="#94a3b8"
+                    font-size="10"
+                    text-anchor="middle"
+                  >
+                    {{ Math.round(ratio * maxTrack) }}
+                  </text>
+                  <text
+                    :x="mapTrackToX(Math.round(ratio * maxTrack))"
+                    y="425"
+                    fill="#94a3b8"
+                    font-size="10"
+                    text-anchor="middle"
+                  >
+                    {{ Math.round(ratio * maxTrack) }}
+                  </text>
+                </g>
+
+                <!-- Requested track guide vertical lines -->
+                <line
+                  v-for="(req, idx) in parsedRequests"
+                  :key="'guide-' + idx"
+                  :x1="mapTrackToX(req)"
+                  y1="40"
+                  :x2="mapTrackToX(req)"
+                  y2="410"
+                  stroke="#334155"
+                  stroke-width="1"
+                  class="opacity-40"
+                />
+
+                <!-- Path lines -->
+                <g v-for="(node, idx) in currentResult.path" :key="'path-' + idx">
+                  <line
+                    v-if="idx > 0"
+                    :x1="mapTrackToX(currentResult.path[idx - 1])"
+                    :y1="mapStepToY(idx - 1, currentResult.path.length)"
+                    :x2="mapTrackToX(node)"
+                    :y2="mapStepToY(idx, currentResult.path.length)"
+                    :stroke="currentResult.steps[idx - 1]?.isJump ? '#f43f5e' : (idx === currentStepIdx ? '#10b981' : (idx <= currentStepIdx ? '#6366f1' : '#334155'))"
+                    :stroke-width="idx === currentStepIdx ? 4 : 2"
+                    :stroke-dasharray="currentResult.steps[idx - 1]?.isJump ? '5 5' : 'none'"
+                    class="transition-all duration-300"
+                  />
+                  <!-- Direction arrows -->
+                  <polygon
+                    v-if="idx > 0 && idx <= currentStepIdx"
+                    points="0,-4 8,0 0,4"
+                    :fill="currentResult.steps[idx - 1]?.isJump ? '#f43f5e' : (idx === currentStepIdx ? '#10b981' : '#818cf8')"
+                    :transform="getArrowTransform(currentResult.path[idx - 1], mapStepToY(idx - 1, currentResult.path.length), node, mapStepToY(idx, currentResult.path.length))"
+                  />
+                </g>
+
+                <!-- Interactive track point circles -->
+                <g v-for="(node, idx) in currentResult.path" :key="'node-' + idx" class="transition-all duration-300">
+                  <circle
+                    :cx="mapTrackToX(node)"
+                    :cy="mapStepToY(idx, currentResult.path.length)"
+                    :r="idx === currentStepIdx ? 8 : (idx === 0 ? 6 : 4)"
+                    :fill="idx === currentStepIdx ? '#10b981' : (idx === 0 ? '#f59e0b' : (idx <= currentStepIdx ? '#6366f1' : '#475569'))"
+                    stroke="#0f172a"
+                    stroke-width="2"
+                  />
+                  <text
+                    :x="mapTrackToX(node) + 10"
+                    :y="mapStepToY(idx, currentResult.path.length) + 4"
+                    :fill="idx === currentStepIdx ? '#10b981' : (idx === 0 ? '#f59e0b' : '#cbd5e1')"
+                    font-size="11"
+                    :font-weight="idx === currentStepIdx ? 'bold' : 'normal'"
+                  >
+                    {{ node }} {{ idx === 0 ? "(Start)" : `(B.${idx})` }}
+                  </text>
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <!-- SUMMARY TILES -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 flex justify-between items-center shadow-md">
+              <div>
+                <span class="text-xs font-semibold text-slate-400 uppercase">TỔNG TRACK DỊCH CHUYỂN</span>
+                <h3 class="text-3xl font-black text-indigo-400 mt-1 font-mono">
+                  {{ currentResult.totalDist }} <span class="text-sm font-normal text-slate-300">track</span>
+                </h3>
+                <p v-if="['C-SCAN', 'C-LOOK'].includes(selectedAlgo)" class="text-[11px] text-slate-400 mt-1">
+                  *(Không tính bước nhảy quay đầu: <strong>{{ currentResult.totalWithoutJumps }} track</strong>)
+                </p>
+              </div>
+              <span class="text-3xl">📏</span>
+            </div>
+
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 flex justify-between items-center shadow-md">
+              <div>
+                <span class="text-xs font-semibold text-slate-400 uppercase">ĐỘ DỜI TRUNG BÌNH (AVERAGE SEEK)</span>
+                <h3 class="text-3xl font-black text-indigo-400 mt-1 font-mono">
+                  {{ currentResult.avgDist.toFixed(2) }} <span class="text-sm font-normal text-slate-300">track/yc</span>
+                </h3>
+                <p v-if="['C-SCAN', 'C-LOOK'].includes(selectedAlgo)" class="text-[11px] text-slate-400 mt-1">
+                  *(Không tính bước nhảy: <strong>{{ currentResult.avgWithoutJumps?.toFixed(2) }}</strong>)
+                </p>
+              </div>
+              <span class="text-3xl">🧮</span>
+            </div>
+          </div>
+
+          <!-- TRACE TABLE -->
+          <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+            <h3 class="text-lg font-bold text-white mb-3">
+              📋 Bảng Thống Kê Chi Tiết Từng Bước
+            </h3>
+            <div class="overflow-x-auto rounded-xl border border-slate-700">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-900 border-b border-slate-700 text-xs font-bold uppercase text-slate-300">
+                    <th class="py-3 px-4">Bước</th>
+                    <th class="py-3 px-4">Từ Track</th>
+                    <th class="py-3 px-4">Đến Track</th>
+                    <th class="py-3 px-4">Quãng Đường</th>
+                    <th class="py-3 px-4">Phân Loại Bước Chạy</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700 font-mono text-sm text-slate-300">
+                  <tr 
+                    v-for="(s, idx) in currentResult.steps" 
+                    :key="idx"
+                    :class="['hover:bg-slate-750 transition', idx + 1 === currentStepIdx ? 'bg-indigo-950/40 text-emerald-300' : '']"
+                  >
+                    <td class="py-3 px-4 text-slate-400">{{ s.stepNum }}</td>
+                    <td class="py-3 px-4">{{ s.from }}</td>
+                    <td class="py-3 px-4 font-bold text-slate-200">{{ s.to }}</td>
+                    <td class="py-3 px-4 text-indigo-300 font-bold">{{ s.dist }}</td>
+                    <td class="py-3 px-4 text-xs">
+                      <span v-if="s.isJump" class="bg-rose-900/40 text-rose-300 px-2.5 py-1 rounded-full border border-rose-800/50">
+                        🔄 Bước nhảy vòng tròn
+                      </span>
+                      <span v-else-if="s.dist === 0" class="bg-amber-900/40 text-amber-300 px-2.5 py-1 rounded-full border border-amber-850">
+                        📍 Tại chỗ
+                      </span>
+                      <span v-else class="bg-slate-700/50 text-slate-300 px-2.5 py-1 rounded-full">
+                        ⬇️ Di chuyển phục vụ
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- EXPLANATIONS OF DECISION MAKING -->
+          <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-4">
+            <div class="border-b border-slate-700 pb-2">
+              <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                🎓 Phân Tích Sư Phạm Quy Trình Ra Quyết Định
+              </h3>
+              <p class="text-xs text-slate-400">Xem diễn giải khoa học dễ hiểu của hệ thống cho từng bước dịch chuyển.</p>
+            </div>
+
+            <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              <div 
+                v-for="(log, idx) in currentResult.logs" 
+                :key="idx"
+                :class="['p-4 rounded-xl border transition-all', idx === currentStepIdx ? 'bg-emerald-950/30 border-emerald-500/50 shadow-md' : 'bg-slate-900/60 border-slate-800']"
+              >
+                <div class="flex justify-between items-center mb-1">
+                  <span :class="['text-xs font-bold uppercase tracking-wider', idx === currentStepIdx ? 'text-emerald-400' : 'text-indigo-400']">
+                    {{ idx === 0 ? 'TRẠNG THÁI KHỞI ĐẦU' : `BƯỚC DỊCH CHUYỂN ${idx}` }}
+                  </span>
+                  <span v-if="log.pending" class="text-[10px] text-slate-500 font-mono">
+                    Hàng đợi còn: [{{ log.pending }}]
+                  </span>
+                </div>
+                <p class="text-sm text-slate-200 font-medium leading-relaxed mt-1">
+                  {{ log.explanation }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 2: ALGORITHM COMPARISON -->
+        <div v-if="activeTab === 'comparison'" class="space-y-6">
+          <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
+            <h3 class="text-xl font-bold text-white mb-2">
+              📊 So Sánh Chéo 6 Thuật Toán Trên Cùng Bộ Dữ Liệu
+            </h3>
+            <p class="text-sm text-slate-400">
+              Nhìn nhận trực quan ưu/nhược điểm hiệu năng để chọn ra thuật toán tối ưu nhất cho cấu hình đĩa cứng hiện tại.
+            </p>
+            
+            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700 mt-4 text-xs space-y-2">
+              <div class="font-semibold text-slate-300">Thông số bộ dữ liệu đang so sánh:</div>
+              <ul class="list-disc pl-5 text-slate-400 space-y-1 font-mono">
+                <li>Hàng đợi track: [{{ parsedRequests.join(', ') }}]</li>
+                <li>Vị trí ban đầu: {{ headPosition }}</li>
+                <li>Hạn mức đĩa: 0 → {{ maxTrack }}</li>
+                <li>Hướng quét khởi động: {{ direction === 'left' ? '⬅️ Trái (Về 0)' : '➡️ Phải (Về Max)' }}</li>
+              </ul>
+            </div>
+
+            <!-- COMPARISON MATRIX TABLE -->
+            <div class="overflow-x-auto rounded-xl border border-slate-700 mt-6">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-950 border-b border-slate-700 text-xs font-bold uppercase text-slate-300">
+                    <th class="py-3.5 px-4">Giải Thuật</th>
+                    <th class="py-3.5 px-4">Tổng Seek (Có Nhảy)</th>
+                    <th class="py-3.5 px-4">Seek Trung Bình</th>
+                    <th class="py-3.5 px-4">Chỉ Tính Đi Chuyển Cơ Học*</th>
+                    <th class="py-3.5 px-4">Sơ đồ dịch chuyển đầu đọc</th>
+                    <th class="py-3.5 px-4">Xếp Hạng</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700 font-mono text-sm text-slate-300">
+                  <tr 
+                    v-for="(res, idx) in comparisonResults" 
+                    :key="idx"
+                    :class="['hover:bg-slate-750 transition', res.algo === bestAlgo.algo ? 'bg-indigo-950/30' : '']"
+                  >
+                    <td class="py-3 px-4 font-bold text-slate-100 flex items-center gap-1.5">
+                      {{ res.algo }}
+                      <span v-if="res.algo === bestAlgo.algo" class="text-[10px] bg-emerald-500/25 text-emerald-400 border border-emerald-500/40 px-1.5 py-0.5 rounded font-sans font-extrabold uppercase">TỐI ƯU</span>
+                    </td>
+                    <td :class="['py-3 px-4 font-extrabold', res.algo === bestAlgo.algo ? 'text-emerald-400' : 'text-indigo-300']">
+                      {{ res.totalSeek }}
+                    </td>
+                    <td class="py-3 px-4">{{ res.avgSeek }}</td>
+                    <td class="py-3 px-4 text-slate-400">
+                      {{ res.isJumpIgnoredTotal !== null ? `${res.isJumpIgnoredTotal} (TB: ${res.isJumpIgnoredAvg})` : 'Giống có nhảy' }}
+                    </td>
+                    <td class="py-3 px-4 text-xs text-slate-400 max-w-[200px] truncate" :title="res.path.join(' → ')">
+                      {{ res.path.join(' ➔ ') }}
+                    </td>
+                    <td class="py-3 px-4 font-sans text-xs">
+                      <span v-if="res.algo === bestAlgo.algo" class="text-emerald-400 font-extrabold flex items-center gap-1">🥇 Tối ưu nhất</span>
+                      <span v-else class="text-slate-400">Kém hơn +{{ res.totalSeek - bestAlgo.totalSeek }} track</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-4 text-[11px] text-slate-500 leading-relaxed">
+              (*) Quãng đường thực tế cơ học: Bỏ qua khoảng cách của bước nhảy lớn trong C-SCAN và C-LOOK. Thực tế trong các ổ đĩa hiện đại, việc xoay trục hoặc rút gạt nam từ siêu tốc không chịu ma sát cơ học gạt tuần tự giúp bước nhảy này gần như tốn cực kỳ ít hao tổn năng lượng cơ học.
+            </div>
+          </div>
+
+          <!-- DETAILED ACADEMIC EXPLANATION -->
+          <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              🧠 Nhận xét Khoa học từ Máy Chủ Giáo Trình
+            </h3>
+            <div class="text-sm text-slate-300 leading-relaxed space-y-3 font-sans">
+              <p>
+                Với cấu hình này, giải thuật <strong class="text-indigo-400 font-bold">{{ bestAlgo.algo }}</strong> chiến thắng vẻ vang với quãng đường quét tối thiểu chỉ <strong class="text-emerald-400 font-bold font-mono">{{ bestAlgo.totalSeek }} track</strong>.
+              </p>
+              <p>
+                💡 **Bài học tư duy cốt lõi trong phòng thi:**
+              </p>
+              <ul class="list-disc pl-5 space-y-2 text-slate-400">
+                <li><strong>SSTF</strong> hầu như luôn cho quãng đường siêu ngắn nhưng có rủi ro starvation rất cao khi có luồng yêu cầu ghi liên tục vào một cụm cục bộ.</li>
+                <li><strong>LOOK và CLOOK</strong> là sự nâng cấp hoàn chỉnh về mặt tối ưu quãng đường của <strong>SCAN và CSCAN</strong> nhờ cắt giảm hoàn toàn thời gian gạt rỗng vô nghĩa ra đến sát biên đĩa cứng.</li>
+                <li>Trong bài toán thi, hãy luôn vẽ nháp nhanh trục ngang 0 -> 199 để không bao giờ bị nhầm lẫn chiều quay gạt của đầu đọc.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: TRẮC NGHIỆM LUYỆN TẬP -->
+        <div v-if="activeTab === 'practice'" class="space-y-6">
+          <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg space-y-6">
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-700">
+              <div>
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                  ✏️ Hệ Thống Sinh Đề Bài Tính Toán Tự Động
+                </h3>
+                <p class="text-xs text-slate-400">Độ dời tìm kiếm trung bình (Average Seek) - đề tự sinh ngẫu nhiên.</p>
+              </div>
+              <div class="bg-indigo-950 px-4 py-2 rounded-xl border border-indigo-500/30 flex items-center gap-2">
+                <span class="text-xs text-indigo-300">Kết quả ôn luyện:</span>
+                <strong class="text-emerald-400 font-mono text-base">{{ score.correct }} / {{ score.total }} Đúng</strong>
+              </div>
+            </div>
+
+            <div v-if="practiceQuestion" class="space-y-6">
+              <!-- Question Card -->
+              <div class="bg-slate-900 p-5 rounded-xl border border-slate-700 space-y-4">
+                <div class="inline-block bg-indigo-600/30 text-indigo-300 text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
+                  MÃ ĐỀ SINH NGẪU NHIÊN
+                </div>
+                <p class="text-slate-200 text-base leading-relaxed font-medium">
+                  Cho một đĩa cứng có dải hoạt động từ track 0 đến 199. Các yêu cầu cần truy xuất lần lượt được xếp trong hàng đợi đĩa gồm: 
+                  <strong class="text-yellow-400 font-mono bg-slate-950 px-2 py-1 rounded border border-slate-800 mx-1">
+                    {{ practiceQuestion.requests.join(', ') }}
+                  </strong>.
+                  <br class="my-2"/>
+                  Đầu đọc đĩa hiện đang định vị ở vị trí track <strong class="text-rose-400 font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">{{ practiceQuestion.head }}</strong>. 
+                  <br class="my-2"/>
+                  Áp dụng thuật toán <strong class="text-emerald-400 font-bold font-mono">{{ practiceQuestion.algo }}</strong> 
+                  <span v-if="['SCAN', 'C-SCAN', 'LOOK', 'C-LOOK'].includes(practiceQuestion.algo)">
+                    với hướng quét ban đầu di chuyển sang phía <strong>{{ practiceQuestion.direction === 'left' ? 'TRÁI' : 'PHẢI' }}</strong>
+                  </span>, 
+                  hãy xác định <span class="text-indigo-300 underline underline-offset-4">độ dời tìm kiếm trung bình (Average Seek Distance)</span> của đầu đọc.
+                </p>
+                <p class="text-[11px] text-slate-400 italic">
+                  *(Mẹo: Với C-SCAN và C-LOOK, bước nhảy nhảy nhanh thu đầu đọc về biên đối diện có tính quãng đường nhảy vào tổng quãng đường)*
+                </p>
+              </div>
+
+              <!-- Answer Selection Grid -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  v-for="(opt, idx) in practiceQuestion.options"
+                  :key="idx"
+                  @click="handleAnswerSelection(opt)"
+                  :disabled="selectedAnswer !== null"
+                  :class="['p-4 rounded-xl border text-left font-semibold flex items-center gap-3 transition-all', getPracticeBtnClass(opt)]"
+                >
+                  <span :class="['h-8 w-8 rounded-lg flex items-center justify-center font-black', selectedAnswer !== null && opt === practiceQuestion.correctOption ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300']">
+                    {{ String.fromCharCode(65 + idx) }}
+                  </span>
+                  <span class="font-mono text-base">{{ opt.toFixed(1) }} track / yêu cầu</span>
+                </button>
+              </div>
+
+              <!-- Explanation Area -->
+              <div v-if="showExplanation" class="bg-slate-900 p-5 rounded-xl border border-slate-700 space-y-4">
+                <h4 class="text-md font-bold text-white flex items-center gap-1.5">
+                  ⭐ Giải Thích Chi Tiết Từng Bước Sư Phạm:
+                </h4>
+                
+                <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                  <p>
+                    <strong>Bước 1:</strong> Xác định chuỗi di chuyển thực tế của đầu đọc:
+                    <span class="block font-mono text-indigo-300 bg-slate-950 p-2 rounded text-xs mt-1">
+                      {{ practiceQuestion.solution.path.join(' ➔ ') }}
+                    </span>
+                  </p>
+
+                  <p>
+                    <strong>Bước 2:</strong> Tính tổng độ dời tìm kiếm (Total Seek Distance):
+                    <code class="text-yellow-400 font-mono block bg-slate-950 p-2.5 rounded mt-1 overflow-x-auto text-xs leading-relaxed">
+                      Quãng đường = {{ practiceQuestion.solution.steps.map(s => `|${s.to} - ${s.from}|`).join(' + ') }}
+                      <br/>
+                      = {{ practiceQuestion.solution.steps.map(s => s.dist).join(' + ') }} = {{ practiceQuestion.solution.totalDist }} track.
+                    </code>
+                  </p>
+
+                  <p>
+                    <strong>Bước 3:</strong> Áp dụng công thức tính trung bình:
+                    <code class="text-emerald-400 font-mono block bg-slate-950 p-2.5 rounded mt-1 text-xs">
+                      Average Seek = Tổng Seek / Tổng số yêu cầu = {{ practiceQuestion.solution.totalDist }} / {{ practiceQuestion.requests.length }} = {{ practiceQuestion.solution.avgDist.toFixed(4) }}... ≈ {{ practiceQuestion.correctOption.toFixed(1) }} track.
+                    </code>
+                  </p>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                  <button
+                    @click="generateRandomPractice"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition text-sm"
+                  >
+                    Làm Câu Tiếp Theo ➡️
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: IDENTIFY ALGORITHM PRACTICE -->
+        <div v-if="activeTab === 'identify'" class="space-y-6">
+          <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg space-y-6">
+            
+            <div class="pb-4 border-b border-slate-700">
+              <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                🔍 Trắc Nghiệm Ngược: Nhận Diện Thuật Toán Điều Phối Đĩa
+              </h3>
+              <p class="text-xs text-slate-400">
+                Nhìn chuỗi dịch chuyển gạt đầu đọc đĩa và phán đoán thuật toán nào đứng sau. Dạng đề thi nâng cao phân loại điểm số.
+              </p>
+            </div>
+
+            <div v-if="idQuestion" class="space-y-6">
+              <!-- Question Context -->
+              <div class="bg-slate-900 p-5 rounded-xl border border-slate-700 space-y-4">
+                <div class="inline-block bg-purple-600/30 text-purple-300 text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
+                  MÔ PHỎNG HÀNH TRÌNH
+                </div>
+                
+                <p class="text-slate-200 text-base leading-relaxed">
+                  Đầu đọc đĩa xuất phát ban đầu tại vị trí track <strong class="text-rose-400">{{ idQuestion.head }}</strong>. Sau khi phục vụ xong tất cả các yêu cầu chưa xử lý bao gồm <span class="font-mono bg-slate-950 px-1.5 py-0.5 rounded text-sm text-slate-300">[{{ idQuestion.requests.join(', ') }}]</span>, đầu đọc ghi nhận được sơ đồ dịch chuyển gạt tuần tự như sau:
+                  <br/>
+                  <span class="block my-3 py-3 px-4 bg-slate-950 border border-slate-800 rounded-xl font-mono text-center text-lg md:text-xl font-extrabold text-yellow-400 tracking-wider">
+                    {{ idQuestion.pathString }}
+                  </span>
+                  Biết hướng quét đầu tiên của đĩa hướng về phía {{ idQuestion.direction === 'left' ? 'TRÁI' : 'PHẢI' }}. Hỏi thuật toán nào đã được áp dụng?
+                </p>
+              </div>
+
+              <!-- Options -->
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <button
+                  v-for="(algo, idx) in idQuestion.options"
+                  :key="idx"
+                  @click="handleIdAnswerSelection(algo)"
+                  :disabled="idSelectedAns !== null"
+                  :class="['p-3.5 rounded-xl border text-center font-bold transition-all text-sm md:text-base', getIdBtnClass(algo)]"
+                >
+                  {{ algo }}
+                </button>
+              </div>
+
+              <!-- Explanation -->
+              <div v-if="idShowExplanation" class="bg-slate-900 p-5 rounded-xl border border-slate-750 space-y-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">💡</span>
+                  <h4 class="text-md font-bold text-white">Chìa Khóa Nhận Biết Nhanh Cho Sinh Viên:</h4>
+                </div>
+                
+                <div class="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
+                  {{ idQuestion.explanation }}
+                </div>
+
+                <div class="pt-3 flex justify-end">
+                  <button
+                    @click="generateIdentifyAlgoQuestion"
+                    class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition text-sm"
+                  >
+                    Làm Bài Nhận Diện Khác ➡️
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 5: MULTIPLE QUESTIONS QUIZ TEST -->
+        <div v-if="activeTab === 'quiz_mode' && quizState.active" class="space-y-6">
+          <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-700">
+              <div>
+                <h3 class="text-xl font-bold text-white">
+                  🏆 Đề Thi Thử Học Kỳ Trắc Nghiệm (10 Câu Tính Điểm)
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">Cấu trúc đề sát thực tế thi cuối kỳ môn Hệ điều hành.</p>
+              </div>
+              <div v-if="!quizState.finished" class="bg-slate-900 py-1.5 px-3.5 rounded-lg border border-slate-700 text-sm font-semibold text-slate-300 font-mono">
+                Câu {{ quizState.currentQuestionIdx + 1 }} / 10
+              </div>
+            </div>
+
+            <!-- Quiz Play state -->
+            <div v-if="!quizState.finished" class="space-y-6">
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                <div 
+                  class="bg-indigo-500 h-full transition-all duration-300"
+                  :style="{ width: (quizState.currentQuestionIdx + 1) * 10 + '%' }"
+                ></div>
+              </div>
+
+              <!-- Question Details -->
+              <div class="bg-slate-900 p-5 rounded-xl border border-slate-700 space-y-4">
+                <span class="bg-indigo-600/30 text-indigo-300 text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
+                  CÂU HỎI SỐ {{ quizState.currentQuestionIdx + 1 }}
+                </span>
+                <p class="text-slate-200 text-base leading-relaxed">
+                  Cho ổ đĩa cứng có dải hoạt động từ track 0 đến 199. Đầu đọc đĩa hiện đang dừng ở vị trí track <strong class="text-rose-400 font-mono">{{ quizState.questions[quizState.currentQuestionIdx]?.head }}</strong>. Các yêu cầu trong hàng đợi chờ xử lý bao gồm: <strong class="text-yellow-400 font-mono">[{{ quizState.questions[quizState.currentQuestionIdx]?.requests.join(', ') }}]</strong>. Chiều quét ban đầu di chuyển về phía {{ quizState.questions[quizState.currentQuestionIdx]?.direction === 'left' ? 'TRÁI' : 'PHẢI' }}.
+                  <br class="my-2"/>
+                  Hãy tính <strong class="text-indigo-300 underline underline-offset-4">tổng quãng đường di chuyển đầu đọc đĩa (Total Seek Distance)</strong> khi áp dụng thuật toán điều phối <strong class="font-bold text-indigo-300 font-mono">{{ quizState.questions[quizState.currentQuestionIdx]?.algo }}</strong>.
+                </p>
+              </div>
+
+              <!-- Choices Grid -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  v-for="(opt, idx) in quizState.questions[quizState.currentQuestionIdx]?.options"
+                  :key="idx"
+                  @click="handleQuizAnswer(opt)"
+                  :class="['p-4 rounded-xl border text-left font-bold transition-all flex items-center gap-3', quizState.userAnswers[quizState.currentQuestionIdx] === opt ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300 shadow-md' : 'bg-slate-900 border-slate-700 hover:bg-slate-750 text-slate-200']"
+                >
+                  <span :class="['h-8 w-8 rounded-lg flex items-center justify-center font-black', quizState.userAnswers[quizState.currentQuestionIdx] === opt ? 'bg-indigo-500 text-slate-950' : 'bg-slate-800 text-slate-300']">
+                    {{ String.fromCharCode(65 + idx) }}
+                  </span>
+                  <span class="font-mono text-base">{{ opt }} track</span>
+                </button>
+              </div>
+
+              <!-- Navigation bar -->
+              <div class="flex justify-between items-center pt-4 border-t border-slate-700">
+                <button
+                  @click="prevQuizQuestion"
+                  :disabled="quizState.currentQuestionIdx === 0"
+                  class="py-2 px-4 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded-lg text-slate-100 transition text-sm font-semibold"
+                >
+                  ⬅️ Câu Trước
+                </button>
+
+                <button
+                  @click="nextQuizQuestion"
+                  :disabled="quizState.userAnswers[quizState.currentQuestionIdx] === null"
+                  class="py-2 px-5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg transition text-sm font-bold shadow-lg"
+                >
+                  {{ quizState.currentQuestionIdx === 9 ? 'Nộp Bài Thi 🏁' : 'Câu Tiếp Theo ➡️' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Quiz Result finish State -->
+            <div v-else class="space-y-6">
+              <div class="bg-gradient-to-r from-indigo-900 to-purple-900 p-6 rounded-2xl border border-indigo-500/30 text-center space-y-3">
+                <span class="text-5xl">🏆</span>
+                <h4 class="text-xl font-black text-white">BẠN ĐÃ HOÀN THÀNH BÀI THI THỬ TRẮC NGHIỆM!</h4>
+                <div class="text-4xl font-black font-mono text-emerald-400">
+                  {{ quizScore }} / 10 Đúng
+                </div>
+                <div class="text-sm text-slate-300 font-medium">
+                  {{ quizScore >= 8 ? 'Bạn đạt điểm A tuyệt đối rồi! Quá tuyệt!' : (quizScore >= 5 ? 'Khá tốt! Đọc thêm giải thích bên dưới nhé.' : 'Hãy ôn lại lý thuyết các bước nhé!') }}
+                </div>
+                <button
+                  @click="startQuiz"
+                  class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition text-sm mt-2 animate-bounce"
+                >
+                  🔄 Tạo Đề Thi Khác
+                </button>
+              </div>
+
+              <!-- Quiz Review List -->
+              <div class="space-y-4">
+                <h4 class="text-md font-bold text-white">🔍 Xem Lại Chi Tiết Từng Câu Hỏi:</h4>
+                
+                <div class="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+                  <div 
+                    v-for="(q, idx) in quizState.questions" 
+                    :key="idx"
+                    :class="['p-4 rounded-xl border', quizState.userAnswers[idx] === q.correctValue ? 'bg-emerald-950/20 border-emerald-800' : 'bg-red-950/20 border-red-800']"
+                  >
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                        CÂU {{ idx + 1 }}: {{ q.algo }}
+                      </span>
+                      <span :class="['text-xs font-bold', quizState.userAnswers[idx] === q.correctValue ? 'text-emerald-400' : 'text-red-400']">
+                        {{ quizState.userAnswers[idx] === q.correctValue ? '✓ ĐÚNG' : '✗ SAI' }}
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-300 mb-2 font-mono">
+                      Hàng đợi: [{{ q.requests.join(', ') }}], Vị trí bắt đầu: {{ q.head }}, Chiều di chuyển: {{ q.direction === 'left' ? 'Trái' : 'Phải' }}
+                    </p>
+                    <div class="text-xs text-slate-400">
+                      Lựa chọn của bạn: <strong class="font-mono text-slate-300">{{ quizState.userAnswers[idx] }} track</strong> | 
+                      Đáp án đúng: <strong class="font-mono text-emerald-400">{{ q.correctValue }} track</strong>
+                    </div>
+                    <p class="text-xs text-indigo-300 font-medium mt-2 bg-slate-900/50 p-2 rounded">
+                      💡 <strong>Diễn giải lời giải:</strong> {{ q.explanation }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- PRINT LAYOUT (Sử dụng CSS @media print để hiển thị định dạng in học thuật chuẩn mực) -->
+    <section class="hidden print:block bg-white text-black p-8 font-serif leading-relaxed max-w-4xl mx-auto space-y-6">
+      <div class="text-center border-b-2 border-black pb-4">
+        <h1 class="text-2xl font-black uppercase">Lời Giải Chi Tiết Thuật Toán Điều Phối Đĩa</h1>
+        <p class="text-sm mt-1">Học phần: Hệ điều hành (Operating Systems) - ĐH CNTT</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 text-sm font-mono bg-slate-100 p-4 rounded border print:border">
+        <div>
+          <strong>Thông Số Đầu Vào:</strong>
+          <ul class="list-disc pl-5 mt-1">
+            <li>Hàng đợi track: [{{ parsedRequests.join(', ') }}]</li>
+            <li>Vị trí ban đầu: {{ headPosition }}</li>
+            <li>Hạn mức track đĩa: 0 → {{ maxTrack }}</li>
+          </ul>
+        </div>
+        <div>
+          <strong>Giải thuật đang mô phỏng:</strong>
+          <ul class="list-disc pl-5 mt-1">
+            <li>Thuật toán: {{ selectedAlgo }}</li>
+            <li>Hướng ban đầu: {{ direction === 'left' ? 'Trái' : 'Phải' }}</li>
+            <li>Tổng độ dời: {{ currentResult.totalDist }} track</li>
+            <li>Độ dời trung bình: {{ currentResult.avgDist.toFixed(2) }} track/y/c</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="text-lg font-bold border-b pb-1 mt-6">1. Trình Tự Phục Vụ Chi Tiết (Sơ đồ hành trình)</h3>
+      <p class="font-mono text-center text-lg font-bold tracking-wider py-4 bg-slate-50 border my-2">
+        {{ currentResult.path.join(' ➔ ') }}
+      </p>
+
+      <h3 class="text-lg font-bold border-b pb-1 mt-6">2. Bảng Thống Kê Từng Bước Di Chuyển</h3>
+      <table class="w-full text-left border-collapse border border-slate-300 mt-2 text-xs">
+        <thead>
+          <tr class="bg-slate-200 border-b border-slate-300 font-bold">
+            <th class="py-2 px-3 border border-slate-300">Bước</th>
+            <th class="py-2 px-3 border border-slate-300">Từ Track</th>
+            <th class="py-2 px-3 border border-slate-300">Đến Track</th>
+            <th class="py-2 px-3 border border-slate-300">Khoảng cách seek</th>
+            <th class="py-2 px-3 border border-slate-300">Loại bước</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-300 font-mono">
+          <tr v-for="(s, idx) in currentResult.steps" :key="idx">
+            <td class="py-2 px-3 border border-slate-300">{{ s.stepNum }}</td>
+            <td class="py-2 px-3 border border-slate-300">{{ s.from }}</td>
+            <td class="py-2 px-3 border border-slate-300 font-bold">{{ s.to }}</td>
+            <td class="py-2 px-3 border border-slate-300 font-bold">{{ s.dist }}</td>
+            <td class="py-2 px-3 border border-slate-300">
+              {{ s.isJump ? "Bước nhảy vòng tròn" : s.dist === 0 ? "Phục vụ tại chỗ" : "Phục vụ thường" }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="text-lg font-bold border-b pb-1 mt-6">3. Giải Thích Khoa Học & Quy Trình Ra Quyết Định</h3>
+      <div class="space-y-4 text-sm font-serif">
+        <div v-for="(log, idx) in currentResult.logs" :key="idx" class="border-l-4 border-slate-400 pl-3">
+          <strong>{{ idx === 0 ? 'Khởi tạo:' : `Bước ${idx}:` }}</strong> {{ log.explanation }}
+        </div>
+      </div>
+
+      <div class="text-center text-xs text-slate-500 border-t-2 border-black pt-4 mt-8">
+        Tài liệu được sinh tự động trực tiếp từ phần mềm mô phỏng Disk Scheduling Simulator.
+      </div>
+    </section>
+
+    <!-- FOOTER SECTION -->
+    <footer class="bg-slate-950 py-4 px-6 border-t border-slate-800 mt-auto text-center text-xs text-slate-500 print:hidden">
+      <p>© 2026 Disk Scheduling Simulator</p>
+    </footer>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, watch, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        // Main Input configs
+        const inputRequests = ref("98, 183, 37, 122, 14, 124, 65, 67");
+        const headPosition = ref(53);
+        const maxTrack = ref(199);
+        const selectedAlgo = ref("SSTF");
+        const direction = ref("right");
+
+        // Validation error tracking
+        const errorMsg = ref("");
+
+        // Tab Tracker
+        const activeTab = ref("simulation");
+
+        // Animation metrics
+        const isPlaying = ref(false);
+        const currentStepIdx = ref(0);
+        const reversedSpeed = ref(1200); // UI bind speed logic
+        const animationSpeed = computed(() => 2200 - reversedSpeed.value);
+
+        // Practice Mode States
+        const practiceQuestion = ref(null);
+        const selectedAnswer = ref(null);
+        const showExplanation = ref(false);
+        const score = ref({ correct: 0, total: 0 });
+
+        // Reverse Engineering Identification Game states
+        const idQuestion = ref(null);
+        const idSelectedAns = ref(null);
+        const idShowExplanation = ref(false);
+
+        // Multiple Questions exam state
+        const quizState = ref({
+          active: false,
+          currentQuestionIdx: 0,
+          questions: [],
+          userAnswers: [],
+          finished: false
+        });
+
+        // Parse list safely
+        const parsedRequests = computed(() => {
+          return inputRequests.value
+            .split(',')
+            .map(item => parseInt(item.trim()))
+            .filter(item => !isNaN(item) && item >= 0 && item <= maxTrack.value);
+        });
+
+        // Validate on demand
+        watch([inputRequests, headPosition, maxTrack], () => {
+          const raw = inputRequests.value.split(',').map(x => x.trim());
+          const hasInvalid = raw.some(x => x !== "" && isNaN(parseInt(x)));
+          if (hasInvalid) {
+            errorMsg.value = "Danh sách track chứa ký tự không hợp lệ!";
+            return;
+          }
+          const numbers = raw.map(x => parseInt(x)).filter(x => !isNaN(x));
+          const outOfBounds = numbers.some(num => num < 0 || num > maxTrack.value);
+          if (outOfBounds) {
+            errorMsg.value = `Có track nằm ngoài phạm vi hoạt động [0 -> ${maxTrack.value}]!`;
+            return;
+          }
+          if (headPosition.value < 0 || headPosition.value > maxTrack.value) {
+            errorMsg.value = `Vị trí đầu đọc đầu tiên phải nằm trong khoảng [0 -> ${maxTrack.value}]!`;
+            return;
+          }
+          errorMsg.value = "";
+        });
+
+        // --- SOLVER CORES ---
+        const solveFCFS = (reqs, head) => {
+          let current = head;
+          const steps = [];
+          const path = [head];
+          const logs = [];
+
+          logs.push({
+            step: 0,
+            head: current,
+            explanation: `Khởi đầu: Đầu đọc đĩa cứng nằm cố định ở vị trí xuất phát track ${current}. Hàng đợi ban đầu gồm có [${reqs.join(', ')}].`
+          });
+
+          reqs.forEach((req, idx) => {
+            const dist = Math.abs(req - current);
+            steps.push({ stepNum: idx + 1, from: current, to: req, dist, isJump: false });
+            current = req;
+            path.push(req);
+            logs.push({
+              step: idx + 1,
+              head: req,
+              explanation: `Bước ${idx + 1}: FCFS xử lý cực kì đơn giản, di chuyển thẳng tới track ${req} đúng với thứ tự hàng đợi ban đầu. Khoảng cách: |${req} - ${steps[idx].from}| = ${dist} track.`,
+              pending: reqs.slice(idx + 1).join(', ')
+            });
+          });
+
+          const totalDist = steps.reduce((sum, s) => sum + s.dist, 0);
+          return { path, steps, totalDist, avgDist: reqs.length ? totalDist / reqs.length : 0, logs };
+        };
+
+        const solveSSTF = (reqs, head) => {
+          let current = head;
+          const pending = [...reqs];
+          const steps = [];
+          const path = [head];
+          const logs = [];
+          let stepIdx = 1;
+
+          logs.push({
+            step: 0,
+            head: current,
+            explanation: `Khởi đầu: Đầu đọc nằm tại vị trí track ${current}. SSTF bắt đầu phân tích khoảng cách và luôn ưu tiên xử lý track gần vị trí hiện tại nhất.`
+          });
+
+          while (pending.length > 0) {
+            const distances = pending.map(req => ({
+              req,
+              dist: Math.abs(req - current)
+            }));
+
+            distances.sort((a, b) => a.dist - b.dist || a.req - b.req);
+            const chosen = distances[0];
+
+            steps.push({ stepNum: stepIdx, from: current, to: chosen.req, dist: chosen.dist, isJump: false });
+            path.push(chosen.req);
+
+            const index = pending.indexOf(chosen.req);
+            pending.splice(index, 1);
+
+            const calcDetail = distances.map(d => `${d.req} (cách ${d.dist})`).slice(0, 4).join(', ');
+            const moreText = distances.length > 4 ? ` và ${distances.length - 4} track khác` : '';
+
+            logs.push({
+              step: stepIdx,
+              head: chosen.req,
+              explanation: `Bước ${stepIdx}: Khoảng cách từ đầu đọc hiện tại (${current}) đến các track chưa xử lý: [${calcDetail}${moreText}]. SSTF chọn track ${chosen.req} vì nó ở gần nhất với quãng đường đi chỉ là ${chosen.dist} track.`,
+              pending: pending.join(', ')
+            });
+
+            current = chosen.req;
+            stepIdx++;
+          }
+
+          const totalDist = steps.reduce((sum, s) => sum + s.dist, 0);
+          return { path, steps, totalDist, avgDist: reqs.length ? totalDist / reqs.length : 0, logs };
+        };
+
+        const solveSCAN = (reqs, head, maxT, dir) => {
+          let current = head;
+          const steps = [];
+          const path = [head];
+          const logs = [];
+          let stepIdx = 1;
+
+          let left = reqs.filter(r => r < head).sort((a, b) => b - a);
+          let right = reqs.filter(r => r > head).sort((a, b) => a - b);
+
+          const hasHead = reqs.includes(head);
+          if (hasHead) {
+            steps.push({ stepNum: stepIdx, from: head, to: head, dist: 0, isJump: false });
+            logs.push({
+              step: stepIdx,
+              head,
+              explanation: `Phát hiện track yêu cầu trùng với vị trí đầu đọc đĩa (${head}). Phục vụ ngay tại chỗ không tốn quãng đường di chuyển.`,
+              pending: reqs.filter(r => r !== head).join(', ')
+            });
+            stepIdx++;
+          }
+
+          logs.push({
+            step: 0,
+            head,
+            explanation: `Khởi đầu: Đầu đọc ở track ${head}. Thuật toán SCAN (Thang máy) bắt đầu gạt theo hướng quét sang '${dir === 'left' ? 'Trái (về phía 0)' : 'Phải (về phía ' + maxT + ')'}', xử lý mọi yêu cầu bắt gặp trên hành trình đi ra đến sát biên đĩa, rồi sau đó mới quay đầu.`
+          });
+
+          const remLeft = [...left];
+          const remRight = [...right];
+
+          if (dir === 'left') {
+            while (remLeft.length > 0) {
+              const target = remLeft.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Đang di chuyển sang TRÁI, phục vụ track yêu cầu ${target}. Khoảng cách dịch chuyển: ${dist} track.`,
+                pending: [...remLeft, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remRight.length > 0 && current !== 0) {
+              const dist = Math.abs(0 - current);
+              steps.push({ stepNum: stepIdx, from: current, to: 0, dist, isJump: false });
+              path.push(0);
+              logs.push({
+                step: stepIdx,
+                head: 0,
+                explanation: `Bước ${stepIdx}: Phía bên phải vẫn còn yêu cầu, đầu gạt đĩa phải đi tiếp đến tận cùng biên TRÁI (track 0) trước khi đổi chiều sang PHẢI. Khoảng cách: ${dist} track.`,
+                pending: remRight.join(', ')
+              });
+              current = 0;
+              stepIdx++;
+            }
+
+            while (remRight.length > 0) {
+              const target = remRight.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Đổi chiều thành công tại biên, di chuyển sang PHẢI phục vụ nốt track ${target}. Khoảng cách: ${dist} track.`,
+                pending: remRight.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          } else {
+            while (remRight.length > 0) {
+              const target = remRight.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Đang di chuyển sang PHẢI, phục vụ track yêu cầu ${target}. Khoảng cách dịch chuyển: ${dist} track.`,
+                pending: [...remLeft, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remLeft.length > 0 && current !== maxT) {
+              const dist = Math.abs(maxT - current);
+              steps.push({ stepNum: stepIdx, from: current, to: maxT, dist, isJump: false });
+              path.push(maxT);
+              logs.push({
+                step: stepIdx,
+                head: maxT,
+                explanation: `Bước ${stepIdx}: Phía bên trái vẫn còn yêu cầu, đầu đọc phải đi tiếp ra tận cùng biên PHẢI (track ${maxT}) trước khi đổi chiều sang TRÁI. Khoảng cách: ${dist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = maxT;
+              stepIdx++;
+            }
+
+            while (remLeft.length > 0) {
+              const target = remLeft.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Đổi chiều thành công tại biên, di chuyển sang TRÁI phục vụ nốt track ${target}. Khoảng cách: ${dist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          }
+
+          const totalDist = steps.reduce((sum, s) => sum + s.dist, 0);
+          return { path, steps, totalDist, avgDist: reqs.length ? totalDist / reqs.length : 0, logs };
+        };
+
+        const solveCSCAN = (reqs, head, maxT, dir) => {
+          let current = head;
+          const steps = [];
+          const path = [head];
+          const logs = [];
+          let stepIdx = 1;
+
+          let left = reqs.filter(r => r < head).sort((a, b) => a - b);
+          let right = reqs.filter(r => r > head).sort((a, b) => a - b);
+
+          logs.push({
+            step: 0,
+            head,
+            explanation: `Khởi đầu: Đầu đọc ở track ${head}. C-SCAN (Circular SCAN) chỉ phục vụ một chiều di chuyển cố định (đang chọn quét sang ${dir === 'left' ? 'TRÁI' : 'PHẢI'}). Khi đi đến biên đĩa cứng, nó lập tức gạt nhanh không tải ngược về đầu đối diện để quét tiếp.`
+          });
+
+          const remLeft = [...left];
+          const remRight = [...right];
+
+          if (dir === 'right') {
+            while (remRight.length > 0) {
+              const target = remRight.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Di chuyển sang PHẢI để phục vụ track yêu cầu ${target}. Khoảng cách: ${dist} track.`,
+                pending: [...remLeft, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remLeft.length > 0 && current !== maxT) {
+              const dist = Math.abs(maxT - current);
+              steps.push({ stepNum: stepIdx, from: current, to: maxT, dist, isJump: false });
+              path.push(maxT);
+              logs.push({
+                step: stepIdx,
+                head: maxT,
+                explanation: `Bước ${stepIdx}: Tiến đến tận biên PHẢI (track ${maxT}) để lấy đà thực hiện vòng nhảy tròn. Khoảng cách: ${dist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = maxT;
+              stepIdx++;
+            }
+
+            if (remLeft.length > 0) {
+              const jumpDist = maxT;
+              steps.push({ stepNum: stepIdx, from: maxT, to: 0, dist: jumpDist, isJump: true });
+              path.push(0);
+              logs.push({
+                step: stepIdx,
+                head: 0,
+                explanation: `Bước ${stepIdx} [BƯỚC NHẢY C-SCAN]: Đầu gạt nhảy nhanh không tải từ biên phải ${maxT} về biên trái 0. Khoảng cách nhảy: ${jumpDist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = 0;
+              stepIdx++;
+            }
+
+            while (remLeft.length > 0) {
+              const target = remLeft.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Sau bước nhảy, tiếp tục di chuyển tuần tự sang PHẢI phục vụ track ${target}. Khoảng cách: ${dist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          } else {
+            const leftDesc = [...remLeft].reverse();
+            while (leftDesc.length > 0) {
+              const target = leftDesc.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Di chuyển sang TRÁI để phục vụ track yêu cầu ${target}. Khoảng cách: ${dist} track.`,
+                pending: [...leftDesc, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remRight.length > 0 && current !== 0) {
+              const dist = Math.abs(0 - current);
+              steps.push({ stepNum: stepIdx, from: current, to: 0, dist, isJump: false });
+              path.push(0);
+              logs.push({
+                step: stepIdx,
+                head: 0,
+                explanation: `Bước ${stepIdx}: Tiến đến biên TRÁI (track 0) để sẵn sàng thực hiện bước nhảy vòng tròn về biên phải. Khoảng cách: ${dist} track.`,
+                pending: remRight.join(', ')
+              });
+              current = 0;
+              stepIdx++;
+            }
+
+            if (remRight.length > 0) {
+              const jumpDist = maxT;
+              steps.push({ stepNum: stepIdx, from: 0, to: maxT, dist: jumpDist, isJump: true });
+              path.push(maxT);
+              logs.push({
+                step: stepIdx,
+                head: maxT,
+                explanation: `Bước ${stepIdx} [BƯỚC NHẢY C-SCAN]: Gạt nhanh không tải từ biên trái 0 về biên phải ${maxT}. Khoảng cách nhảy: ${jumpDist} track.`,
+                pending: remRight.join(', ')
+              });
+              current = maxT;
+              stepIdx++;
+            }
+
+            const rightDesc = [...remRight].reverse();
+            while (rightDesc.length > 0) {
+              const target = rightDesc.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Tiếp tục quét sang TRÁI phục vụ nốt track ${target}. Khoảng cách: ${dist} track.`,
+                pending: rightDesc.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          }
+
+          const totalDist = steps.reduce((sum, s) => sum + s.dist, 0);
+          const totalWithoutJumps = steps.reduce((sum, s) => sum + (s.isJump ? 0 : s.dist), 0);
+          return {
+            path,
+            steps,
+            totalDist,
+            totalWithoutJumps,
+            avgDist: reqs.length ? totalDist / reqs.length : 0,
+            avgWithoutJumps: reqs.length ? totalWithoutJumps / reqs.length : 0,
+            logs
+          };
+        };
+
+        const solveLOOK = (reqs, head, dir) => {
+          let current = head;
+          const steps = [];
+          const path = [head];
+          const logs = [];
+          let stepIdx = 1;
+
+          let left = reqs.filter(r => r < head).sort((a, b) => b - a);
+          let right = reqs.filter(r => r > head).sort((a, b) => a - b);
+
+          const hasHead = reqs.includes(head);
+          if (hasHead) {
+            steps.push({ stepNum: stepIdx, from: head, to: head, dist: 0, isJump: false });
+            logs.push({
+              step: stepIdx,
+              head,
+              explanation: `Gặp track trùng khớp vị trí đầu đọc (${head}), phục vụ tức khắc tại chỗ.`
+            });
+            stepIdx++;
+          }
+
+          logs.push({
+            step: 0,
+            head,
+            explanation: `Khởi đầu: Đầu đọc ở track ${head}. Thuật toán LOOK cải tiến của SCAN: chỉ quét đến hết yêu cầu ngoài cùng của hướng di chuyển hiện tại rồi đổi chiều ngay tại đó mà không mất công di chuyển tiếp ra tận biên đĩa.`
+          });
+
+          const remLeft = [...left];
+          const remRight = [...right];
+
+          if (dir === 'left') {
+            while (remLeft.length > 0) {
+              const target = remLeft.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Đang di chuyển sang TRÁI, phục vụ track yêu cầu ${target}. Khoảng cách: ${dist} track.`,
+                pending: [...remLeft, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remRight.length > 0) {
+              logs.push({
+                step: stepIdx,
+                head: current,
+                explanation: `Phát hiện hướng TRÁI không còn yêu cầu nào chưa giải quyết. Đầu đọc lập tức quay đầu chuyển hướng sang PHẢI ngay tại track ${current}.`,
+                pending: remRight.join(', ')
+              });
+            }
+
+            while (remRight.length > 0) {
+              const target = remRight.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Phục vụ chiều PHẢI sau quay đầu, xử lý track ${target}. Khoảng cách: ${dist} track.`,
+                pending: remRight.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          } else {
+            while (remRight.length > 0) {
+              const target = remRight.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Đang di chuyển sang PHẢI, phục vụ track yêu cầu ${target}. Khoảng cách: ${dist} track.`,
+                pending: [...remLeft, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remLeft.length > 0) {
+              logs.push({
+                step: stepIdx,
+                head: current,
+                explanation: `Phát hiện phía bên PHẢI không còn yêu cầu nào khác. Đầu đọc tự động quay đầu chuyển hướng sang TRÁI ngay tại track ${current}.`,
+                pending: remLeft.join(', ')
+              });
+            }
+
+            while (remLeft.length > 0) {
+              const target = remLeft.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Phục vụ chiều TRÁI sau quay đầu, xử lý track ${target}. Khoảng cách: ${dist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          }
+
+          const totalDist = steps.reduce((sum, s) => sum + s.dist, 0);
+          return { path, steps, totalDist, avgDist: reqs.length ? totalDist / reqs.length : 0, logs };
+        };
+
+        const solveCLOOK = (reqs, head, dir) => {
+          let current = head;
+          const steps = [];
+          const path = [head];
+          const logs = [];
+          let stepIdx = 1;
+
+          let left = reqs.filter(r => r < head).sort((a, b) => a - b);
+          let right = reqs.filter(r => r > head).sort((a, b) => a - b);
+
+          logs.push({
+            step: 0,
+            head,
+            explanation: `Khởi đầu: Đầu đọc ở track ${head}. C-LOOK (Circular LOOK) tối ưu nhất trong dòng thuật toán quét: chỉ quét một hướng cố định đến yêu cầu ngoài cùng của hướng đó, sau đó nhảy thẳng không tải về yêu cầu xa nhất của hướng ngược lại.`
+          });
+
+          const remLeft = [...left];
+          const remRight = [...right];
+
+          if (dir === 'right') {
+            while (remRight.length > 0) {
+              const target = remRight.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Di chuyển gạt sang PHẢI phục vụ track ${target}. Khoảng cách: ${dist} track.`,
+                pending: [...remLeft, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remLeft.length > 0) {
+              const lowestLeft = remLeft[0];
+              const jumpDist = Math.abs(lowestLeft - current);
+              steps.push({ stepNum: stepIdx, from: current, to: lowestLeft, dist: jumpDist, isJump: true });
+              path.push(lowestLeft);
+              logs.push({
+                step: stepIdx,
+                head: lowestLeft,
+                explanation: `Bước ${stepIdx} [BƯỚC NHẢY C-LOOK]: Thực hiện cú nhảy co đầu đọc nhanh về thẳng track yêu cầu thấp nhất bên Trái (${lowestLeft}). Khoảng cách nhảy: ${jumpDist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = lowestLeft;
+              stepIdx++;
+              remLeft.shift(); // Phục vụ luôn track thấp nhất khi tiếp đất
+            }
+
+            while (remLeft.length > 0) {
+              const target = remLeft.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Tiếp tục quét sang PHẢI phục vụ nốt track ${target}. Khoảng cách: ${dist} track.`,
+                pending: remLeft.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          } else {
+            const leftDesc = [...remLeft].reverse();
+            while (leftDesc.length > 0) {
+              const target = leftDesc.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Di chuyển gạt sang TRÁI phục vụ track ${target}. Khoảng cách: ${dist} track.`,
+                pending: [...leftDesc, ...remRight].join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+
+            if (remRight.length > 0) {
+              const highestRight = remRight[remRight.length - 1];
+              const jumpDist = Math.abs(highestRight - current);
+              steps.push({ stepNum: stepIdx, from: current, to: highestRight, dist: jumpDist, isJump: true });
+              path.push(highestRight);
+              logs.push({
+                step: stepIdx,
+                head: highestRight,
+                explanation: `Bước ${stepIdx} [BƯỚC NHẢY C-LOOK]: Nhảy thẳng đầu gạt đĩa về vị trí yêu cầu cao nhất phía bên phải (${highestRight}). Khoảng cách nhảy: ${jumpDist} track.`,
+                pending: remRight.join(', ')
+              });
+              current = highestRight;
+              stepIdx++;
+              remRight.pop(); // Phục vụ luôn khi tiếp đất
+            }
+
+            const rightDesc = [...remRight].reverse();
+            while (rightDesc.length > 0) {
+              const target = rightDesc.shift();
+              const dist = Math.abs(target - current);
+              steps.push({ stepNum: stepIdx, from: current, to: target, dist, isJump: false });
+              path.push(target);
+              logs.push({
+                step: stepIdx,
+                head: target,
+                explanation: `Bước ${stepIdx}: Tiếp tục hành trình quét sang TRÁI phục vụ track ${target}. Khoảng cách: ${dist} track.`,
+                pending: rightDesc.join(', ')
+              });
+              current = target;
+              stepIdx++;
+            }
+          }
+
+          const totalDist = steps.reduce((sum, s) => sum + s.dist, 0);
+          const totalWithoutJumps = steps.reduce((sum, s) => sum + (s.isJump ? 0 : s.dist), 0);
+          return {
+            path,
+            steps,
+            totalDist,
+            totalWithoutJumps,
+            avgDist: reqs.length ? totalDist / reqs.length : 0,
+            avgWithoutJumps: reqs.length ? totalWithoutJumps / reqs.length : 0,
+            logs
+          };
+        };
+
+        const solveAlgorithm = (algo, reqs, head, maxT, dir) => {
+          if (!reqs.length) return { path: [head], steps: [], totalDist: 0, avgDist: 0, logs: [] };
+          switch (algo) {
+            case 'FCFS': return solveFCFS(reqs, head);
+            case 'SSTF': return solveSSTF(reqs, head);
+            case 'SCAN': return solveSCAN(reqs, head, maxT, dir);
+            case 'C-SCAN': return solveCSCAN(reqs, head, maxT, dir);
+            case 'LOOK': return solveLOOK(reqs, head, dir);
+            case 'C-LOOK': return solveCLOOK(reqs, head, dir);
+            default: return solveFCFS(reqs, head);
+          }
+        };
+
+        // --- COMPUTED DATA FOR SIMULATION Tab ---
+        const currentResult = computed(() => {
+          return solveAlgorithm(selectedAlgo.value, parsedRequests.value, headPosition.value, maxTrack.value, direction.value);
+        });
+
+        // --- ANIMATION SCHEDULER ---
+        let animTimer = null;
+        watch(isPlaying, (playing) => {
+          if (playing) {
+            animTimer = setInterval(() => {
+              if (currentStepIdx.value >= currentResult.value.path.length - 1) {
+                isPlaying.value = false;
+                return;
+              }
+              currentStepIdx.value++;
+            }, animationSpeed.value);
+          } else {
+            clearInterval(animTimer);
+          }
+        });
+
+        // Speed watch trigger to restart timer if playing
+        watch(animationSpeed, () => {
+          if (isPlaying.value) {
+            clearInterval(animTimer);
+            animTimer = setInterval(() => {
+              if (currentStepIdx.value >= currentResult.value.path.length - 1) {
+                isPlaying.value = false;
+                return;
+              }
+              currentStepIdx.value++;
+            }, animationSpeed.value);
+          }
+        });
+
+        const handlePlayPause = () => {
+          if (currentStepIdx.value >= currentResult.value.path.length - 1) {
+            currentStepIdx.value = 0;
+          }
+          isPlaying.value = !isPlaying.value;
+        };
+
+        const handleNextStep = () => {
+          isPlaying.value = false;
+          if (currentStepIdx.value < currentResult.value.path.length - 1) {
+            currentStepIdx.value++;
+          }
+        };
+
+        const handlePrevStep = () => {
+          isPlaying.value = false;
+          if (currentStepIdx.value > 0) {
+            currentStepIdx.value--;
+          }
+        };
+
+        const handleResetAnim = () => {
+          isPlaying.value = false;
+          currentStepIdx.value = 0;
+        };
+
+        watch(() => currentResult.value.path.length, () => {
+          if (currentStepIdx.value >= currentResult.value.path.length) {
+            currentStepIdx.value = Math.max(0, currentResult.value.path.length - 1);
+          }
+        });
+
+        // Tab Change
+        const changeTab = (tab) => {
+          activeTab.value = tab;
+          isPlaying.value = false;
+          if (tab === 'practice') generateRandomPractice();
+          if (tab === 'identify') generateIdentifyAlgoQuestion();
+          if (tab === 'quiz_mode' && !quizState.value.active) startQuiz();
+        };
+
+        // Reset inputs to default values
+        const resetToDefault = () => {
+          inputRequests.value = "98, 183, 37, 122, 14, 124, 65, 67";
+          headPosition.value = 53;
+          maxTrack.value = 199;
+          selectedAlgo.value = "SSTF";
+          direction.value = "right";
+          handleResetAnim();
+        };
+
+        // --- PRACTICE GENERATOR ---
+        const generateRandomPractice = () => {
+          const numReqs = Math.floor(Math.random() * 5) + 7; // 7 to 11
+          const randomReqs = [];
+          while (randomReqs.length < numReqs) {
+            const tr = Math.floor(Math.random() * 190) + 5;
+            if (!randomReqs.includes(tr)) randomReqs.push(tr);
+          }
+          const randHead = Math.floor(Math.random() * 160) + 20;
+          const algos = ['FCFS', 'SSTF', 'SCAN', 'C-SCAN', 'LOOK', 'C-LOOK'];
+          const randAlgo = algos[Math.floor(Math.random() * algos.length)];
+          const randDir = Math.random() > 0.5 ? 'right' : 'left';
+
+          const res = solveAlgorithm(randAlgo, randomReqs, randHead, 199, randDir);
+          const correctAvg = parseFloat(res.avgDist.toFixed(1));
+          
+          const rawOptions = [
+            correctAvg,
+            parseFloat((correctAvg + (Math.random() * 15 + 5)).toFixed(1)),
+            parseFloat(Math.max(5.0, correctAvg - (Math.random() * 12 + 4)).toFixed(1)),
+            parseFloat((correctAvg * 1.22).toFixed(1))
+          ];
+          const uniqueOptions = [...new Set(rawOptions)];
+          while (uniqueOptions.length < 4) {
+            const added = parseFloat((correctAvg + (Math.random() * 30 - 15)).toFixed(1));
+            if (!uniqueOptions.includes(added) && added > 0) {
+              uniqueOptions.push(added);
+            }
+          }
+          const shuffledOptions = uniqueOptions.sort(() => Math.random() - 0.5);
+
+          practiceQuestion.value = {
+            requests: randomReqs,
+            head: randHead,
+            algo: randAlgo,
+            direction: randDir,
+            options: shuffledOptions,
+            correctOption: correctAvg,
+            solution: res
+          };
+          selectedAnswer.value = null;
+          showExplanation.value = false;
+        };
+
+        const handleAnswerSelection = (opt) => {
+          if (selectedAnswer.value !== null) return;
+          selectedAnswer.value = opt;
+          showExplanation.value = true;
+          if (opt === practiceQuestion.value.correctOption) {
+            score.value.correct++;
+          }
+          score.value.total++;
+        };
+
+        const getPracticeBtnClass = (opt) => {
+          if (selectedAnswer.value === null) {
+            return "bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-750";
+          }
+          if (opt === practiceQuestion.value.correctOption) {
+            return "bg-emerald-950/40 border-emerald-500 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+          }
+          if (selectedAnswer.value === opt) {
+            return "bg-red-950/40 border-red-500 text-red-300";
+          }
+          return "bg-slate-900/30 border-slate-850 text-slate-500 opacity-60";
+        };
+
+        // --- REVERSE IDENTIFICATION LOGIC ---
+        const generateIdentifyAlgoQuestion = () => {
+          const numReqs = Math.floor(Math.random() * 4) + 6;
+          const randomReqs = [];
+          while (randomReqs.length < numReqs) {
+            const tr = Math.floor(Math.random() * 180) + 10;
+            if (!randomReqs.includes(tr)) randomReqs.push(tr);
+          }
+          const randHead = Math.floor(Math.random() * 140) + 30;
+          const randDir = Math.random() > 0.5 ? 'right' : 'left';
+          const algos = ['FCFS', 'SSTF', 'SCAN', 'C-SCAN', 'LOOK', 'C-LOOK'];
+          const chosenAlgo = algos[Math.floor(Math.random() * algos.length)];
+
+          const res = solveAlgorithm(chosenAlgo, randomReqs, randHead, 199, randDir);
+          const pathString = res.path.join(' → ');
+
+          let explanationText = `Đầu tiên hãy phân tích chuỗi di chuyển: **${pathString}** với vị trí xuất phát là **${randHead}**.\n\n`;
+          if (chosenAlgo === 'FCFS') {
+            explanationText += `💡 **Mẹo nhận dạng FCFS:** Chuỗi di chuyển khớp hoàn toàn 100% với thứ tự của hàng đợi ban đầu. Đường đi nhảy lộn xộn không theo một định luật tối ưu nào cả.`;
+          } else if (chosenAlgo === 'SSTF') {
+            explanationText += `💡 **Mẹo nhận dạng SSTF:** Tại mỗi bước chạy, đầu đọc luôn chọn track chưa phục vụ ở vị trí sát cạnh bên nhất (ví dụ hiệu tuyệt đối nhỏ nhất).`;
+          } else if (chosenAlgo === 'SCAN') {
+            explanationText += `💡 **Mẹo nhận dạng SCAN:** Đầu đọc quét tịnh tiến liên tục sang một hướng cho đến khi va chạm biên cứng đĩa (**0** hoặc **199**) rồi mới đổi hướng quét phục vụ nốt chiều còn lại.`;
+          } else if (chosenAlgo === 'LOOK') {
+            explanationText += `💡 **Mẹo nhận dạng LOOK:** Rất giống SCAN nhưng đầu đọc thông minh hơn, khi chạm đến yêu cầu ngoài cùng của hướng đó là tự đổi chiều ngay chứ không đi rỗng ra biên.`;
+          } else if (chosenAlgo === 'C-SCAN') {
+            explanationText += `💡 **Mẹo nhận dạng C-SCAN:** Chỉ phục vụ theo duy nhất một hướng cố định. Khi chạm biên đĩa, nó xuất hiện một cú nhảy siêu lớn quay thẳng về biên đối diện (**199 → 0** hoặc ngược lại), rồi quét tiếp chiều cũ.`;
+          } else if (chosenAlgo === 'C-LOOK') {
+            explanationText += `💡 **Mẹo nhận dạng C-LOOK:** Tương tự C-SCAN nhưng khi phục vụ xong yêu cầu cuối của hướng đó, nó nhảy nhanh thẳng về yêu cầu ngoài cùng của hướng ngược lại (không ra biên) rồi quét tiếp.`;
+          }
+
+          idQuestion.value = {
+            requests: randomReqs,
+            head: randHead,
+            direction: randDir,
+            pathString,
+            correctAlgo: chosenAlgo,
+            explanation: explanationText,
+            options: algos
+          };
+          idSelectedAns.value = null;
+          idShowExplanation.value = false;
+        };
+
+        const handleIdAnswerSelection = (algo) => {
+          if (idSelectedAns.value !== null) return;
+          idSelectedAns.value = algo;
+          idShowExplanation.value = true;
+        };
+
+        const getIdBtnClass = (algo) => {
+          if (idSelectedAns.value === null) {
+            return "bg-slate-900 border-slate-700 hover:bg-slate-750 text-slate-200";
+          }
+          if (algo === idQuestion.value.correctAlgo) {
+            return "bg-emerald-950/40 border-emerald-500 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+          }
+          if (idSelectedAns.value === algo) {
+            return "bg-red-950/40 border-red-500 text-red-300";
+          }
+          return "bg-slate-900/30 border-slate-850 text-slate-500 opacity-60";
+        };
+
+        // --- 10 QUESTIONS QUIZ EXAM MODE ---
+        const startQuiz = () => {
+          const questionsList = [];
+          for (let i = 0; i < 10; i++) {
+            const numReqs = Math.floor(Math.random() * 4) + 6;
+            const randomReqs = [];
+            while (randomReqs.length < numReqs) {
+              const tr = Math.floor(Math.random() * 180) + 10;
+              if (!randomReqs.includes(tr)) randomReqs.push(tr);
+            }
+            const randHead = Math.floor(Math.random() * 140) + 30;
+            const randDir = Math.random() > 0.5 ? 'right' : 'left';
+            const algos = ['FCFS', 'SSTF', 'SCAN', 'C-SCAN', 'LOOK', 'C-LOOK'];
+            const randAlgo = algos[Math.floor(Math.random() * algos.length)];
+
+            const res = solveAlgorithm(randAlgo, randomReqs, randHead, 199, randDir);
+            const correctTotal = res.totalDist;
+
+            const distractors = [
+              correctTotal,
+              correctTotal + Math.floor(Math.random() * 30) + 15,
+              Math.max(20, correctTotal - Math.floor(Math.random() * 25) - 10),
+              correctTotal + Math.floor(Math.random() * 60) + 40
+            ];
+            const uniqueDistractors = [...new Set(distractors)].sort(() => Math.random() - 0.5);
+
+            questionsList.push({
+              idx: i + 1,
+              requests: randomReqs,
+              head: randHead,
+              algo: randAlgo,
+              direction: randDir,
+              options: uniqueDistractors,
+              correctValue: correctTotal,
+              explanation: `Dịch chuyển tổng cộng ${correctTotal} track. Trình tự gạt đĩa là: [${res.path.join(' ➔ ')}].`
+            });
+          }
+
+          quizState.value = {
+            active: true,
+            currentQuestionIdx: 0,
+            questions: questionsList,
+            userAnswers: Array(10).fill(null),
+            finished: false
+          };
+        };
+
+        const handleQuizAnswer = (option) => {
+          quizState.value.userAnswers[quizState.value.currentQuestionIdx] = option;
+        };
+
+        const nextQuizQuestion = () => {
+          if (quizState.value.currentQuestionIdx < 9) {
+            quizState.value.currentQuestionIdx++;
+          } else {
+            quizState.value.finished = true;
+          }
+        };
+
+        const prevQuizQuestion = () => {
+          if (quizState.value.currentQuestionIdx > 0) {
+            quizState.value.currentQuestionIdx--;
+          }
+        };
+
+        const quizScore = computed(() => {
+          let count = 0;
+          quizState.value.questions.forEach((q, idx) => {
+            if (quizState.value.userAnswers[idx] === q.correctValue) count++;
+          });
+          return count;
+        });
+
+        // --- COMPARISON MATRIX CALCULATIONS ---
+        const comparisonResults = computed(() => {
+          const algos = ['FCFS', 'SSTF', 'SCAN', 'C-SCAN', 'LOOK', 'C-LOOK'];
+          return algos.map(algo => {
+            const res = solveAlgorithm(algo, parsedRequests.value, headPosition.value, maxTrack.value, direction.value);
+            return {
+              algo,
+              totalSeek: res.totalDist,
+              avgSeek: parseFloat(res.avgDist.toFixed(1)),
+              isJumpIgnoredTotal: ['C-SCAN', 'C-LOOK'].includes(algo) ? res.totalWithoutJumps : null,
+              isJumpIgnoredAvg: ['C-SCAN', 'C-LOOK'].includes(algo) ? parseFloat(res.avgWithoutJumps?.toFixed(1)) : null,
+              path: res.path
+            };
+          });
+        });
+
+        const bestAlgo = computed(() => {
+          const sorted = [...comparisonResults.value].sort((a, b) => a.totalSeek - b.totalSeek);
+          return sorted[0];
+        });
+
+        // --- SVG GRAPH COORDINATE CALCULATIONS ---
+        const mapTrackToX = (track) => {
+          const paddingX = 50;
+          const svgWidth = 800;
+          return paddingX + (track / maxTrack.value) * (svgWidth - 2 * paddingX);
+        };
+
+        const mapStepToY = (stepIdx, totalSteps) => {
+          const paddingY = 40;
+          const svgHeight = 450;
+          if (totalSteps <= 1) return svgHeight / 2;
+          return paddingY + (stepIdx / (totalSteps - 1)) * (svgHeight - 2 * paddingY);
+        };
+
+        const getArrowTransform = (x1Track, y1, x2Track, y2) => {
+          const x1 = mapTrackToX(x1Track);
+          const x2 = mapTrackToX(x2Track);
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+          const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+          return `translate(${midX}, ${midY}) rotate(${angle})`;
+        };
+
+        const handlePrint = () => {
+          window.print();
+        };
+
+        onMounted(() => {
+          generateRandomPractice();
+          generateIdentifyAlgoQuestion();
+        });
+
+        return {
+          inputRequests,
+          headPosition,
+          maxTrack,
+          selectedAlgo,
+          direction,
+          errorMsg,
+          activeTab,
+          isPlaying,
+          currentStepIdx,
+          reversedSpeed,
+          animationSpeed,
+          practiceQuestion,
+          selectedAnswer,
+          showExplanation,
+          score,
+          idQuestion,
+          idSelectedAns,
+          idShowExplanation,
+          quizState,
+          parsedRequests,
+          currentResult,
+          handlePlayPause,
+          handleNextStep,
+          handlePrevStep,
+          handleResetAnim,
+          changeTab,
+          resetToDefault,
+          generateRandomPractice,
+          handleAnswerSelection,
+          getPracticeBtnClass,
+          generateIdentifyAlgoQuestion,
+          handleIdAnswerSelection,
+          getIdBtnClass,
+          startQuiz,
+          handleQuizAnswer,
+          nextQuizQuestion,
+          prevQuizQuestion,
+          quizScore,
+          comparisonResults,
+          bestAlgo,
+          mapTrackToX,
+          mapStepToY,
+          getArrowTransform,
+          handlePrint
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
