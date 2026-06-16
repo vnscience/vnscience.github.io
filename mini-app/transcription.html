@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraScribe - Intelligent Audio/Video Transcription</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind Config for Dark Mode -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Google Fonts (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .mono-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Simple custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #475569;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-200 flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 py-4 flex items-center justify-between shadow-sm shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="p-2 bg-brand-500 text-white rounded-xl shadow-md shadow-brand-500/20">
+        <i data-lucide="mic" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-500 dark:to-indigo-400 bg-clip-text text-transparent">AuraScribe</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">AI-Powered Multi-Modal Transcriber (EN / VI)</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <!-- Dark Mode Toggle -->
+      <button id="themeToggle" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition" title="Toggle Theme">
+        <i id="themeIcon" data-lucide="moon" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Status Indicator -->
+      <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Gemini 2.5 Active
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    
+    <!-- Left Panel: Settings, Upload, and Player -->
+    <section class="w-full lg:w-[420px] border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-y-auto p-6 flex flex-col gap-6 shrink-0">
+      
+      <!-- API Settings Card -->
+      <div class="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-150 dark:border-slate-800/80">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <i data-lucide="key" class="w-4 h-4 text-brand-500"></i>
+            <h2 class="font-semibold text-sm">Gemini API Connection</h2>
+          </div>
+          <span id="apiKeyBadge" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400">
+            Missing Key
+          </span>
+        </div>
+        <div class="space-y-3">
+          <div class="relative">
+            <input 
+              type="password" 
+              id="apiKeyInput" 
+              placeholder="Paste your gemini-2.5-flash key..." 
+              class="w-full px-3 py-2 pr-10 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-600 transition"
+            />
+            <button id="toggleApiVisible" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <i data-lucide="eye" class="w-4 h-4" id="eyeIcon"></i>
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500">Your API key is stored locally and never sent to our servers.</p>
+        </div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="flex-1 flex flex-col gap-4">
+        <h2 class="font-semibold text-sm flex items-center gap-2">
+          <i data-lucide="file-audio" class="w-4 h-4 text-brand-500"></i>
+          Upload Audio/Video File
+        </h2>
+
+        <div 
+          id="dropZone" 
+          class="border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-brand-500 dark:hover:border-brand-500 bg-slate-50/50 dark:bg-slate-900/20 hover:bg-brand-50/20 dark:hover:bg-brand-950/10 rounded-2xl p-6 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center text-center gap-3 group min-h-[180px]"
+        >
+          <input type="file" id="filePicker" class="hidden" accept="audio/*,video/*" />
+          <div class="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 group-hover:scale-110 transition-transform">
+            <i data-lucide="upload-cloud" class="w-6 h-6 text-brand-500"></i>
+          </div>
+          <div>
+            <p class="text-xs font-semibold">Drag & drop or <span class="text-brand-500">browse file</span></p>
+            <p class="text-[10px] text-slate-400 mt-1">Accepts MP3, WAV, M4A, FLAC, MP4, MOV, WEBM (Max 25MB recommended)</p>
+          </div>
+        </div>
+
+        <!-- File Details Card (Hidden initially) -->
+        <div id="fileCard" class="hidden bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3 overflow-hidden">
+              <div id="fileIconBg" class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-500">
+                <i id="fileIcon" data-lucide="music" class="w-5 h-5"></i>
+              </div>
+              <div class="overflow-hidden">
+                <h3 id="fileName" class="text-xs font-semibold truncate">filename.mp3</h3>
+                <p id="fileSize" class="text-[10px] text-slate-400 mt-0.5">0.0 MB</p>
+              </div>
+            </div>
+            <button id="clearFileBtn" class="text-slate-400 hover:text-red-500 transition">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+          
+          <div id="mediaDurationContainer" class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/60 flex justify-between text-[10px] text-slate-500">
+            <span>Duration</span>
+            <span id="mediaDuration" class="font-medium">Detecting...</span>
+          </div>
+        </div>
+
+        <!-- Media Player Preview -->
+        <div id="playerContainer" class="hidden flex flex-col gap-2">
+          <label class="text-xs font-medium text-slate-400">Media Preview</label>
+          <div id="audioPlayerWrapper" class="hidden">
+            <audio id="audioPlayer" controls class="w-full h-10 rounded-lg bg-slate-100 dark:bg-slate-800"></audio>
+          </div>
+          <div id="videoPlayerWrapper" class="hidden bg-black rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 aspect-video flex items-center justify-center">
+            <video id="videoPlayer" controls class="w-full max-h-[220px]"></video>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language Selector Widget -->
+      <div class="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-150 dark:border-slate-800/80 flex flex-col gap-2">
+        <label for="languageSelect" class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <i data-lucide="languages" class="w-4 h-4 text-brand-500"></i>
+          Source Language / Ngôn ngữ nguồn
+        </label>
+        <select 
+          id="languageSelect" 
+          class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-600 text-slate-700 dark:text-slate-200 transition"
+        >
+          <option value="en">English (Tiếng Anh)</option>
+          <option value="vi" selected>Tiếng Việt (Vietnamese)</option>
+        </select>
+      </div>
+
+      <!-- Action Button -->
+      <button 
+        id="transcribeBtn" 
+        disabled
+        class="w-full py-3 px-4 bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed font-medium text-sm rounded-xl transition-all duration-150 flex items-center justify-center gap-2 shadow-sm"
+      >
+        <i data-lucide="cpu" class="w-4 h-4"></i>
+        <span>Start AI Transcription</span>
+      </button>
+
+    </section>
+
+    <!-- Right Panel: Transcription Display and Actions -->
+    <section class="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+      
+      <!-- Live Processing Indicator overlay -->
+      <div id="processingOverlay" class="hidden absolute inset-0 bg-white/80 dark:bg-slate-950/80 z-20 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
+        <div class="relative w-20 h-20 mb-6">
+          <div class="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800"></div>
+          <div class="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin"></div>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <i data-lucide="sparkles" class="w-8 h-8 text-brand-500 animate-pulse"></i>
+          </div>
+        </div>
+        <h3 id="statusTitle" class="text-lg font-bold tracking-tight mb-2">Analyzing Audio Track</h3>
+        <p id="statusDescription" class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-4">Converting media into a highly optimized payload for Gemini...</p>
+        
+        <!-- Custom Progress Bar -->
+        <div class="w-64 bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden mb-2">
+          <div id="progressBar" class="bg-brand-500 h-full w-0 transition-all duration-300"></div>
+        </div>
+        <p id="progressEstimate" class="text-xs text-slate-400">Est. processing time: ~30-60 seconds depending on file length.</p>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-wrap items-center justify-between gap-4 z-10">
+        <!-- Tab Selectors & Stats -->
+        <div class="flex items-center gap-4">
+          <div class="flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/50 dark:border-slate-800">
+            <button id="editorTabBtn" class="px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm transition">
+              Editor Mode
+            </button>
+            <button id="readerTabBtn" class="px-3 py-1 text-xs font-medium rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">
+              Search & View
+            </button>
+          </div>
+          <!-- Real-time Stats -->
+          <div class="hidden sm:flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-800 pl-4">
+            <div>Words: <span id="wordCount" class="font-semibold text-slate-700 dark:text-slate-200">0</span></div>
+            <div>Chars: <span id="charCount" class="font-semibold text-slate-700 dark:text-slate-200">0</span></div>
+          </div>
+        </div>
+
+        <!-- Utility Buttons -->
+        <div class="flex items-center gap-2">
+          <!-- Search Box (Conditional, styled beautifully) -->
+          <div id="searchBoxContainer" class="relative hidden sm:block">
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Search transcript..." 
+              class="w-48 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-600 transition"
+            />
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-1.5">
+            <button id="copyBtn" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900 transition border border-slate-200/60 dark:border-slate-800" title="Copy to Clipboard">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+            </button>
+            <div class="relative group">
+              <button class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900 transition border border-slate-200/60 dark:border-slate-800 flex items-center gap-1" title="Download">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <i data-lucide="chevron-down" class="w-3 h-3"></i>
+              </button>
+              <!-- Dropdown menu -->
+              <div class="absolute right-0 mt-1.5 w-36 bg-white dark:bg-slate-950 rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 hidden group-hover:block hover:block z-30">
+                <button id="downloadTxtBtn" class="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-900 transition flex items-center gap-2">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Text Document
+                </button>
+                <button id="downloadMdBtn" class="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-900 transition flex items-center gap-2">
+                  <i data-lucide="markdown" class="w-3.5 h-3.5"></i> Markdown (.md)
+                </button>
+              </div>
+            </div>
+            <button id="clearTranscriptBtn" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition border border-slate-200/60 dark:border-slate-800" title="Clear Transcript">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor Canvas -->
+      <div class="flex-1 p-6 overflow-y-auto flex flex-col">
+        <!-- Editor Mode Area -->
+        <div id="editorTab" class="flex-1 flex flex-col h-full">
+          <textarea 
+            id="transcriptTextarea" 
+            placeholder="Transcribed text will appear here. You can manually edit, formatting, or restructure as you play your audio back." 
+            class="w-full flex-1 min-h-[300px] resize-none bg-transparent outline-none border-0 text-slate-700 dark:text-slate-200 leading-relaxed text-sm placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-0"
+          ></textarea>
+        </div>
+
+        <!-- Reader / Highlighter Mode Area (Hidden by default) -->
+        <div id="readerTab" class="hidden flex-1 prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-200 text-sm leading-relaxed overflow-y-auto whitespace-pre-wrap">
+          <div id="highlightedContent" class="outline-none min-h-[300px]">
+            Your transcript will display here with searchable highlight triggers active.
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer / Status Banner -->
+      <footer class="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+        <div class="flex items-center gap-2">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+          <span id="completionTime">Last updated: Never</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+          <span>Auto-saving enabled</span>
+        </div>
+      </footer>
+    </section>
+
+  </main>
+
+  <!-- Modal/Toast notification system -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 pointer-events-none transition-all duration-300 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 max-w-sm text-xs">
+    <i data-lucide="info" id="toastIcon" class="w-4 h-4 text-brand-500"></i>
+    <span id="toastMessage">Something happened.</span>
+  </div>
+
+  <script>
+    // --- APP CONSTANTS & STATE ---
+    const SYSTEM_PROMPTS = {
+      en: "You are an expert transcription engine. Transcribe the provided English audio/video with maximum accuracy. Preserve punctuation, paragraph structure, speaker changes when identifiable, numbers, dates, technical terms, proper nouns, and acronyms. Do not summarize. Return only the transcript.",
+      vi: "Bạn là một công cụ chuyển ngữ và gõ lại văn bản chuyên nghiệp. Hãy chuyển đổi âm thanh hoặc video tiếng Việt được cung cấp thành văn bản một cách cực kỳ chính xác. Giữ nguyên các dấu câu, cấu trúc phân đoạn, phân chia người nói rõ ràng khi có thể xác định, các con số, ngày tháng, thuật ngữ chuyên ngành, danh từ riêng và từ viết tắt. Tuyệt đối không tóm tắt hay lược bỏ nội dung. Chỉ trả về bản ghi văn bản tiếng Việt hoàn chỉnh."
+    };
+    
+    let appState = {
+      apiKey: '',
+      selectedFile: null,
+      fileBase64: '',
+      fileMimeType: '',
+      transcript: '',
+      currentTab: 'editor',
+      completionTime: null,
+      theme: 'light'
+    };
+
+    // --- DOM ELEMENTS ---
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const toggleApiVisible = document.getElementById('toggleApiVisible');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const apiKeyBadge = document.getElementById('apiKeyBadge');
+    const dropZone = document.getElementById('dropZone');
+    const filePicker = document.getElementById('filePicker');
+    const fileCard = document.getElementById('fileCard');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileIcon = document.getElementById('fileIcon');
+    const fileIconBg = document.getElementById('fileIconBg');
+    const clearFileBtn = document.getElementById('clearFileBtn');
+    const mediaDuration = document.getElementById('mediaDuration');
+    const mediaDurationContainer = document.getElementById('mediaDurationContainer');
+    const playerContainer = document.getElementById('playerContainer');
+    const audioPlayerWrapper = document.getElementById('audioPlayerWrapper');
+    const videoPlayerWrapper = document.getElementById('videoPlayerWrapper');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    
+    const processingOverlay = document.getElementById('processingOverlay');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusDescription = document.getElementById('statusDescription');
+    const progressBar = document.getElementById('progressBar');
+    const progressEstimate = document.getElementById('progressEstimate');
+    
+    const editorTabBtn = document.getElementById('editorTabBtn');
+    const readerTabBtn = document.getElementById('readerTabBtn');
+    const editorTab = document.getElementById('editorTab');
+    const readerTab = document.getElementById('readerTab');
+    const searchInput = document.getElementById('searchInput');
+    const searchBoxContainer = document.getElementById('searchBoxContainer');
+    const highlightedContent = document.getElementById('highlightedContent');
+    const transcriptTextarea = document.getElementById('transcriptTextarea');
+    const wordCount = document.getElementById('wordCount');
+    const charCount = document.getElementById('charCount');
+    const completionTime = document.getElementById('completionTime');
+    
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadTxtBtn = document.getElementById('downloadTxtBtn');
+    const downloadMdBtn = document.getElementById('downloadMdBtn');
+    const clearTranscriptBtn = document.getElementById('clearTranscriptBtn');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
+    const toastIcon = document.getElementById('toastIcon');
+
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(message, type = 'info') {
+      toastMessage.textContent = message;
+      
+      // Configure Icon/Colors based on type
+      if (type === 'error') {
+        toastIcon.className = 'w-4 h-4 text-red-500';
+        toastIcon.setAttribute('data-lucide', 'alert-circle');
+      } else if (type === 'success') {
+        toastIcon.className = 'w-4 h-4 text-emerald-500';
+        toastIcon.setAttribute('data-lucide', 'check-circle');
+      } else {
+        toastIcon.className = 'w-4 h-4 text-brand-500';
+        toastIcon.setAttribute('data-lucide', 'info');
+      }
+      lucide.createIcons();
+
+      // Animate in
+      toast.classList.remove('translate-y-12', 'opacity-0', 'pointer-events-none');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-12', 'opacity-0', 'pointer-events-none');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 4000);
+    }
+
+    // --- THEME INITIALIZATION & SWITCHER ---
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      setTheme(savedTheme);
+    }
+
+    // Update Theme Wrapper Class
+    function setTheme(theme) {
+      appState.theme = theme;
+      localStorage.setItem('theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        themeIcon.setAttribute('data-lucide', 'sun');
+      } else {
+        document.documentElement.classList.remove('dark');
+        themeIcon.setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+    }
+
+    themeToggle.addEventListener('click', () => {
+      setTheme(appState.theme === 'light' ? 'dark' : 'light');
+    });
+
+    // --- API KEY HANDLING ---
+    function initApiKey() {
+      const savedKey = localStorage.getItem('gemini_api_key');
+      if (savedKey) {
+        appState.apiKey = savedKey;
+        apiKeyInput.value = savedKey;
+        updateApiBadge(true);
+      }
+    }
+
+    function updateApiBadge(hasKey) {
+      if (hasKey) {
+        apiKeyBadge.textContent = 'Active Key';
+        apiKeyBadge.className = 'text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400';
+      } else {
+        apiKeyBadge.textContent = 'Missing Key';
+        apiKeyBadge.className = 'text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400';
+      }
+    }
+
+    apiKeyInput.addEventListener('input', (e) => {
+      const key = e.target.value.trim();
+      appState.apiKey = key;
+      localStorage.setItem('gemini_api_key', key);
+      updateApiBadge(!!key);
+      validateSubmitAbility();
+    });
+
+    toggleApiVisible.addEventListener('click', () => {
+      const currentType = apiKeyInput.getAttribute('type');
+      if (currentType === 'password') {
+        apiKeyInput.setAttribute('type', 'text');
+        eyeIcon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        apiKeyInput.setAttribute('type', 'password');
+        eyeIcon.setAttribute('data-lucide', 'eye');
+      }
+      lucide.createIcons();
+    });
+
+    // --- FILE SELECTION AND ANALYSIS ---
+    function formatBytes(bytes, decimals = 2) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    function validateSubmitAbility() {
+      if (appState.apiKey && appState.selectedFile) {
+        transcribeBtn.removeAttribute('disabled');
+        transcribeBtn.className = "w-full py-3 px-4 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white cursor-pointer font-semibold text-sm rounded-xl transition-all duration-150 flex items-center justify-center gap-2 shadow-md hover:shadow-brand-500/20";
+      } else {
+        transcribeBtn.setAttribute('disabled', 'true');
+        transcribeBtn.className = "w-full py-3 px-4 bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed font-medium text-sm rounded-xl transition-all duration-150 flex items-center justify-center gap-2 shadow-sm";
+      }
+    }
+
+    function processSelectedFile(file) {
+      if (!file) return;
+
+      const isAudio = file.type.startsWith('audio/');
+      const isVideo = file.type.startsWith('video/');
+
+      if (!isAudio && !isVideo) {
+        showToast('Please select a valid audio or video file.', 'error');
+        return;
+      }
+
+      appState.selectedFile = file;
+      appState.fileMimeType = file.type;
+
+      // Update UI File card
+      fileName.textContent = file.name;
+      fileSize.textContent = formatBytes(file.size);
+      
+      // Update icon classes
+      if (isAudio) {
+        fileIcon.setAttribute('data-lucide', 'music');
+        fileIconBg.className = "p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-500";
+        audioPlayerWrapper.classList.remove('hidden');
+        videoPlayerWrapper.classList.add('hidden');
+        audioPlayer.src = URL.createObjectURL(file);
+      } else {
+        fileIcon.setAttribute('data-lucide', 'video');
+        fileIconBg.className = "p-2 rounded-lg bg-pink-50 dark:bg-pink-950 text-pink-500";
+        videoPlayerWrapper.classList.remove('hidden');
+        audioPlayerWrapper.classList.add('hidden');
+        videoPlayer.src = URL.createObjectURL(file);
+      }
+      lucide.createIcons();
+
+      fileCard.classList.remove('hidden');
+      playerContainer.classList.remove('hidden');
+      dropZone.classList.add('hidden');
+
+      // Attempt to read duration
+      mediaDuration.textContent = 'Detecting...';
+      const tempMedia = isAudio ? audioPlayer : videoPlayer;
+      tempMedia.onloadedmetadata = function() {
+        const minutes = Math.floor(tempMedia.duration / 60);
+        const seconds = Math.floor(tempMedia.duration % 60);
+        mediaDuration.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+      };
+
+      // Convert file content to base64
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        appState.fileBase64 = e.target.result.split(',')[1];
+        validateSubmitAbility();
+      };
+      reader.onerror = function() {
+        showToast('Error parsing file system state.', 'error');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Dropzone Events
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-brand-500', 'bg-brand-50/20');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-brand-500', 'bg-brand-50/20');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const file = dt.files[0];
+      processSelectedFile(file);
+    });
+
+    dropZone.addEventListener('click', () => {
+      filePicker.click();
+    });
+
+    filePicker.addEventListener('change', (e) => {
+      processSelectedFile(e.target.files[0]);
+    });
+
+    clearFileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      appState.selectedFile = null;
+      appState.fileBase64 = '';
+      appState.fileMimeType = '';
+      
+      // Stop and clear players
+      audioPlayer.pause();
+      audioPlayer.src = '';
+      videoPlayer.pause();
+      videoPlayer.src = '';
+
+      fileCard.classList.add('hidden');
+      playerContainer.classList.add('hidden');
+      dropZone.classList.remove('hidden');
+      validateSubmitAbility();
+    });
+
+    // --- TRANSCRIPTION CORE LOGIC ---
+    async function apiRequestWithRetry(url, options, maxRetries = 5) {
+      let delay = 1000;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) {
+            return await response.json();
+          }
+          // If response status indicates ratelimit or server failure, wait and retry
+          if (response.status === 429 || response.status >= 500) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
+            continue;
+          }
+          const errorData = await response.json();
+          throw new Error(errorData?.error?.message || `Request failed with status ${response.status}`);
+        } catch (error) {
+          if (i === maxRetries - 1) {
+            throw error; // Propagate the error after exhaustion of retries
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2;
+        }
+      }
+    }
+
+    async function startTranscription() {
+      if (!appState.apiKey || !appState.fileBase64) {
+        showToast('API Key or media file missing.', 'error');
+        return;
+      }
+
+      // Show processing overlay and state transition
+      processingOverlay.classList.remove('hidden');
+      updateProgress(15, 'Preparing data payloads...', 'Optimizing multi-modal media streams...');
+
+      try {
+        updateProgress(35, 'Contacting Gemini engine...', 'Invoking Gemini 2.5 Flash model pipeline...');
+
+        // Updated Request Endpoint to Use Stable Gemini 2.5 Flash API Identifier
+        const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${appState.apiKey}`;
+        
+        const selectedLang = document.getElementById('languageSelect').value;
+        const systemPrompt = SYSTEM_PROMPTS[selectedLang] || SYSTEM_PROMPTS.en;
+
+        const payload = {
+          contents: [
+            {
+              parts: [
+                {
+                  text: systemPrompt
+                },
+                {
+                  inlineData: {
+                    mimeType: appState.fileMimeType,
+                    data: appState.fileBase64
+                  }
+                }
+              ]
+            }
+          ]
+        };
+
+        updateProgress(65, 'AI Engine Analyzing Audio', 'Decoding raw audio waves and speech patterns. This may take a minute...');
+
+        const result = await apiRequestWithRetry(requestUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // Parse result
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          throw new Error('API succeeded but returned an empty transcription result.');
+        }
+
+        updateProgress(90, 'Finalizing content structure...', 'Organizing text formats and applying markdown standards.');
+        
+        // Apply result to state
+        appState.transcript = text.trim();
+        appState.completionTime = new Date().toLocaleTimeString();
+        
+        // Update Editor UI
+        transcriptTextarea.value = appState.transcript;
+        highlightedContent.textContent = appState.transcript;
+        updateMetrics();
+        saveToLocalStorage();
+        showToast('Transcription completed successfully!', 'success');
+
+      } catch (error) {
+        console.error(error);
+        showToast(`Transcription Failed: ${error.message}`, 'error');
+      } finally {
+        processingOverlay.classList.add('hidden');
+      }
+    }
+
+    function updateProgress(percentage, title, description) {
+      progressBar.style.width = `${percentage}%`;
+      statusTitle.textContent = title;
+      statusDescription.textContent = description;
+    }
+
+    transcribeBtn.addEventListener('click', () => {
+      startTranscription();
+    });
+
+    // --- TRANSCRIPT ACTIONS & UTILITIES ---
+    function updateMetrics() {
+      const text = transcriptTextarea.value || '';
+      const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+      wordCount.textContent = words;
+      charCount.textContent = text.length;
+
+      if (appState.completionTime) {
+        completionTime.textContent = `Last updated: ${appState.completionTime}`;
+      } else {
+        completionTime.textContent = 'Last updated: Never';
+      }
+    }
+
+    transcriptTextarea.addEventListener('input', () => {
+      appState.transcript = transcriptTextarea.value;
+      highlightedContent.textContent = appState.transcript;
+      updateMetrics();
+      saveToLocalStorage();
+    });
+
+    // Save/Restore local state
+    function saveToLocalStorage() {
+      localStorage.setItem('aura_transcript', appState.transcript);
+      localStorage.setItem('aura_completion_time', appState.completionTime || '');
+    }
+
+    function loadSavedTranscript() {
+      const savedTranscript = localStorage.getItem('aura_transcript');
+      const savedTime = localStorage.getItem('aura_completion_time');
+      if (savedTranscript) {
+        appState.transcript = savedTranscript;
+        transcriptTextarea.value = savedTranscript;
+        highlightedContent.textContent = savedTranscript;
+        appState.completionTime = savedTime || null;
+        updateMetrics();
+      }
+    }
+
+    // Copy to clipboard (Direct implementation)
+    copyBtn.addEventListener('click', () => {
+      const textToCopy = transcriptTextarea.value;
+      if (!textToCopy) {
+        showToast('There is no transcription text to copy.', 'error');
+        return;
+      }
+      
+      const el = document.createElement('textarea');
+      el.value = textToCopy;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      
+      showToast('Copied transcript to clipboard!', 'success');
+    });
+
+    // Download files
+    downloadTxtBtn.addEventListener('click', () => {
+      const text = transcriptTextarea.value;
+      if (!text) {
+        showToast('Transcript is empty.', 'error');
+        return;
+      }
+      triggerDownload(text, 'aura-transcript.txt', 'text/plain');
+    });
+
+    downloadMdBtn.addEventListener('click', () => {
+      const text = transcriptTextarea.value;
+      if (!text) {
+        showToast('Transcript is empty.', 'error');
+        return;
+      }
+      const prefix = `# AuraScribe English Speech Transcript\n*Generated on: ${appState.completionTime || new Date().toLocaleString()}*\n\n---\n\n`;
+      triggerDownload(prefix + text, 'aura-transcript.md', 'text/markdown');
+    });
+
+    function triggerDownload(content, filename, contentType) {
+      const blob = new Blob([content], { type: contentType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    clearTranscriptBtn.addEventListener('click', () => {
+      if (!transcriptTextarea.value) return;
+      if (confirm('Are you sure you want to clear the current transcript? Your local auto-save will be erased.')) {
+        appState.transcript = '';
+        transcriptTextarea.value = '';
+        highlightedContent.innerHTML = 'Your transcript will display here with searchable highlight triggers active.';
+        appState.completionTime = null;
+        updateMetrics();
+        saveToLocalStorage();
+        showToast('Transcript cleared.', 'info');
+      }
+    });
+
+    // --- VIEW / TAB SELECTION ---
+    editorTabBtn.addEventListener('click', () => {
+      appState.currentTab = 'editor';
+      editorTabBtn.className = "px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm transition";
+      readerTabBtn.className = "px-3 py-1 text-xs font-medium rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition";
+      editorTab.classList.remove('hidden');
+      readerTab.classList.add('hidden');
+      searchBoxContainer.classList.add('hidden');
+    });
+
+    readerTabBtn.addEventListener('click', () => {
+      appState.currentTab = 'reader';
+      readerTabBtn.className = "px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm transition";
+      editorTabBtn.className = "px-3 py-1 text-xs font-medium rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition";
+      readerTab.classList.remove('hidden');
+      editorTab.classList.add('hidden');
+      searchBoxContainer.classList.remove('hidden');
+      renderHighlightedContent();
+    });
+
+    // --- SEARCH / HIGHLIGHTING IMPLEMENTATION ---
+    searchInput.addEventListener('input', () => {
+      renderHighlightedContent();
+    });
+
+    function renderHighlightedContent() {
+      const searchTerm = searchInput.value.trim();
+      const content = appState.transcript || 'Your transcript will display here with searchable highlight triggers active.';
+
+      if (!searchTerm) {
+        highlightedContent.textContent = content;
+        return;
+      }
+
+      // Escape special characters for Regex
+      const escapedTerm = searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`(${escapedTerm})`, 'gi');
+      
+      // Perform matching and safely insert markdown highlight styles
+      const parts = content.split(regex);
+      highlightedContent.innerHTML = '';
+      
+      parts.forEach(part => {
+        if (part.toLowerCase() === searchTerm.toLowerCase()) {
+          const mark = document.createElement('mark');
+          mark.className = 'bg-yellow-200 dark:bg-yellow-900/60 text-slate-900 dark:text-white px-0.5 rounded';
+          mark.textContent = part;
+          highlightedContent.appendChild(mark);
+        } else {
+          highlightedContent.appendChild(document.createTextNode(part));
+        }
+      });
+    }
+
+    // --- APP INITIALIZATION ---
+    window.onload = function() {
+      lucide.createIcons();
+      initTheme();
+      initApiKey();
+      loadSavedTranscript();
+    };
+  </script>
+</body>
+</html>
