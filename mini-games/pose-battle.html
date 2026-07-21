@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pose Battle - Stage Game Show</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Montserrat & Orbitron for Game Show Aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+
+  <!-- TensorFlow.js & MoveNet MultiPose Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.10.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.10.0/dist/tf-converter.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.10.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0/dist/pose-detection.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      user-select: none;
+      overflow-x: hidden;
+    }
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
+    /* Glow & Stage Lighting Effects */
+    .glow-cyan {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
+    }
+    .glow-pink {
+      box-shadow: 0 0 25px rgba(236, 72, 153, 0.6);
+    }
+    .glow-gold {
+      box-shadow: 0 0 30px rgba(234, 179, 8, 0.8);
+    }
+    .text-glow-cyan {
+      text-shadow: 0 0 15px rgba(6, 182, 212, 0.8);
+    }
+    .text-glow-pink {
+      text-shadow: 0 0 15px rgba(236, 72, 153, 0.8);
+    }
+    .text-glow-gold {
+      text-shadow: 0 0 20px rgba(234, 179, 8, 0.9);
+    }
+    /* Pulse Animations */
+    @keyframes pulse-fast {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.85; }
+    }
+    .animate-pulse-fast {
+      animation: pulse-fast 0.8s infinite;
+    }
+    /* Mirrored Video & Canvas support */
+    .mirror-mode {
+      transform: scaleX(-1);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
+
+  <!-- HEADER / GAME TITLE HUD -->
+  <header class="w-full py-3 px-6 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex justify-between items-center z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-pink-500 flex items-center justify-center shadow-lg">
+        <i class="fa-solid font-bold text-white text-xl">⚡</i>
+      </div>
+      <div>
+        <h1 class="text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 font-orbitron">
+          POSE BATTLE
+        </h1>
+        <p class="text-xs text-slate-400 font-medium">STAGE EDITION</p>
+      </div>
+    </div>
+
+    <!-- Quick Control Actions -->
+    <div class="flex items-center gap-3">
+      <button id="btn-hall-of-fame" onclick="openLeaderboardModal()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition border border-amber-500/40 flex items-center gap-1.5 text-xs font-bold font-orbitron" title="View Real High Score Records">
+        <i class="fa-solid fa-trophy text-yellow-400"></i> Hall of Fame
+      </button>
+      <button id="btn-toggle-mirror" onclick="toggleMirror()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition border border-slate-700 flex items-center gap-1.5" title="Toggle Camera Mirror View">
+        <i class="fa-solid fa-arrows-rotate"></i> Mirror View
+      </button>
+      <button id="btn-toggle-skeleton" onclick="toggleSkeleton()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition border border-slate-700 flex items-center gap-1.5" title="Toggle Skeleton Overlay">
+        <i class="fa-solid fa-bone"></i> Skeleton
+      </button>
+      <button id="btn-toggle-sound" onclick="toggleSound()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition border border-slate-700 flex items-center gap-1.5" title="Toggle Sound Effects">
+        <i id="icon-sound" class="fa-solid fa-volume-high text-emerald-400"></i> Sound
+      </button>
+    </div>
+  </header>
+
+  <!-- CUSTOM MODAL & NOTIFICATIONS -->
+  <div id="custom-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl transform transition-all scale-100">
+      <div id="modal-icon" class="text-4xl text-yellow-400 mb-3">
+        <i class="fa-solid fa-circle-exclamation"></i>
+      </div>
+      <h3 id="modal-title" class="text-xl font-bold text-white mb-2">Notification</h3>
+      <p id="modal-message" class="text-sm text-slate-300 mb-6"></p>
+      <div id="modal-actions" class="flex justify-center gap-4">
+        <button onclick="closeModal()" class="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold text-white text-sm transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERSISTENT REAL LEADERBOARD MODAL -->
+  <div id="leaderboard-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border-2 border-amber-500/50 rounded-3xl max-w-2xl w-full p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex justify-between items-center pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-yellow-400 text-xl shadow-md">
+            <i class="fa-solid fa-trophy"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-black text-white font-orbitron">REAL HALL OF FAME</h3>
+            <p class="text-xs text-slate-400">Persistent live score records saved from actual played rounds</p>
+          </div>
+        </div>
+        <button onclick="closeLeaderboardModal()" class="text-slate-400 hover:text-white text-lg px-2 py-1 rounded-lg hover:bg-slate-800 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Leaderboard Data Table -->
+      <div class="flex-1 overflow-y-auto my-4 border border-slate-800 rounded-2xl bg-slate-950/80">
+        <table class="w-full text-left text-sm text-slate-300">
+          <thead class="text-xs uppercase bg-slate-900 text-amber-400 font-orbitron sticky top-0 border-b border-slate-800">
+            <tr>
+              <th class="p-3">Rank</th>
+              <th class="p-3">Player</th>
+              <th class="p-3">Team / Mode</th>
+              <th class="p-3">Target Pose</th>
+              <th class="p-3 text-right">Score</th>
+            </tr>
+          </thead>
+          <tbody id="real-leaderboard-tbody" class="divide-y divide-slate-800/80">
+            <!-- Dynamically populated from localStorage -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center pt-2">
+        <button onclick="clearRealLeaderboardData()" class="px-4 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-xs font-semibold border border-rose-800/50 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-trash-can"></i> Clear Leaderboard
+        </button>
+        <button onclick="closeLeaderboardModal()" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-white text-xs font-orbitron transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main class="flex-1 flex flex-col justify-center items-center p-4 relative overflow-hidden">
+    
+    <!-- ========================================== -->
+    <!-- 1. SCREEN: SETUP                           -->
+    <!-- ========================================== -->
+    <section id="screen-setup" class="w-full max-w-4xl bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative z-10 transition-all">
+      
+      <!-- Stage Lights Header Accent -->
+      <div class="flex justify-center items-center gap-2 mb-3">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <span class="inline-block px-4 py-1 rounded-full bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-bold tracking-widest uppercase font-orbitron">
+          STAGE MATCH CONFIGURATION
+        </span>
+        <span class="w-2 h-2 rounded-full bg-pink-400 animate-ping"></span>
+      </div>
+
+      <div class="text-center mb-8">
+        <h2 class="text-3xl sm:text-5xl font-black text-white font-orbitron tracking-tight drop-shadow-md">
+          WELCOME TO <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400">POSE BATTLE</span>
+        </h2>
+        <p class="text-slate-400 text-xs sm:text-sm mt-2 max-w-lg mx-auto font-medium">Select your battle mode, enter player rosters, choose total rounds, and get ready to strike the pose!</p>
+      </div>
+
+      <!-- Resume Unfinished Game Banner -->
+      <div id="resume-banner" class="hidden mb-6 p-4 rounded-2xl bg-indigo-950/70 border-2 border-indigo-500/50 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-400 text-xl">
+            <i class="fa-solid fa-rotate-left"></i>
+          </div>
+          <div class="text-left">
+            <h4 class="text-sm font-bold text-white font-orbitron">UNFINISHED MATCH DETECTED</h4>
+            <p class="text-xs text-slate-300">You have a game in progress. Would you like to resume?</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 w-full sm:w-auto">
+          <button onclick="resumeSavedGame()" class="flex-1 sm:flex-initial px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold text-xs rounded-xl transition font-orbitron shadow-md">
+            Resume Match
+          </button>
+          <button onclick="discardSavedGame()" class="flex-1 sm:flex-initial px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition border border-slate-700">
+            Discard
+          </button>
+        </div>
+      </div>
+
+      <!-- Mode Selector & Round Settings Grid -->
+      <div class="mb-8 p-3 bg-slate-950/80 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 shadow-inner">
+        <!-- Battle Mode Buttons -->
+        <div class="flex-1 w-full flex justify-center gap-2">
+          <button id="mode-btn-team" onclick="selectMode('TEAM_BATTLE')" class="flex-1 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-pink-500 text-white shadow-lg font-orbitron border border-cyan-400/30">
+            <i class="fa-solid fa-users text-sm"></i> 2-PLAYER TEAM BATTLE
+          </button>
+          <button id="mode-btn-solo" onclick="selectMode('SINGLE_PLAYER')" class="flex-1 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-slate-800/80 text-slate-400 hover:bg-slate-700/80 font-orbitron border border-slate-700">
+            <i class="fa-solid fa-user text-sm"></i> SOLO PRACTICE
+          </button>
+        </div>
+
+        <!-- Round Count Choice -->
+        <div class="flex items-center justify-between gap-3 bg-slate-900/90 px-4 py-2.5 rounded-xl border border-slate-700 w-full md:w-auto">
+          <label for="select-rounds" class="text-xs font-bold text-slate-300 font-orbitron uppercase whitespace-nowrap flex items-center gap-1.5">
+            <i class="fa-solid fa-flag-checkered text-yellow-400"></i> Match Rounds:
+          </label>
+          <select id="select-rounds" class="bg-slate-800 text-yellow-400 font-bold font-orbitron text-sm rounded-lg px-3 py-1 border border-slate-600 focus:outline-none focus:border-yellow-400 cursor-pointer">
+            <option value="3">3 Rounds</option>
+            <option value="5" selected>5 Rounds</option>
+            <option value="7">7 Rounds</option>
+            <option value="10">10 Rounds</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Teams Setup Roster Form -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Team Alpha / Player 1 -->
+        <div class="p-5 rounded-2xl bg-slate-800/40 border-2 border-cyan-500/40 shadow-xl relative overflow-hidden backdrop-blur-md">
+          <div class="absolute top-0 left-0 w-2 h-full bg-cyan-500"></div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 id="label-teamA-title" class="text-lg font-extrabold text-cyan-400 uppercase tracking-wide flex items-center gap-2 font-orbitron">
+              <i class="fa-solid fa-shield-halved"></i> TEAM A (LEFT SIDE)
+            </h3>
+            <span class="text-[10px] font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/50 px-2 py-0.5 rounded-full font-mono">PLAYER 1</span>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label id="label-teamA-name" class="block text-xs font-bold text-slate-300 uppercase mb-1">Team A Name</label>
+              <input type="text" id="teamA-name" placeholder="e.g. Team Alpha" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-bold focus:outline-none focus:border-cyan-500 transition shadow-inner">
+            </div>
+            <div>
+              <label id="label-teamA-members" class="block text-xs font-bold text-slate-300 uppercase mb-1">Player List (One per line)</label>
+              <textarea id="teamA-members" rows="4" placeholder="Enter player names (one per line)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition font-sans shadow-inner"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Beta / Player 2 (Hidden in Solo mode) -->
+        <div id="container-teamB" class="p-5 rounded-2xl bg-slate-800/40 border-2 border-pink-500/40 shadow-xl relative overflow-hidden backdrop-blur-md">
+          <div class="absolute top-0 right-0 w-2 h-full bg-pink-500"></div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-extrabold text-pink-400 uppercase tracking-wide flex items-center gap-2 font-orbitron">
+              <i class="fa-solid fa-shield-halved"></i> TEAM B (RIGHT SIDE)
+            </h3>
+            <span class="text-[10px] font-bold text-pink-300 bg-pink-950/80 border border-pink-500/50 px-2 py-0.5 rounded-full font-mono">PLAYER 2</span>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Team B Name</label>
+              <input type="text" id="teamB-name" placeholder="e.g. Team Beta" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-bold focus:outline-none focus:border-pink-500 transition shadow-inner">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Player List (One per line)</label>
+              <textarea id="teamB-members" rows="4" placeholder="Enter player names (one per line)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-pink-500 transition font-sans shadow-inner"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="flex justify-center">
+        <button onclick="startGameSetup()" class="w-full sm:w-auto px-12 py-4 bg-gradient-to-r from-cyan-500 via-indigo-600 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-white font-black text-xl rounded-2xl shadow-2xl hover:shadow-cyan-500/30 transform hover:-translate-y-1 active:translate-y-0 transition font-orbitron tracking-widest flex items-center justify-center gap-3 border border-white/20 cursor-pointer">
+          <i class="fa-solid fa-play"></i> START MATCH
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. SCREEN: GAME / ROUND                    -->
+    <!-- ========================================== -->
+    <section id="screen-game" class="hidden w-full max-w-6xl flex flex-col items-center space-y-4 transition-all">
+      
+      <!-- Top Stage Banner / Match Info -->
+      <div class="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl backdrop-blur-md">
+        <!-- Team A Info -->
+        <div class="flex items-center gap-4 w-full md:w-1/3 justify-start">
+          <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-cyan-400 font-black text-xl shadow-lg">
+            A
+          </div>
+          <div>
+            <div id="hud-teamA-name" class="text-cyan-400 font-extrabold text-lg leading-tight uppercase font-orbitron">--</div>
+            <div id="hud-playerA-name" class="text-white font-bold text-base">--</div>
+          </div>
+        </div>
+
+        <!-- Round Badge & Controller Status -->
+        <div class="text-center w-full md:w-1/3">
+          <div id="hud-round-indicator" class="inline-block px-4 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black text-xs font-orbitron tracking-widest uppercase shadow-md mb-1">
+            ROUND 1
+          </div>
+          <div id="hud-status-message" class="text-xs font-semibold text-yellow-400 animate-pulse">
+            Initializing Camera & AI Model...
+          </div>
+        </div>
+
+        <!-- Team B Info (Hidden in Solo mode) -->
+        <div id="hud-teamB-container" class="flex items-center gap-4 w-full md:w-1/3 justify-end text-right">
+          <div>
+            <div id="hud-teamB-name" class="text-pink-400 font-extrabold text-lg leading-tight uppercase font-orbitron">--</div>
+            <div id="hud-playerB-name" class="text-white font-bold text-base">--</div>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-pink-500/20 border-2 border-pink-400 flex items-center justify-center text-pink-400 font-black text-xl shadow-lg">
+            B
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Stage Area: Target Pose + Live Video Stage -->
+      <div class="w-full grid grid-cols-1 lg:grid-cols-4 gap-4 items-stretch">
+        
+        <!-- Target Pose Card -->
+        <div class="lg:col-span-1 bg-slate-900/90 border border-slate-800 rounded-3xl p-4 flex flex-col items-center justify-between shadow-xl backdrop-blur-md">
+          <div class="w-full text-center">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">TARGET POSE</span>
+            <h3 id="target-pose-name" class="text-xl font-extrabold text-yellow-400 font-orbitron mt-0.5">T-POSE</h3>
+          </div>
+
+          <!-- Stick Figure Canvas Preview -->
+          <div class="w-full aspect-square bg-slate-950/80 rounded-2xl border border-slate-800 my-3 p-2 flex items-center justify-center relative overflow-hidden shadow-inner">
+            <svg id="svg-target-pose" viewBox="0 0 200 220" class="w-full h-full drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]">
+              <!-- Rendered via JS -->
+            </svg>
+          </div>
+
+          <div class="text-center text-xs text-slate-400">
+            Match the target pose in front of the camera!
+          </div>
+        </div>
+
+        <!-- Camera Stage Screen -->
+        <div class="lg:col-span-3 bg-slate-950 rounded-3xl border-2 border-slate-800 overflow-hidden relative shadow-2xl flex flex-col justify-center items-center min-h-[380px]">
+          
+          <!-- Camera Feed Video -->
+          <video id="webcam" class="hidden" playsinline muted></video>
+
+          <!-- Skeleton & Game Stage Render Canvas -->
+          <canvas id="stage-canvas" class="w-full h-full max-h-[520px] object-contain mirror-mode"></canvas>
+
+          <!-- Player Detection Status Overlay Badge -->
+          <div id="detection-badge" class="absolute top-4 left-1/2 transform -translate-x-1/2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-700 text-xs font-bold text-slate-200 backdrop-blur-md flex items-center gap-2 shadow-lg z-20">
+            <span id="detection-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping"></span>
+            <span id="detection-text">Checking player detection...</span>
+          </div>
+
+          <!-- Large Countdown Overlay -->
+          <div id="countdown-overlay" class="hidden absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex flex-col items-center justify-center z-30">
+            <div id="countdown-number" class="text-9xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-400 animate-pulse-fast drop-shadow-2xl">
+              3
+            </div>
+            <p id="countdown-subtext" class="text-white font-extrabold text-xl tracking-widest mt-4 uppercase font-orbitron">GET READY TO POSE!</p>
+          </div>
+
+          <!-- Bottom Floating Scores Overlay on Stage -->
+          <div id="live-scores-bar" class="absolute bottom-4 left-4 right-4 grid grid-cols-2 gap-4 pointer-events-none z-20">
+            <!-- Player 1 Real-time Bar -->
+            <div id="live-p1-card" class="bg-slate-900/90 border border-cyan-500/50 rounded-2xl p-3 backdrop-blur-md shadow-xl flex flex-col justify-center col-span-1">
+              <div class="flex justify-between items-center mb-1">
+                <span id="live-p1-label" class="text-xs font-bold text-cyan-400 uppercase truncate">PLAYER 1</span>
+                <span id="live-p1-score-val" class="text-2xl font-black text-cyan-400 font-orbitron text-glow-cyan">0</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                <div id="live-p1-progress" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0% transition-all duration-150"></div>
+              </div>
+            </div>
+
+            <!-- Player 2 Real-time Bar (Hidden in Solo mode) -->
+            <div id="live-p2-card" class="bg-slate-900/90 border border-pink-500/50 rounded-2xl p-3 backdrop-blur-md shadow-xl flex flex-col justify-center col-span-1">
+              <div class="flex justify-between items-center mb-1">
+                <span id="live-p2-label" class="text-xs font-bold text-pink-400 uppercase truncate">PLAYER 2</span>
+                <span id="live-p2-score-val" class="text-2xl font-black text-pink-400 font-orbitron text-glow-pink">0</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                <div id="live-p2-progress" class="bg-gradient-to-r from-pink-500 to-rose-500 h-full w-0% transition-all duration-150"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage Controls Row -->
+      <div class="w-full flex justify-center items-center gap-4 py-2">
+        <button id="btn-start-round" onclick="startRoundCountdown()" class="px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-lg rounded-2xl shadow-xl transform hover:-translate-y-0.5 transition font-orbitron flex items-center gap-2">
+          <i class="fa-solid fa-play"></i> START ROUND (SPACE)
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. SCREEN: ROUND RESULT                    -->
+    <!-- ========================================== -->
+    <section id="screen-round-result" class="hidden w-full max-w-2xl bg-slate-900/95 border-2 border-indigo-500/50 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl text-center z-20">
+      <div class="mb-4">
+        <span class="inline-block px-4 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold font-orbitron uppercase tracking-widest border border-indigo-500/30">ROUND RESULT</span>
+        <h2 id="result-round-title" class="text-3xl font-black text-white font-orbitron mt-2">ROUND 1 COMPLETE</h2>
+      </div>
+
+      <!-- Winner Announcement Spotlight -->
+      <div class="my-6 p-6 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-900/80 border border-slate-700 relative overflow-hidden shadow-2xl">
+        <div id="winner-crown-icon" class="text-5xl text-yellow-400 mb-2 animate-bounce">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <h3 id="round-winner-text" class="text-2xl sm:text-3xl font-black text-yellow-400 font-orbitron text-glow-gold uppercase">
+          TEAM ALPHA WINS!
+        </h3>
+        <p id="round-winner-sub" class="text-slate-300 font-semibold text-sm mt-1">Great pose match score!</p>
+      </div>
+
+      <!-- Match Scores Comparison Box -->
+      <div id="result-scores-grid" class="grid grid-cols-2 gap-4 mb-8">
+        <!-- Team A Score Card -->
+        <div id="card-result-p1" class="p-4 rounded-2xl bg-slate-800/60 border border-cyan-500/40 col-span-1">
+          <div id="result-teamA-name" class="text-xs font-bold text-cyan-400 uppercase font-orbitron">--</div>
+          <div id="result-playerA-name" class="text-sm font-bold text-white truncate my-1">--</div>
+          <div id="result-scoreA" class="text-4xl font-black text-cyan-400 font-orbitron text-glow-cyan">0</div>
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">ACCURACY SCORE</div>
+        </div>
+
+        <!-- Team B Score Card -->
+        <div id="card-result-p2" class="p-4 rounded-2xl bg-slate-800/60 border border-pink-500/40 col-span-1">
+          <div id="result-teamB-name" class="text-xs font-bold text-pink-400 uppercase font-orbitron">--</div>
+          <div id="result-playerB-name" class="text-sm font-bold text-white truncate my-1">--</div>
+          <div id="result-scoreB" class="text-4xl font-black text-pink-400 font-orbitron text-glow-pink">0</div>
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">ACCURACY SCORE</div>
+        </div>
+      </div>
+
+      <!-- Control Buttons -->
+      <div class="flex flex-col sm:flex-row justify-center gap-4">
+        <button onclick="restartCurrentRound()" class="px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate-right"></i> Rematch (R)
+        </button>
+        <button id="btn-next-round" onclick="advanceToNextRound()" class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-black text-base shadow-xl font-orbitron flex items-center justify-center gap-2">
+          NEXT ROUND (ENTER) <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. SCREEN: FINAL LEADERBOARD               -->
+    <!-- ========================================== -->
+    <section id="screen-final-result" class="hidden w-full max-w-3xl bg-slate-900/95 border-2 border-yellow-500/50 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl text-center z-20">
+      <div class="mb-6">
+        <span class="inline-block px-4 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-bold font-orbitron uppercase tracking-widest border border-yellow-500/30">FINAL RESULT</span>
+        <h2 class="text-3xl sm:text-4xl font-black text-white font-orbitron mt-2">FINAL LEADERBOARD</h2>
+      </div>
+
+      <!-- Overall Champion Banner -->
+      <div class="p-6 rounded-2xl bg-gradient-to-br from-yellow-500/20 via-slate-800 to-slate-900 border-2 border-yellow-400/80 mb-8 shadow-2xl">
+        <div class="text-6xl text-yellow-400 mb-2 drop-shadow-[0_0_25px_rgba(234,179,8,0.8)]">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <div id="final-champion-label" class="text-xs font-bold text-yellow-400 tracking-widest uppercase">POSE BATTLE CHAMPION</div>
+        <h3 id="final-champion-name" class="text-3xl sm:text-5xl font-black text-yellow-400 font-orbitron text-glow-gold my-2">
+          TEAM ALPHA
+        </h3>
+        <p id="final-champion-stats" class="text-slate-300 font-bold text-base">Average Score: 89.7 | Rounds Won: 2/3</p>
+      </div>
+
+      <!-- Detailed Round Breakdowns Table -->
+      <div class="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 mb-8 overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-300">
+          <thead class="text-xs uppercase bg-slate-800/80 text-slate-400 font-orbitron">
+            <tr id="final-table-head">
+              <th class="p-3">Round</th>
+              <th class="p-3 text-cyan-400">Player</th>
+              <th class="p-3 text-center">Score</th>
+              <th class="p-3 text-pink-400">Opponent</th>
+              <th class="p-3 text-right">Winner</th>
+            </tr>
+          </thead>
+          <tbody id="final-history-tbody" class="divide-y divide-slate-800">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Navigation Actions -->
+      <div class="flex justify-center gap-4">
+        <button onclick="resetCurrentGameAndReplay()" class="px-6 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm transition flex items-center gap-2">
+          <i class="fa-solid fa-rotate-left"></i> Play Again
+        </button>
+        <button onclick="createNewGameSetup()" class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-base shadow-xl font-orbitron flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i> NEW GAME
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="w-full py-2 px-6 bg-slate-950/80 border-t border-slate-900 text-center text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 z-10">
+    <div>
+      <span>Pose Battle &copy; Stage Edition</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="bg-slate-800 px-2 py-0.5 rounded border border-slate-700 font-mono text-slate-300">SPACE: Start</span>
+      <span class="bg-slate-800 px-2 py-0.5 rounded border border-slate-700 font-mono text-slate-300">ENTER: Next</span>
+      <span class="bg-slate-800 px-2 py-0.5 rounded border border-slate-700 font-mono text-slate-300">R: Restart</span>
+    </div>
+  </footer>
+
+  <script>
+    // =========================================================================
+    // 1. CONFIGURATION & GLOBALS
+    // =========================================================================
+    const LOCAL_STORAGE_KEY = 'poseBattleGame_state_v2';
+    const REAL_LEADERBOARD_KEY = 'poseBattle_real_leaderboard_v1';
+    
+    // Feature Toggles State
+    let isMirrored = true;
+    let showSkeleton = true;
+    let isSoundEnabled = true;
+
+    // AI Detector and Camera Globals
+    let poseDetector = null;
+    let videoElement = null;
+    let canvasElement = null;
+    let canvasCtx = null;
+    let animationFrameId = null;
+
+    // Sound Synthesizer (Web Audio API)
+    let audioCtx = null;
+
+    // =========================================================================
+    // 2. GAME STATE MANAGEMENT
+    // =========================================================================
+    let gameState = {
+      status: 'SETUP', // 'SETUP', 'READY', 'COUNTDOWN', 'PLAYING', 'ROUND_RESULT', 'FINAL_RESULT'
+      mode: 'TEAM_BATTLE', // 'TEAM_BATTLE' or 'SINGLE_PLAYER'
+      teamA: { name: '', members: [] },
+      teamB: { name: '', members: [] },
+      rounds: [],
+      currentRoundIndex: 0,
+      scoresHistory: [] // [{ roundNumber, playerA, playerB, scoreA, scoreB, winner }]
+    };
+    // =========================================================================
+    // REAL LEADERBOARD PERSISTENCE
+    // =========================================================================
+    function getRealLeaderboardData() {
+      try {
+        const stored = localStorage.getItem(REAL_LEADERBOARD_KEY);
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveToRealLeaderboard(entry) {
+      const records = getRealLeaderboardData();
+      records.push({
+        id: Date.now() + Math.random().toString(36).substr(2, 4),
+        playerName: entry.playerName,
+        teamName: entry.teamName || 'Solo',
+        score: entry.score,
+        poseName: entry.poseName,
+        mode: entry.mode,
+        date: new Date().toLocaleDateString()
+      });
+      
+      // Sort highest score first and keep top 100 entries
+      records.sort((a, b) => b.score - a.score);
+      const topRecords = records.slice(0, 100);
+
+      try {
+        localStorage.setItem(REAL_LEADERBOARD_KEY, JSON.stringify(topRecords));
+      } catch (e) {
+        console.warn('Could not persist real leaderboard entry');
+      }
+    }
+
+    function openLeaderboardModal() {
+      renderLeaderboardTable();
+      document.getElementById('leaderboard-modal').classList.remove('hidden');
+    }
+
+    function closeLeaderboardModal() {
+      document.getElementById('leaderboard-modal').classList.add('hidden');
+    }
+
+    function renderLeaderboardTable() {
+      const tbody = document.getElementById('real-leaderboard-tbody');
+      const records = getRealLeaderboardData();
+      tbody.innerHTML = '';
+
+      if (records.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="p-8 text-center text-slate-500 font-medium">
+              <i class="fa-solid fa-trophy text-3xl mb-2 text-slate-600 block"></i>
+              No real match scores recorded yet.<br>Play a match to log your live pose scores!
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      records.forEach((rec, index) => {
+        let rankBadge = `<span class="font-bold text-slate-400 font-mono">#${index + 1}</span>`;
+        if (index === 0) rankBadge = `<span class="text-yellow-400 font-black text-base font-orbitron"><i class="fa-solid fa-crown mr-1"></i>1st</span>`;
+        else if (index === 1) rankBadge = `<span class="text-slate-300 font-black text-sm font-orbitron">2nd</span>`;
+        else if (index === 2) rankBadge = `<span class="text-amber-600 font-black text-sm font-orbitron">3rd</span>`;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/60 transition';
+        tr.innerHTML = `
+          <td class="p-3">${rankBadge}</td>
+          <td class="p-3 font-bold text-white">${rec.playerName}</td>
+          <td class="p-3 text-xs text-slate-400 uppercase font-orbitron">${rec.teamName}</td>
+          <td class="p-3 text-xs text-yellow-400 font-semibold">${rec.poseName}</td>
+          <td class="p-3 text-right font-black font-orbitron text-cyan-400 text-base">${rec.score}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function clearRealLeaderboardData() {
+      if (confirm('Are you sure you want to clear all saved real leaderboard records?')) {
+        localStorage.removeItem(REAL_LEADERBOARD_KEY);
+        renderLeaderboardTable();
+      }
+    }
+
+    // =========================================================================
+    // 9. SETUP & MATCH SCHEDULING
+    // =========================================================================
+    function selectMode(mode) {
+      gameState.mode = mode;
+      const btnTeam = document.getElementById('mode-btn-team');
+      const btnSolo = document.getElementById('mode-btn-solo');
+      const containerTeamB = document.getElementById('container-teamB');
+
+      if (mode === 'SINGLE_PLAYER') {
+        btnSolo.className = 'flex-1 py-3 px-6 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white shadow-lg font-orbitron';
+        btnTeam.className = 'flex-1 py-3 px-6 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 font-orbitron';
+        containerTeamB.classList.add('hidden');
+
+        document.getElementById('label-teamA-title').innerHTML = `<i class="fa-solid fa-user"></i> SOLO PLAYER`;
+        document.getElementById('label-teamA-name').innerText = 'Player / Team Name';
+        document.getElementById('label-teamA-members').innerText = 'Player Name(s) (One per line)';
+      } else {
+        btnTeam.className = 'flex-1 py-3 px-6 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-pink-500 text-white shadow-lg font-orbitron';
+        btnSolo.className = 'flex-1 py-3 px-6 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 font-orbitron';
+        containerTeamB.classList.remove('hidden');
+
+        document.getElementById('label-teamA-title').innerHTML = `<i class="fa-solid fa-shield-halved"></i> TEAM A (LEFT SIDE)`;
+        document.getElementById('label-teamA-name').innerText = 'Team A Name';
+        document.getElementById('label-teamA-members').innerText = 'Player List (One per line)';
+      }
+    }
+
+    function startGameSetup() {
+      const nameA = document.getElementById('teamA-name').value.trim() || 'Team Alpha';
+      const nameB = document.getElementById('teamB-name').value.trim() || 'Team Beta';
+
+      const membersARaw = document.getElementById('teamA-members').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const membersBRaw = document.getElementById('teamB-members').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+      if (membersARaw.length === 0 || (gameState.mode === 'TEAM_BATTLE' && membersBRaw.length === 0)) {
+        showCustomModal('Missing Players', 'Please enter at least 1 player name to start!');
+        return;
+      }
+
+      gameState.teamA = { name: nameA, members: membersARaw };
+      gameState.teamB = { name: nameB, members: membersBRaw };
+
+      // Get match rounds setting (defaults to 5)
+      const selectedRoundsEl = document.getElementById('select-rounds');
+      const totalRounds = selectedRoundsEl ? parseInt(selectedRoundsEl.value, 10) : 5;
+
+      // Build randomized rounds schedule with shuffled pose selection
+      let posePool = shuffleArray(POSE_LIBRARY);
+      gameState.rounds = [];
+
+      for (let i = 0; i < totalRounds; i++) {
+        if (posePool.length === 0) {
+          posePool = shuffleArray(POSE_LIBRARY);
+        }
+        const randomPose = posePool.pop();
+
+        gameState.rounds.push({
+          roundNumber: i + 1,
+          playerA: membersARaw[i % membersARaw.length],
+          playerB: gameState.mode === 'SINGLE_PLAYER' ? 'N/A' : membersBRaw[i % membersBRaw.length],
+          pose: randomPose
+        });
+      }
+
+      gameState.currentRoundIndex = 0;
+      gameState.scoresHistory = [];
+      gameState.status = 'READY';
+
+      saveGameState();
+      showScreen('screen-game');
+      initStageForCurrentRound();
+    }
+    // =========================================================================
+    // 11. ROUND COMPLETION & SCORE RECORDING
+    // =========================================================================
+    function finishActiveRound() {
+      roundLiveState.isScoring = false;
+      gameState.status = 'ROUND_RESULT';
+
+      const finalScoreA = computeTopScoreAverage(roundLiveState.scoresA);
+      const finalScoreB = gameState.mode === 'SINGLE_PLAYER' ? 0 : computeTopScoreAverage(roundLiveState.scoresB);
+
+      const currentRound = gameState.rounds[gameState.currentRoundIndex];
+      let winner = 'DRAW';
+      if (gameState.mode === 'SINGLE_PLAYER') {
+        winner = 'SINGLE_PLAYER';
+      } else if (finalScoreA > finalScoreB) {
+        winner = 'TEAM_A';
+      } else if (finalScoreB > finalScoreA) {
+        winner = 'TEAM_B';
+      }
+
+      const resultObj = {
+        roundNumber: currentRound.roundNumber,
+        teamA: gameState.teamA.name,
+        playerA: currentRound.playerA,
+        scoreA: finalScoreA,
+        teamB: gameState.teamB.name,
+        playerB: currentRound.playerB,
+        scoreB: finalScoreB,
+        winner: winner
+      };
+
+      gameState.scoresHistory.push(resultObj);
+      saveGameState();
+
+      // Log real live player scores to the persistent global leaderboard
+      if (finalScoreA > 0) {
+        saveToRealLeaderboard({
+          playerName: currentRound.playerA,
+          teamName: gameState.teamA.name,
+          score: finalScoreA,
+          poseName: currentRound.pose.name,
+          mode: gameState.mode
+        });
+      }
+      if (gameState.mode === 'TEAM_BATTLE' && finalScoreB > 0) {
+        saveToRealLeaderboard({
+          playerName: currentRound.playerB,
+          teamName: gameState.teamB.name,
+          score: finalScoreB,
+          poseName: currentRound.pose.name,
+          mode: gameState.mode
+        });
+      }
+
+      playFanfareSound();
+      showRoundResultScreen(resultObj);
+    }
+
+    function showRoundResultScreen(result) {
+      showScreen('screen-round-result');
+
+      document.getElementById('result-round-title').innerText = `ROUND ${result.roundNumber} COMPLETE`;
+
+      const cardP2 = document.getElementById('card-result-p2');
+      const cardP1 = document.getElementById('card-result-p1');
+      const winnerTextEl = document.getElementById('round-winner-text');
+      const winnerSubEl = document.getElementById('round-winner-sub');
+      const crownIcon = document.getElementById('winner-crown-icon');
+
+      if (gameState.mode === 'SINGLE_PLAYER') {
+        cardP2.classList.add('hidden');
+        cardP1.className = 'p-4 rounded-2xl bg-slate-800/60 border border-cyan-500/40 col-span-2 max-w-sm mx-auto w-full';
+        
+        document.getElementById('result-teamA-name').innerText = 'SOLO PLAYER';
+        document.getElementById('result-playerA-name').innerText = result.playerA;
+        document.getElementById('result-scoreA').innerText = result.scoreA;
+
+        let rating = 'GREAT JOB!';
+        if (result.scoreA >= 90) rating = '🌟 PERFECT POSE!';
+        else if (result.scoreA >= 75) rating = '🔥 EXCELLENT!';
+        else if (result.scoreA >= 50) rating = '👍 GOOD EFFORT!';
+        else rating = '💪 KEEP PRACTICING!';
+
+        winnerTextEl.innerText = rating;
+        winnerTextEl.className = 'text-2xl sm:text-3xl font-black text-cyan-400 font-orbitron text-glow-cyan uppercase';
+        winnerSubEl.innerText = `${result.playerA} achieved ${result.scoreA} accuracy points!`;
+        crownIcon.className = 'text-5xl text-yellow-400 mb-2 animate-bounce';
+      } else {
+        cardP2.classList.remove('hidden');
+        cardP1.className = 'p-4 rounded-2xl bg-slate-800/60 border border-cyan-500/40 col-span-1';
+
+        document.getElementById('result-teamA-name').innerText = result.teamA;
+        document.getElementById('result-playerA-name').innerText = result.playerA;
+        document.getElementById('result-scoreA').innerText = result.scoreA;
+
+        document.getElementById('result-teamB-name').innerText = result.teamB;
+        document.getElementById('result-playerB-name').innerText = result.playerB;
+        document.getElementById('result-scoreB').innerText = result.scoreB;
+
+        if (result.winner === 'TEAM_A') {
+          winnerTextEl.innerText = `🏆 ${result.teamA} WINS!`;
+          winnerTextEl.className = 'text-2xl sm:text-3xl font-black text-cyan-400 font-orbitron text-glow-cyan uppercase';
+          winnerSubEl.innerText = `${result.playerA} scored higher with ${result.scoreA} points!`;
+          crownIcon.className = 'text-5xl text-cyan-400 mb-2 animate-bounce';
+        } else if (result.winner === 'TEAM_B') {
+          winnerTextEl.innerText = `🏆 ${result.teamB} WINS!`;
+          winnerTextEl.className = 'text-2xl sm:text-3xl font-black text-pink-400 font-orbitron text-glow-pink uppercase';
+          winnerSubEl.innerText = `${result.playerB} scored higher with ${result.scoreB} points!`;
+          crownIcon.className = 'text-5xl text-pink-400 mb-2 animate-bounce';
+        } else {
+          winnerTextEl.innerText = `🤝 IT'S A TIE!`;
+          winnerTextEl.className = 'text-2xl sm:text-3xl font-black text-yellow-400 font-orbitron text-glow-gold uppercase';
+          winnerSubEl.innerText = `Both players matched equally with ${result.scoreA} points!`;
+          crownIcon.className = 'text-5xl text-yellow-400 mb-2 animate-bounce';
+        }
+      }
+
+      const btnNext = document.getElementById('btn-next-round');
+      if (gameState.currentRoundIndex < gameState.rounds.length - 1) {
+        btnNext.innerHTML = `NEXT ROUND (ENTER) <i class="fa-solid fa-arrow-right"></i>`;
+      } else {
+        btnNext.innerHTML = `VIEW FINAL LEADERBOARD <i class="fa-solid fa-trophy"></i>`;
+      }
+    }
+
+    function advanceToNextRound() {
+      if (gameState.currentRoundIndex < gameState.rounds.length - 1) {
+        gameState.currentRoundIndex++;
+        gameState.status = 'READY';
+        saveGameState();
+        showScreen('screen-game');
+        initStageForCurrentRound();
+      } else {
+        showFinalLeaderboardScreen();
+      }
+    }
+
+    function restartCurrentRound() {
+      if (gameState.scoresHistory.length > 0) {
+        gameState.scoresHistory.pop();
+      }
+      gameState.status = 'READY';
+      saveGameState();
+      showScreen('screen-game');
+      initStageForCurrentRound();
+    }
+
+    function showFinalLeaderboardScreen() {
+      gameState.status = 'FINAL_RESULT';
+      saveGameState();
+      showScreen('screen-final-result');
+
+      let totalScoreA = 0;
+      let totalScoreB = 0;
+      let roundsWonA = 0;
+      let roundsWonB = 0;
+
+      const tbody = document.getElementById('final-history-tbody');
+      const tableHead = document.getElementById('final-table-head');
+      tbody.innerHTML = '';
+
+      if (gameState.mode === 'SINGLE_PLAYER') {
+        tableHead.innerHTML = `
+          <th class="p-3">Round</th>
+          <th class="p-3 text-cyan-400">Player</th>
+          <th class="p-3 text-center">Accuracy Score</th>
+          <th class="p-3 text-right">Rating</th>
+        `;
+
+        gameState.scoresHistory.forEach((res) => {
+          totalScoreA += res.scoreA;
+          let ratingBadge = `<span class="text-cyan-400 font-bold">GOOD</span>`;
+          if (res.scoreA >= 85) ratingBadge = `<span class="text-yellow-400 font-bold">PERFECT</span>`;
+          else if (res.scoreA >= 70) ratingBadge = `<span class="text-emerald-400 font-bold">EXCELLENT</span>`;
+
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-900/50 transition';
+          tr.innerHTML = `
+            <td class="p-3 font-bold font-mono">Round ${res.roundNumber}</td>
+            <td class="p-3 text-cyan-300 font-semibold">${res.playerA}</td>
+            <td class="p-3 text-center font-bold font-mono text-xl text-yellow-400">${res.scoreA}</td>
+            <td class="p-3 text-right">${ratingBadge}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        const count = gameState.scoresHistory.length || 1;
+        const avgA = (totalScoreA / count).toFixed(1);
+
+        const champName = document.getElementById('final-champion-name');
+        const champStats = document.getElementById('final-champion-stats');
+        document.getElementById('final-champion-label').innerText = 'SOLO PRACTICE COMPLETE';
+
+        champName.innerText = `${avgA} PTS`;
+        champName.className = 'text-3xl sm:text-5xl font-black text-cyan-400 font-orbitron text-glow-cyan my-2';
+        champStats.innerText = `PLAYER: ${gameState.teamA.name} | TOTAL ROUNDS: ${count}`;
+      } else {
+        tableHead.innerHTML = `
+          <th class="p-3">Round</th>
+          <th class="p-3 text-cyan-400">Player A</th>
+          <th class="p-3 text-center">Score</th>
+          <th class="p-3 text-pink-400">Player B</th>
+          <th class="p-3 text-right">Winner</th>
+        `;
+
+        gameState.scoresHistory.forEach((res) => {
+          totalScoreA += res.scoreA;
+          totalScoreB += res.scoreB;
+          if (res.winner === 'TEAM_A') roundsWonA++;
+          if (res.winner === 'TEAM_B') roundsWonB++;
+
+          let winnerBadge = `<span class="text-yellow-400 font-bold">DRAW</span>`;
+          if (res.winner === 'TEAM_A') winnerBadge = `<span class="text-cyan-400 font-bold">${res.teamA}</span>`;
+          if (res.winner === 'TEAM_B') winnerBadge = `<span class="text-pink-400 font-bold">${res.teamB}</span>`;
+
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-900/50 transition';
+          tr.innerHTML = `
+            <td class="p-3 font-bold font-mono">Round ${res.roundNumber}</td>
+            <td class="p-3 text-cyan-300 font-semibold">${res.playerA} (${res.scoreA}pts)</td>
+            <td class="p-3 text-center font-bold font-mono">${res.scoreA} - ${res.scoreB}</td>
+            <td class="p-3 text-pink-300 font-semibold">${res.playerB} (${res.scoreB}pts)</td>
+            <td class="p-3 text-right">${winnerBadge}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        const count = gameState.scoresHistory.length || 1;
+        const avgA = (totalScoreA / count).toFixed(1);
+        const avgB = (totalScoreB / count).toFixed(1);
+
+        const champName = document.getElementById('final-champion-name');
+        const champStats = document.getElementById('final-champion-stats');
+        document.getElementById('final-champion-label').innerText = 'POSE BATTLE CHAMPION';
+
+        if (roundsWonA > roundsWonB || (roundsWonA === roundsWonB && avgA > avgB)) {
+          champName.innerText = gameState.teamA.name;
+          champName.className = 'text-3xl sm:text-5xl font-black text-cyan-400 font-orbitron text-glow-cyan my-2';
+          champStats.innerText = `AVG SCORE: ${avgA} | WON ${roundsWonA}/${count} ROUNDS`;
+        } else if (roundsWonB > roundsWonA || (roundsWonA === roundsWonB && avgB > avgA)) {
+          champName.innerText = gameState.teamB.name;
+          champName.className = 'text-3xl sm:text-5xl font-black text-pink-400 font-orbitron text-glow-pink my-2';
+          champStats.innerText = `AVG SCORE: ${avgB} | WON ${roundsWonB}/${count} ROUNDS`;
+        } else {
+          champName.innerText = `CO-CHAMPIONS!`;
+          champName.className = 'text-3xl sm:text-5xl font-black text-yellow-400 font-orbitron text-glow-gold my-2';
+          champStats.innerText = `TIED MATCH (${avgA} AVG PTS)`;
+        }
+      }
+
+      playFanfareSound();
+    }
+
+    function resetCurrentGameAndReplay() {
+      gameState.currentRoundIndex = 0;
+      gameState.scoresHistory = [];
+      gameState.status = 'READY';
+      saveGameState();
+      showScreen('screen-game');
+      initStageForCurrentRound();
+    }
+
+    function createNewGameSetup() {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      gameState.status = 'SETUP';
+      showScreen('screen-setup');
+    }
+
+    // =========================================================================
+    // 12. LOCAL STORAGE SAVING & RESUME
+    // =========================================================================
+    function saveGameState() {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(gameState));
+      } catch (e) {
+        console.warn('Unable to save gameState to LocalStorage');
+      }
+    }
+
+    function checkSavedGameState() {
+      try {
+        const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (parsed && parsed.rounds && parsed.rounds.length > 0) {
+            document.getElementById('resume-banner').classList.remove('hidden');
+          }
+        }
+      } catch (e) {}
+    }
+
+    function resumeSavedGame() {
+      try {
+        const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (data) {
+          gameState = JSON.parse(data);
+          document.getElementById('resume-banner').classList.add('hidden');
+
+          if (gameState.status === 'FINAL_RESULT') {
+            showFinalLeaderboardScreen();
+          } else if (gameState.status === 'ROUND_RESULT' && gameState.scoresHistory.length > 0) {
+            showRoundResultScreen(gameState.scoresHistory[gameState.scoresHistory.length - 1]);
+          } else {
+            showScreen('screen-game');
+            initStageForCurrentRound();
+          }
+        }
+      } catch (e) {
+        showCustomModal('Error', 'Failed to restore previous game state.');
+      }
+    }
+
+    function discardSavedGame() {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      document.getElementById('resume-banner').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // 13. UI CONTROLS, MODALS & KEYBOARD SHORTCUTS
+    // =========================================================================
+    function showScreen(screenId) {
+      ['screen-setup', 'screen-game', 'screen-round-result', 'screen-final-result'].forEach(id => {
+        const el = document.getElementById(id);
+        if (id === screenId) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+    }
+
+    function updateHUDStatus(msg) {
+      const el = document.getElementById('hud-status-message');
+      if (el) el.innerText = msg;
+    }
+
+    function toggleMirror() {
+      isMirrored = !isMirrored;
+      const canvas = document.getElementById('stage-canvas');
+      if (isMirrored) {
+        canvas.classList.add('mirror-mode');
+      } else {
+        canvas.classList.remove('mirror-mode');
+      }
+    }
+
+    function toggleSkeleton() {
+      showSkeleton = !showSkeleton;
+    }
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      const icon = document.getElementById('icon-sound');
+      if (isSoundEnabled) {
+        icon.className = 'fa-solid fa-volume-high text-emerald-400';
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark text-rose-500';
+      }
+    }
+
+    function showCustomModal(title, message) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-message').innerText = message;
+      document.getElementById('custom-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('custom-modal').classList.add('hidden');
+    }
+
+    // Global Hotkey Listeners
+    window.addEventListener('keydown', (e) => {
+      // Ignore key events if typing in form inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (gameState.status === 'READY') {
+          startRoundCountdown();
+        }
+      } else if (e.code === 'Enter') {
+        e.preventDefault();
+        if (gameState.status === 'ROUND_RESULT') {
+          advanceToNextRound();
+        }
+      } else if (e.code === 'KeyR') {
+        if (gameState.status === 'ROUND_RESULT' || gameState.status === 'PLAYING') {
+          restartCurrentRound();
+        }
+      } else if (e.code === 'Escape') {
+        closeModal();
+      }
+    });
+
+    // Window load handler
+    window.onload = () => {
+      checkSavedGameState();
+    };
+  </script>
+</body>
+</html>
