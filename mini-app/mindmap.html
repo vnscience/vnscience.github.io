@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Mind Map</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            overflow: hidden;
+        }
+
+        .mono-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Scrollbar for Textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* SVG Mind Map Styles */
+        #svg-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        #svg-canvas:active {
+            cursor: grabbing;
+        }
+
+        .node-rect {
+            fill: #ffffff;
+            stroke: #e2e8f0;
+            stroke-width: 1.5px;
+            rx: 8px;
+            ry: 8px;
+            transition: stroke 0.15s ease, fill 0.15s ease, filter 0.15s ease;
+            filter: drop-shadow(0px 1px 3px rgba(0, 0, 0, 0.05));
+        }
+
+        .node-rect:hover {
+            stroke: #64748b;
+            filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.07));
+        }
+
+        .node-text {
+            font-family: 'Inter', sans-serif;
+            fill: #0f172a;
+            pointer-events: none;
+        }
+
+        /* Depth Specific Node Text Formatting */
+        .node-depth-0 .node-text { font-weight: 700; font-size: 15px; fill: #0f172a; }
+        .node-depth-1 .node-text { font-weight: 600; font-size: 14px; fill: #1e293b; }
+        .node-depth-2 .node-text { font-weight: 500; font-size: 13px; fill: #334155; }
+        .node-depth-3 .node-text { font-weight: 400; font-size: 12px; fill: #475569; }
+
+        .node-depth-0 .node-rect { stroke: #0f172a; stroke-width: 2px; }
+        .node-depth-1 .node-rect { stroke: #475569; stroke-width: 1.5px; }
+
+        /* Connector Line */
+        .connection-link {
+            fill: none;
+            stroke: #cbd5e1;
+            stroke-width: 1.75px;
+            stroke-linecap: round;
+            transition: stroke 0.2s ease, stroke-width 0.2s ease;
+        }
+
+        /* Collapse Toggle Button */
+        .toggle-btn {
+            cursor: pointer;
+            fill: #ffffff;
+            stroke: #94a3b8;
+            stroke-width: 1.5px;
+            transition: all 0.15s ease;
+        }
+        .toggle-btn:hover {
+            fill: #f1f5f9;
+            stroke: #475569;
+        }
+
+        .toggle-icon {
+            fill: #475569;
+            font-size: 11px;
+            font-weight: bold;
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+
+        /* Toast Popup */
+        #toast {
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        /* Divider resize cursor */
+        #resizer {
+            cursor: col-resize;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-slate-50 text-slate-900 antialiased select-none">
+
+    <!-- Navigation / Top Control Bar -->
+    <header class="h-14 border-b border-slate-200 bg-white px-4 flex items-center justify-between z-10 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2">
+                <svg class="w-6 h-6 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                <h1 class="font-semibold text-slate-800 text-base tracking-tight">Markdown Mind Map</h1>
+            </div>
+
+            <!-- Preset Samples Dropdown -->
+            <div class="relative ml-4">
+                <select id="preset-select" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 px-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 cursor-pointer">
+                    <option value="" disabled selected>Load Sample...</option>
+                    <option value="internet">Sample: Internet & Web</option>
+                    <option value="project">Sample: Project Roadmap</option>
+                    <option value="book">Sample: Book Outline</option>
+                    <option value="large">Sample: Complex / Large Tree (100+ nodes)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Node Stats & Actions -->
+        <div class="flex items-center space-x-2">
+            <span id="node-count" class="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 mr-2">
+                0 nodes
+            </span>
+
+            <!-- Copy Markdown -->
+            <button id="btn-copy" title="Copy Markdown" class="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                <span>Copy</span>
+            </button>
+
+            <!-- Download Markdown -->
+            <button id="btn-download-md" title="Download Markdown (Ctrl+S)" class="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>.MD</span>
+            </button>
+
+            <div class="h-4 w-px bg-slate-300 mx-1"></div>
+
+            <!-- Export SVG -->
+            <button id="btn-export-svg" title="Export SVG" class="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>SVG</span>
+            </button>
+
+            <!-- Export PNG -->
+            <button id="btn-export-png" title="Export PNG (Ctrl+E)" class="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-white bg-slate-800 hover:bg-slate-900 border border-slate-800 rounded-md transition shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>PNG</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Split Pane -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Pane: Markdown Text Editor -->
+        <div id="editor-container" class="w-1/2 flex flex-col bg-white border-r border-slate-200 relative min-w-[250px]">
+            <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-xs text-slate-500 font-medium">
+                <span>MARKDOWN EDITOR</span>
+                <span class="text-[10px] text-slate-400">Headings & Lists define hierarchy</span>
+            </div>
+            <textarea id="markdown-input" spellcheck="false" class="w-full flex-1 p-4 mono-font text-sm text-slate-800 bg-white focus:outline-none resize-none leading-relaxed" placeholder="Type Markdown here...&#10;# Root Heading&#10;## Sub Heading&#10;- Bullet point"></textarea>
+            
+            <!-- Error indicator -->
+            <div id="parse-error" class="hidden absolute bottom-2 left-2 right-2 bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-2 rounded-md shadow-sm"></div>
+        </div>
+
+        <!-- Draggable Resizer Bar -->
+        <div id="resizer" class="w-1 bg-slate-200 hover:bg-slate-400 transition-colors z-20"></div>
+
+        <!-- Right Pane: Interactive Mind Map SVG Canvas -->
+        <div id="mindmap-container" class="flex-1 relative bg-white overflow-hidden min-w-[250px]">
+            <svg id="svg-canvas">
+                <g id="viewport">
+                    <g id="links-layer"></g>
+                    <g id="nodes-layer"></g>
+                </g>
+            </svg>
+
+            <!-- Floating View Controls overlay -->
+            <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-sm p-1 flex items-center space-x-1 z-10">
+                <button id="btn-zoom-in" title="Zoom In" class="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                </button>
+                <button id="btn-zoom-out" title="Zoom Out" class="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+                </button>
+                <div class="h-4 w-px bg-slate-200"></div>
+                <button id="btn-fit" title="Fit to View" class="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                </button>
+                <div class="h-4 w-px bg-slate-200"></div>
+                <button id="btn-expand-all" title="Expand All Nodes" class="px-2 py-1 text-xs font-medium hover:bg-slate-100 rounded text-slate-600 transition">Expand All</button>
+                <button id="btn-collapse-all" title="Collapse All Nodes" class="px-2 py-1 text-xs font-medium hover:bg-slate-100 rounded text-slate-600 transition">Collapse All</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-4 py-2 rounded-full shadow-lg opacity-0 pointer-events-none z-50 flex items-center space-x-2">
+        <span id="toast-message">Notification</span>
+    </div>
+
+    <script>
+        // --- Sample Markdown Documents ---
+        const SAMPLES = {
+            internet: `# Internet
+## History
+### ARPANET
+### TCP/IP Protocol
+### World Wide Web Invention
+## Core Services
+### Web Browsing
+#### HTTP / HTTPS
+#### HTML & CSS
+### Email Communication
+#### SMTP / IMAP
+### Domain Name System (DNS)
+## Infrastructure
+### Submarine Fiber Cables
+### Data Centers
+### Edge Networks & CDNs`,
+
+            project: `# Web Application Launch
+## Phase 1: Planning
+### User Requirements
+### Architecture Design
+### Tech Stack Selection
+#### Frontend: HTML5 / Tailwind
+#### Backend: Node.js API
+## Phase 2: Development
+### Core Engine
+### UI/UX Components
+### Third-party Integrations
+## Phase 3: Quality Assurance
+### Automated Testing
+### Security Audit
+### Performance Benchmarks
+## Phase 4: Deployment
+### Cloud Hosting Setup
+### CI/CD Pipeline
+### Analytics Monitoring`,
+
+            book: `# Atomic Habits
+## The Fundamentals
+### Why Small Changes Make a Big Difference
+### How Your Habits Shape Your Identity
+### 4 Simple Steps to Build Better Habits
+## Rule 1: Make It Obvious
+### Implementation Intentions
+### Habit Stacking
+### Environment Design
+## Rule 2: Make It Attractive
+### Temptation Bundling
+### Social Norm Influence
+## Rule 3: Make It Easy
+### Reduce Friction
+### Two-Minute Rule
+## Rule 4: Make It Satisfying
+### Immediate Rewards
+### Habit Trackers`,
+
+            large: `# Technology Ecosystem
+## Hardware
+### Processors
+#### ARM Architecture
+#### x86 CPU Architecture
+#### Graphics Processing Units (GPU)
+#### Tensor Processing Units (TPU)
+### Storage
+#### Solid State Drives (SSD)
+#### NVMe Protocol
+#### Cloud Storage Arrays
+### Consumer Devices
+#### Mobile Devices
+#### Desktop Workstations
+#### Embedded IoT Devices
+## Software
+### Operating Systems
+#### Linux Kernels
+#### UNIX Derivatives
+#### Mobile OS
+### Programming Languages
+#### Systems Languages
+##### Rust
+##### C++
+##### Go
+#### Scripting Languages
+##### Python
+##### JavaScript
+##### Ruby
+## Artificial Intelligence
+### Machine Learning
+#### Supervised Learning
+#### Unsupervised Learning
+#### Reinforcement Learning
+### Neural Networks
+#### Convolutional Networks (CNN)
+#### Recurrent Networks (RNN)
+#### Transformer Models`
+        };
+
+        // --- Application State ---
+        let currentTree = null;
+        const collapsedNodePaths = new Set(); // Tracks collapsed paths to preserve user toggle state
+        let panZoomState = { x: 0, y: 0, scale: 1 };
+        let isDragging = false;
+        let startPan = { x: 0, y: 0 };
+        let debounceTimer = null;
+
+        // Configuration Layout Constants
+        const HORIZONTAL_GAP = 70; // X space between depth levels
+        const VERTICAL_GAP = 14;    // Y space between sibling nodes
+        const PADDING_X = 14;
+        const PADDING_Y = 8;
+        const TOGGLE_RADIUS = 7;
+
+        // --- DOM Elements ---
+        const markdownInput = document.getElementById('markdown-input');
+        const presetSelect = document.getElementById('preset-select');
+        const nodeCountEl = document.getElementById('node-count');
+        const parseErrorEl = document.getElementById('parse-error');
+        const svgCanvas = document.getElementById('svg-canvas');
+        const viewportGroup = document.getElementById('viewport');
+        const linksLayer = document.getElementById('links-layer');
+        const nodesLayer = document.getElementById('nodes-layer');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-message');
+
+        /**
+         * Parses Markdown headings (#) and bullet lists (-, *) into a Hierarchical Tree Node.
+         */
+        function parseMarkdownToTree(text) {
+            const lines = text.split('\n');
+            const dummyRoot = { id: 'root', text: 'Root', depth: 0, children: [], path: 'root' };
+            
+            // Stack contains objects { depth, node }
+            const stack = [{ depth: 0, node: dummyRoot }];
+            let totalNodes = 0;
+
+            lines.forEach((line, index) => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+
+                let depth = 0;
+                let textContent = '';
+
+                // Check Headings: #, ##, ###, etc.
+                const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
+                if (headingMatch) {
+                    depth = headingMatch[1].length;
+                    textContent = headingMatch[2].trim();
+                } else {
+                    // Check Lists: -, *, +, 1.
+                    const listMatch = line.match(/^(\s*)([-*+]|\d+\.)\s+(.*)/);
+                    if (listMatch) {
+                        const indent = listMatch[1].length;
+                        // Calculate depth based on indent + maximum heading depth
+                        depth = 7 + Math.floor(indent / 2);
+                        textContent = listMatch[3].trim();
+                    } else if (trimmed.length > 0) {
+                        // Plain text fallback line
+                        const indentMatch = line.match(/^(\s*)/);
+                        const indent = indentMatch ? indentMatch[1].length : 0;
+                        depth = 8 + Math.floor(indent / 2);
+                        textContent = trimmed;
+                    }
+                }
+
+                if (!textContent) return;
+
+                totalNodes++;
+                
+                // Find parent in stack based on depth hierarchy
+                while (stack.length > 1 && stack[stack.length - 1].depth >= depth) {
+                    stack.pop();
+                }
+
+                const parent = stack[stack.length - 1].node;
+                const path = `${parent.path}/${textContent.replace(/\s+/g, '_')}_${index}`;
+                
+                const newNode = {
+                    id: `node-${totalNodes}`,
+                    text: textContent,
+                    depth: parent === dummyRoot ? 0 : parent.depth + 1,
+                    children: [],
+                    path: path,
+                    collapsed: collapsedNodePaths.has(path)
+                };
+
+                parent.children.push(newNode);
+                stack.push({ depth: depth, node: newNode });
+            });
+
+            // Adjust root node output
+            if (dummyRoot.children.length === 0) {
+                return { tree: null, count: 0 };
+            }
+
+            // If single main root heading exists, use it as main root
+            let root;
+            if (dummyRoot.children.length === 1) {
+                root = dummyRoot.children[0];
+            } else {
+                // Wrap multiple H1s or top-level items into a virtual main root
+                root = {
+                    id: 'virtual-root',
+                    text: 'Mind Map',
+                    depth: 0,
+                    children: dummyRoot.children,
+                    path: 'virtual-root',
+                    collapsed: false
+                };
+            }
+
+            return { tree: root, count: totalNodes };
+        }
+
+        /**
+         * Calculates layout dimensions, subtree heights, and positions for all nodes.
+         */
+        function calculateLayout(node, ctx) {
+            // Estimate node dimensions based on text length
+            ctx.font = getFontForDepth(node.depth);
+            const textMetrics = ctx.measureText(node.text);
+            node.width = Math.max(80, Math.ceil(textMetrics.width) + PADDING_X * 2);
+            node.height = 36; // Standard node height
+
+            // Check if node is collapsed by user
+            const isCollapsed = collapsedNodePaths.has(node.path);
+            node.collapsed = isCollapsed;
+
+            if (isCollapsed || !node.children || node.children.length === 0) {
+                node.subtreeHeight = node.height;
+                return node.subtreeHeight;
+            }
+
+            let childrenHeight = 0;
+            node.children.forEach((child, index) => {
+                const childSubtreeHeight = calculateLayout(child, ctx);
+                childrenHeight += childSubtreeHeight;
+                if (index < node.children.length - 1) {
+                    childrenHeight += VERTICAL_GAP;
+                }
+            });
+
+            node.subtreeHeight = Math.max(node.height, childrenHeight);
+            return node.subtreeHeight;
+        }
+
+        /**
+         * Position nodes in 2D space based on computed subtree heights (Horizontal layout)
+         */
+        function assignCoordinates(node, x, startY) {
+            node.x = x;
+            node.y = startY + node.subtreeHeight / 2;
+
+            if (!node.collapsed && node.children && node.children.length > 0) {
+                let currentY = startY;
+                const nextX = x + node.width + HORIZONTAL_GAP;
+
+                node.children.forEach(child => {
+                    assignCoordinates(child, nextX, currentY);
+                    currentY += child.subtreeHeight + VERTICAL_GAP;
+                });
+            }
+        }
+
+        function getFontForDepth(depth) {
+            if (depth === 0) return '700 15px Inter';
+            if (depth === 1) return '600 14px Inter';
+            if (depth === 2) return '500 13px Inter';
+            return '400 12px Inter';
+        }
+
+        /**
+         * Renders computed tree into SVG DOM Elements.
+         */
+        function renderTree(root) {
+            // Prepare SVG canvas layers
+            linksLayer.innerHTML = '';
+            nodesLayer.innerHTML = '';
+
+            if (!root) return;
+
+            // Canvas context for measuring text
+            const canvasCtx = document.createElement('canvas').getContext('2d');
+            
+            // 1. Calculate subtree geometry
+            calculateLayout(root, canvasCtx);
+
+            // 2. Assign absolute positions (Root starting at X=100, Y=0)
+            assignCoordinates(root, 100, 0);
+
+            // 3. Render Nodes and Connections recursively
+            const renderQueue = [root];
+            
+            while (renderQueue.length > 0) {
+                const node = renderQueue.shift();
+
+                // Render child connection links if expanded
+                if (!node.collapsed && node.children && node.children.length > 0) {
+                    node.children.forEach(child => {
+                        renderConnection(node, child);
+                        renderQueue.push(child);
+                    });
+                }
+
+                // Render node element
+                renderNodeSVG(node);
+            }
+        }
+
+        /**
+         * Renders cubic bezier smooth curved connector line between parent and child.
+         */
+        function renderConnection(parent, child) {
+            const startX = parent.x + parent.width;
+            const startY = parent.y;
+            const endX = child.x;
+            const endY = child.y;
+
+            // Cubic Bezier control points for smooth horizontal flow
+            const controlOffset = Math.min(60, (endX - startX) * 0.5);
+            const cp1X = startX + controlOffset;
+            const cp1Y = startY;
+            const cp2X = endX - controlOffset;
+            const cp2Y = endY;
+
+            const pathData = `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathData);
+            path.setAttribute('class', 'connection-link');
+            linksLayer.appendChild(path);
+        }
+
+        /**
+         * Renders SVG node rectangle, text, and toggle collapse button.
+         */
+        function renderNodeSVG(node) {
+            const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            group.setAttribute('class', `node-group node-depth-${Math.min(node.depth, 3)}`);
+            group.setAttribute('transform', `translate(${node.x}, ${node.y - node.height / 2})`);
+
+            // Node Outer Rectangle
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('width', node.width);
+            rect.setAttribute('height', node.height);
+            rect.setAttribute('class', 'node-rect');
+            group.appendChild(rect);
+
+            // Node Label Text
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', PADDING_X);
+            text.setAttribute('y', node.height / 2 + 1);
+            text.setAttribute('dominant-baseline', 'middle');
+            text.setAttribute('class', 'node-text');
+            text.textContent = node.text;
+            group.appendChild(text);
+
+            // Collapse/Expand Toggle Pill Button (if node has children)
+            if (node.children && node.children.length > 0) {
+                const toggleGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                const toggleX = node.width;
+                const toggleY = node.height / 2;
+
+                toggleGroup.setAttribute('transform', `translate(${toggleX}, ${toggleY})`);
+                toggleGroup.setAttribute('class', 'cursor-pointer');
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('r', TOGGLE_RADIUS);
+                circle.setAttribute('class', 'toggle-btn');
+
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                icon.setAttribute('class', 'toggle-icon');
+                icon.textContent = node.collapsed ? '+' : '−';
+
+                toggleGroup.appendChild(circle);
+                toggleGroup.appendChild(icon);
+
+                // Click event to expand/collapse
+                toggleGroup.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleNodeCollapse(node);
+                });
+
+                group.appendChild(toggleGroup);
+            }
+
+            nodesLayer.appendChild(group);
+        }
+
+        /**
+         * Toggles collapse status of a node and updates renderer
+         */
+        function toggleNodeCollapse(node) {
+            if (collapsedNodePaths.has(node.path)) {
+                collapsedNodePaths.delete(node.path);
+            } else {
+                collapsedNodePaths.add(node.path);
+            }
+            updateMindMap(false); // Update layout without resetting view zoom
+        }
+
+        /**
+         * Fits the mind map tree into canvas viewport with comfortable margins.
+         */
+        function fitToView() {
+            if (!currentTree) return;
+
+            const bounds = viewportGroup.getBBox();
+            if (bounds.width === 0 || bounds.height === 0) return;
+
+            const containerRect = svgCanvas.getBoundingClientRect();
+            const padding = 60;
+
+            const scaleX = (containerRect.width - padding * 2) / bounds.width;
+            const scaleY = (containerRect.height - padding * 2) / bounds.height;
+            let scale = Math.min(scaleX, scaleY, 1.2); // Cap max zoom to 1.2
+            scale = Math.max(scale, 0.2);              // Floor min scale to 0.2
+
+            const x = (containerRect.width - bounds.width * scale) / 2 - bounds.x * scale;
+            const y = (containerRect.height - bounds.height * scale) / 2 - bounds.y * scale;
+
+            panZoomState = { x, y, scale };
+            updateTransform();
+        }
+
+        function updateTransform() {
+            viewportGroup.setAttribute(
+                'transform',
+                `translate(${panZoomState.x}, ${panZoomState.y}) scale(${panZoomState.scale})`
+            );
+        }
+
+        // Setup Zoom with Mouse Wheel
+        svgCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = 1.08;
+            const mouseX = e.clientX - svgCanvas.getBoundingClientRect().left;
+            const mouseY = e.clientY - svgCanvas.getBoundingClientRect().top;
+
+            let newScale = e.deltaY < 0 
+                ? panZoomState.scale * zoomFactor 
+                : panZoomState.scale / zoomFactor;
+
+            // Scale boundaries
+            newScale = Math.min(Math.max(0.1, newScale), 3.0);
+
+            // Zoom towards mouse pointer position
+            panZoomState.x = mouseX - (mouseX - panZoomState.x) * (newScale / panZoomState.scale);
+            panZoomState.y = mouseY - (mouseY - panZoomState.y) * (newScale / panZoomState.scale);
+            panZoomState.scale = newScale;
+
+            updateTransform();
+        }, { passive: false });
+
+        // Setup Pan with Drag
+        svgCanvas.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.toggle-btn')) return; // Ignore dragging on buttons
+            isDragging = true;
+            startPan = { x: e.clientX - panZoomState.x, y: e.clientY - panZoomState.y };
+            svgCanvas.setPointerCapture(e.pointerId);
+        });
+
+        svgCanvas.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            panZoomState.x = e.clientX - startPan.x;
+            panZoomState.y = e.clientY - startPan.y;
+            updateTransform();
+        });
+
+        svgCanvas.addEventListener('pointerup', (e) => {
+            isDragging = false;
+            try { svgCanvas.releasePointerCapture(e.pointerId); } catch (_) {}
+        });
+
+        function updateMindMap(autoFit = false) {
+            const markdownText = markdownInput.value;
+            
+            // Save state to Local Storage
+            localStorage.setItem('md_mindmap_saved_text', markdownText);
+
+            try {
+                const { tree, count } = parseMarkdownToTree(markdownText);
+                currentTree = tree;
+                nodeCountEl.textContent = `${count} nodes`;
+                parseErrorEl.classList.add('hidden');
+
+                if (tree) {
+                    renderTree(tree);
+                    if (autoFit) {
+                        fitToView();
+                    }
+                } else {
+                    linksLayer.innerHTML = '';
+                    nodesLayer.innerHTML = '';
+                }
+            } catch (err) {
+                console.error(err);
+                parseErrorEl.textContent = `Error parsing markdown: ${err.message}`;
+                parseErrorEl.classList.remove('hidden');
+            }
+        }
+
+        // Debounced Input Handler (~300ms)
+        markdownInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                updateMindMap(false);
+            }, 300);
+        });
+
+        /**
+         * Show floating toast notification.
+         */
+        function showToast(message) {
+            toastMsg.textContent = message;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        /**
+         * Export Mind Map as SVG File
+         */
+        function exportSVG() {
+            if (!currentTree) return;
+            
+            const bbox = viewportGroup.getBBox();
+            const padding = 40;
+            
+            const svgClone = svgCanvas.cloneNode(true);
+            const viewportClone = svgClone.querySelector('#viewport');
+            
+            // Reset transforms for crisp standalone export
+            viewportClone.setAttribute('transform', `translate(${-bbox.x + padding}, ${-bbox.y + padding})`);
+            
+            const width = bbox.width + padding * 2;
+            const height = bbox.height + padding * 2;
+            
+            svgClone.setAttribute('width', width);
+            svgClone.setAttribute('height', height);
+            svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+            svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+            // Inject inline font styles into SVG for accurate standalone rendering
+            const style = document.createElement('style');
+            style.textContent = `
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+                text { font-family: 'Inter', sans-serif; }
+                .node-rect { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5px; rx: 8px; ry: 8px; }
+                .node-depth-0 .node-rect { stroke: #0f172a; stroke-width: 2px; }
+                .node-depth-1 .node-rect { stroke: #475569; stroke-width: 1.5px; }
+                .node-text { fill: #0f172a; }
+                .node-depth-0 .node-text { font-weight: 700; font-size: 15px; }
+                .node-depth-1 .node-text { font-weight: 600; font-size: 14px; }
+                .node-depth-2 .node-text { font-weight: 500; font-size: 13px; }
+                .node-depth-3 .node-text { font-weight: 400; font-size: 12px; }
+                .connection-link { fill: none; stroke: #cbd5e1; stroke-width: 1.75px; }
+                .toggle-btn { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5px; }
+                .toggle-icon { fill: #475569; font-size: 11px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+            `;
+            svgClone.insertBefore(style, svgClone.firstChild);
+
+            const svgData = new XMLSerializer().serializeToString(svgClone);
+            const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'mindmap.svg';
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported SVG successfully!');
+        }
+
+        /**
+         * Export Mind Map as PNG Image
+         */
+        function exportPNG() {
+            if (!currentTree) return;
+
+            const bbox = viewportGroup.getBBox();
+            const padding = 50;
+            const width = bbox.width + padding * 2;
+            const height = bbox.height + padding * 2;
+
+            const svgClone = svgCanvas.cloneNode(true);
+            const viewportClone = svgClone.querySelector('#viewport');
+            viewportClone.setAttribute('transform', `translate(${-bbox.x + padding}, ${-bbox.y + padding})`);
+            
+            svgClone.setAttribute('width', width);
+            svgClone.setAttribute('height', height);
+            svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+            const style = document.createElement('style');
+            style.textContent = `
+                text { font-family: 'Inter', -apple-system, sans-serif; }
+                .node-rect { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5px; rx: 8px; ry: 8px; }
+                .node-depth-0 .node-rect { stroke: #0f172a; stroke-width: 2px; }
+                .node-depth-1 .node-rect { stroke: #475569; stroke-width: 1.5px; }
+                .node-text { fill: #0f172a; }
+                .node-depth-0 .node-text { font-weight: 700; font-size: 15px; }
+                .node-depth-1 .node-text { font-weight: 600; font-size: 14px; }
+                .node-depth-2 .node-text { font-weight: 500; font-size: 13px; }
+                .node-depth-3 .node-text { font-weight: 400; font-size: 12px; }
+                .connection-link { fill: none; stroke: #cbd5e1; stroke-width: 1.75px; }
+                .toggle-btn { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5px; }
+                .toggle-icon { fill: #475569; font-size: 11px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+            `;
+            svgClone.insertBefore(style, svgClone.firstChild);
+
+            const svgString = new XMLSerializer().serializeToString(svgClone);
+            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const URLObj = window.URL || window.webkitURL || window;
+            const svgUrl = URLObj.createObjectURL(svgBlob);
+
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                // Higher DPI ratio for high-res crisp text rendering
+                const scale = 2; 
+                canvas.width = width * scale;
+                canvas.height = height * scale;
+
+                const ctx = canvas.getContext('2d');
+                ctx.scale(scale, scale);
+                
+                // Draw background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0);
+
+                const pngUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = pngUrl;
+                link.download = 'mindmap.png';
+                link.click();
+                URLObj.revokeObjectURL(svgUrl);
+                showToast('Exported PNG successfully!');
+            };
+            img.src = svgUrl;
+        }
+
+        /**
+         * Download raw Markdown file
+         */
+        function downloadMarkdown() {
+            const text = markdownInput.value;
+            const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'mindmap.md';
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('Markdown file downloaded!');
+        }
+
+        /**
+         * Copy Markdown content to clipboard
+         */
+        function copyMarkdown() {
+            const text = markdownInput.value;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast('Markdown copied to clipboard!'));
+            } else {
+                // Fallback copying
+                markdownInput.select();
+                document.execCommand('copy');
+                showToast('Markdown copied to clipboard!');
+            }
+        }
+
+        // Header Buttons
+        document.getElementById('btn-copy').addEventListener('click', copyMarkdown);
+        document.getElementById('btn-download-md').addEventListener('click', downloadMarkdown);
+        document.getElementById('btn-export-svg').addEventListener('click', exportSVG);
+        document.getElementById('btn-export-png').addEventListener('click', exportPNG);
+
+        // Viewport Controls
+        document.getElementById('btn-zoom-in').addEventListener('click', () => {
+            panZoomState.scale = Math.min(3.0, panZoomState.scale * 1.2);
+            updateTransform();
+        });
+        document.getElementById('btn-zoom-out').addEventListener('click', () => {
+            panZoomState.scale = Math.max(0.1, panZoomState.scale / 1.2);
+            updateTransform();
+        });
+        document.getElementById('btn-fit').addEventListener('click', fitToView);
+
+        document.getElementById('btn-expand-all').addEventListener('click', () => {
+            collapsedNodePaths.clear();
+            updateMindMap(false);
+            showToast('All nodes expanded');
+        });
+
+        document.getElementById('btn-collapse-all').addEventListener('click', () => {
+            // Helper to recursively collect node paths except root
+            function collapseRecursive(node) {
+                if (node.children && node.children.length > 0) {
+                    collapsedNodePaths.add(node.path);
+                    node.children.forEach(collapseRecursive);
+                }
+            }
+            if (currentTree && currentTree.children) {
+                currentTree.children.forEach(collapseRecursive);
+            }
+            updateMindMap(false);
+            showToast('All sub-nodes collapsed');
+        });
+
+        // Sample Presets Dropdown Selection
+        presetSelect.addEventListener('change', (e) => {
+            const sampleKey = e.target.value;
+            if (SAMPLES[sampleKey]) {
+                collapsedNodePaths.clear();
+                markdownInput.value = SAMPLES[sampleKey];
+                updateMindMap(true);
+                showToast(`Loaded ${e.target.options[e.target.selectedIndex].text}`);
+            }
+        });
+
+        // Draggable Split Screen Resizer
+        const resizer = document.getElementById('resizer');
+        const editorContainer = document.getElementById('editor-container');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const containerWidth = document.querySelector('main').clientWidth;
+            const newEditorWidth = (e.clientX / containerWidth) * 100;
+            if (newEditorWidth > 15 && newEditorWidth < 85) {
+                editorContainer.style.width = `${newEditorWidth}%`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        // Keyboard Shortcuts Handler
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+S or Cmd+S -> Download Markdown
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                downloadMarkdown();
+            }
+            // Ctrl+E or Cmd+E -> Export PNG
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                e.preventDefault();
+                exportPNG();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // 1. Restore saved document from Local Storage or load default sample
+            const savedText = localStorage.getItem('md_mindmap_saved_text');
+            if (savedText && savedText.trim().length > 0) {
+                markdownInput.value = savedText;
+            } else {
+                markdownInput.value = SAMPLES.internet;
+            }
+
+            // 2. Initial Mind Map Build & Fit
+            updateMindMap(true);
+
+            // Re-fit view smoothly after DOM layout settles
+            setTimeout(() => {
+                fitToView();
+            }, 100);
+        });
+
+        // Window resize re-centering
+        window.addEventListener('resize', () => {
+            if (currentTree) {
+                fitToView();
+            }
+        });
+    </script>
+</body>
+</html>
