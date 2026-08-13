@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Chấm Bài Đọc Sách CNTT Bằng AI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Mammoth JS for reading .docx files in browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; }
+            .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="h-full font-sans text-slate-800 antialiased flex flex-col">
+
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-600 rounded-lg text-white shadow-md">
+                    <i data-lucide="book-open-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide flex items-center gap-2">
+                        GradingAI <span class="text-xs font-semibold uppercase bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded border border-blue-400/30">CNTT Rubric</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Chấm bài thu hoạch đọc sách Công nghệ Thông tin tự động</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button id="rubricToggleBtn" onclick="toggleRubricModal()" class="px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                    <i data-lucide="table" class="w-4 h-4"></i>
+                    <span>Thang điểm (Rubric)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+
+        <!-- Top Notification Banner / Info -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 text-sm text-blue-900 no-print">
+            <i data-lucide="info" class="w-5 h-5 text-blue-600 shrink-0 mt-0.5"></i>
+            <div class="flex-1">
+                <p class="font-medium">Hệ thống đánh giá bài thu hoạch đọc sách chuẩn thang 100 điểm & Kiểm tra AI</p>
+                <p class="text-blue-700 text-xs mt-0.5">Dán bài viết hoặc kéo thả file <code class="bg-blue-100 px-1 rounded text-blue-800">.txt</code>, <code class="bg-blue-100 px-1 rounded text-blue-800">.docx</code>, <code class="bg-blue-100 px-1 rounded text-blue-800">.md</code>. AI sẽ chấm điểm khách quan và tự động phân tích các dấu hiệu văn phong AI để trừ điểm tương ứng.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start">
+
+            <!-- Left Panel: Input Area -->
+            <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden no-print">
+                <div class="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-5 h-5 text-slate-600"></i>
+                        <h2 class="font-semibold text-slate-800">Bài làm của sinh viên</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadSampleText()" title="Nạp bài viết mẫu để kiểm thử" class="text-xs bg-slate-200/80 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md font-medium transition flex items-center gap-1">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-600"></i>
+                            <span>Nạp bài mẫu</span>
+                        </button>
+                        <button onclick="clearInput()" title="Xóa toàn bộ nội dung" class="text-xs text-slate-400 hover:text-red-600 p-1 rounded transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-4 sm:p-5 flex-1 flex flex-col gap-4">
+
+                    <!-- Drag and Drop Zone -->
+                    <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/50 hover:bg-blue-50/30 rounded-xl p-4 transition-all text-center cursor-pointer group flex flex-col items-center justify-center gap-2 relative">
+                        <input type="file" id="fileInput" accept=".txt,.docx,.md" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="handleFileSelect(event)">
+                        <div class="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-blue-100 text-slate-500 group-hover:text-blue-600 flex items-center justify-center transition">
+                            <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-700">Kéo & thả tệp vào đây hoặc <span class="text-blue-600 underline">chọn tệp</span></p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Hỗ trợ .txt, .docx, .md</p>
+                        </div>
+                    </div>
+
+                    <!-- Text Area Input -->
+                    <div class="flex-1 flex flex-col min-h-[320px] relative">
+                        <textarea id="studentText" placeholder="Hoặc dán trực tiếp toàn bộ bài thu hoạch đọc sách của sinh viên vào đây..." class="w-full flex-1 p-3.5 text-sm text-slate-800 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none custom-scrollbar leading-relaxed" oninput="updateWordCount()"></textarea>
+
+                        <!-- Live Status / Word Count Bar -->
+                        <div class="mt-2 flex items-center justify-between text-xs px-1">
+                            <div id="wordCountBadge" class="flex items-center gap-1.5 font-medium text-slate-500">
+                                <i data-lucide="align-left" class="w-3.5 h-3.5"></i>
+                                <span>Số từ: <strong id="wordCountNum" class="text-slate-800">0</strong> từ</span>
+                                <span id="wordCountCheck" class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Chưa đạt 1.000 từ</span>
+                            </div>
+                            <span class="text-slate-400 text-[11px]">Tiêu chí 7 yêu cầu ≥ 1000 từ</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button id="gradeBtn" onclick="startGrading()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group active:scale-[0.99]">
+                        <i data-lucide="cpu" class="w-5 h-5 group-hover:rotate-12 transition-transform"></i>
+                        <span class="text-base">Chấm bài bằng AI</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Panel: Output & Results -->
+            <section class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[550px] overflow-hidden">
+
+                <!-- Placeholder state when no grading has occurred -->
+                <div id="emptyState" class="flex-1 flex flex-col items-center justify-center p-8 text-center my-auto">
+                    <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
+                        <i data-lucide="award" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">Sẵn sàng chấm điểm</h3>
+                    <p class="text-sm text-slate-500 max-w-md mt-1 mb-6">
+                        Nhập bài làm của sinh viên ở ô bên trái và bấm nút <strong class="text-slate-700">"Chấm bài bằng AI"</strong> để nhận báo cáo chi tiết.
+                    </p>
+                    <div class="grid grid-cols-2 gap-3 max-w-sm text-left text-xs text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            <span>Thang chuẩn 100 điểm</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            <span>Dẫn chứng rõ ràng</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            <span>Đếm từ chính xác</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            <span>Gợi ý cải thiện chi tiết</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center my-auto">
+                    <div class="relative flex items-center justify-center mb-6">
+                        <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                        <i data-lucide="bot" class="w-7 h-7 text-blue-600 absolute"></i>
+                    </div>
+                    <h3 id="loadingText" class="text-base font-bold text-slate-800 animate-pulse">AI đang phân tích & chấm điểm bài viết...</h3>
+                    <p class="text-xs text-slate-500 max-w-xs mt-2">
+                        Đang kiểm tra thông tin sách, tóm tắt, phản biện, minh chứng và đếm số từ...
+                    </p>
+                </div>
+
+                <!-- Results Output Area -->
+                <div id="resultContent" class="hidden flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto custom-scrollbar">
+
+                    <!-- Header Summary Card -->
+                    <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-sm mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-4 text-center sm:text-left">
+                            <div class="relative flex items-center justify-center shrink-0">
+                                <div id="scoreRing" class="w-20 h-20 rounded-full border-4 border-emerald-500 flex flex-col items-center justify-center bg-slate-800/80 shadow-lg">
+                                    <span id="totalScoreNum" class="text-2xl font-black text-emerald-400 leading-none">0</span>
+                                    <span class="text-[10px] text-slate-400 font-semibold mt-0.5">/100 ĐIỂM</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                                    <span id="gradeBadge" class="text-xs font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        Đạt Yêu Cầu
+                                    </span>
+                                    <!-- AI Detection Badge -->
+                                    <span id="aiRiskBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-700 text-slate-300 border border-slate-600 flex items-center gap-1">
+                                        <i data-lucide="shield-alert" class="w-3 h-3"></i>
+                                        <span id="aiRiskText">Kiểm tra AI: Thấp</span>
+                                    </span>
+                                    <span id="reportWordCount" class="text-xs text-slate-400 flex items-center gap-1">
+                                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i> <span id="reportWordNum">0</span> từ
+                                    </span>
+                                </div>
+                                <h3 class="text-lg font-bold mt-1">Kết Quả Chấm Bài Đọc Sách</h3>
+                                <p id="evaluationTagline" class="text-xs text-slate-300 mt-0.5 line-clamp-1">Hoàn thành đánh giá dựa trên Rubric 7 tiêu chí & Đánh giá mức độ nghi vấn AI</p>
+                            </div>
+                        </div>
+
+                        <!-- Print / Export Tools -->
+                        <div class="flex items-center gap-2 shrink-0 no-print">
+                            <button onclick="window.print()" class="p-2 bg-slate-700/80 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-600">
+                                <i data-lucide="printer" class="w-4 h-4"></i>
+                                <span class="hidden sm:inline">In báo cáo</span>
+                            </button>
+                            <button onclick="copyReportToClipboard()" class="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                                <span class="hidden sm:inline">Sao chép kết quả</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AI Detection Detailed Card -->
+                    <div id="aiDetectionCard" class="hidden mb-6 p-4 rounded-xl border">
+                        <div class="flex items-start gap-3">
+                            <div id="aiIconBox" class="p-2 rounded-lg shrink-0 mt-0.5">
+                                <i data-lucide="bot text-amber-600" class="w-5 h-5"></i>
+                            </div>
+                            <div class="flex-1 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <h5 id="aiCardTitle" class="font-bold text-xs uppercase tracking-wider flex items-center gap-2">
+                                        <span>Phân Tích Dấu Hiệu Lắp Ghép Bằng AI</span>
+                                    </h5>
+                                    <span id="aiPenaltyBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800">
+                                        Trừ điểm: -0đ
+                                    </span>
+                                </div>
+                                <p id="aiSummaryText" class="text-xs leading-relaxed">
+                                    --
+                                </p>
+                                <div id="aiSignaturesContainer" class="hidden pt-1">
+                                    <p class="text-[11px] font-semibold text-slate-700 mb-1">Các đoạn văn phong / dấu hiệu AI nghi vấn:</p>
+                                    <ul id="aiSignaturesList" class="space-y-1 text-xs list-disc list-inside bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
+                                        <!-- Dynamic list of AI signatures -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 7 Criteria Detailed Table -->
+                    <div class="mb-6">
+                        <h4 class="font-bold text-slate-800 text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <i data-lucide="list-checks" class="w-4 h-4 text-blue-600"></i>
+                            <span>Bảng Điểm Chi Tiết Theo Rubric (7 Tiêu Chí)</span>
+                        </h4>
+
+                        <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                                            <th class="p-3 w-1/4">Tiêu chí đánh giá</th>
+                                            <th class="p-3 w-16 text-center">Điểm</th>
+                                            <th class="p-3">Nhận xét, Minh chứng & Gợi ý cải thiện</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rubricTableBody" class="divide-y divide-slate-200 bg-white">
+                                        <!-- Dynamically generated criterion rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- General Comments Section -->
+                    <div class="space-y-4">
+                        <!-- Overall Evaluation -->
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                            <h5 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                <i data-lucide="message-square text-blue-600" class="w-4 h-4"></i>
+                                <span>Nhận Xét Chung</span>
+                            </h5>
+                            <p id="overallSummaryText" class="text-xs text-slate-700 leading-relaxed italic">
+                                --
+                            </p>
+                        </div>
+
+                        <!-- Strengths and Areas to Improve side by side -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Strengths -->
+                            <div class="bg-emerald-50/60 border border-emerald-200/80 p-4 rounded-xl">
+                                <h5 class="font-semibold text-emerald-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <i data-lucide="thumbs-up" class="w-4 h-4 text-emerald-600"></i>
+                                    <span>Điểm Mạnh</span>
+                                </h5>
+                                <ul id="strengthsList" class="space-y-1.5 text-xs text-emerald-800 list-disc list-inside">
+                                    <!-- Dynamic list -->
+                                </ul>
+                            </div>
+
+                            <!-- Weaknesses -->
+                            <div class="bg-amber-50/60 border border-amber-200/80 p-4 rounded-xl">
+                                <h5 class="font-semibold text-amber-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600"></i>
+                                    <span>Cần Cải Thiện</span>
+                                </h5>
+                                <ul id="improvementsList" class="space-y-1.5 text-xs text-amber-800 list-disc list-inside">
+                                    <!-- Dynamic list -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- Modal for Rubric Reference -->
+    <div id="rubricModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+            <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="table" class="w-5 h-5 text-blue-600"></i>
+                    <h3 class="font-bold text-slate-800 text-base">Khung Đánh Giá Bài Thu Hoạch Đọc Sách (Thang 100)</h3>
+                </div>
+                <button onclick="toggleRubricModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                            <th class="p-3 w-12 text-center">STT</th>
+                            <th class="p-3 w-40">Tiêu chí</th>
+                            <th class="p-3">Nội dung đánh giá chi tiết</th>
+                            <th class="p-3 w-16 text-center">Điểm tối đa</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalRubricBody" class="divide-y divide-slate-200">
+                        <!-- Populated by JS -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-slate-50 font-bold text-slate-800 border-t border-slate-200">
+                            <td colspan="3" class="p-3 text-right">TỔNG ĐIỂM CỘNG HÒA</td>
+                            <td class="p-3 text-center text-blue-600 text-sm">100</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 text-right">
+                <button onclick="toggleRubricModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs rounded-xl transition">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-lg border border-slate-800 transition-all transform translate-y-20 opacity-0 flex items-center gap-2 pointer-events-none">
+        <i id="toastIcon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+        <span id="toastMsg">Thông báo</span>
+    </div>
+
+    <script>
+        // Separate modular configuration object for the grading rubric
+        const RUBRIC_CONFIG = [
+            {
+                id: "c1",
+                name: "1. Giới thiệu sách",
+                maxScore: 10,
+                desc: "Đầy đủ tên sách, tác giả, nhà xuất bản, lĩnh vực CNTT liên quan, mục đích chọn sách"
+            },
+            {
+                id: "c2",
+                name: "2. Tóm tắt nội dung",
+                maxScore: 20,
+                desc: "Tóm tắt chính xác các chương, ý tưởng cốt lõi, công nghệ hoặc phương pháp được đề cập"
+            },
+            {
+                id: "c3",
+                name: "3. Phân tích và đánh giá",
+                maxScore: 20,
+                desc: "Tính khoa học, tính cập nhật, độ sâu kiến thức, tính ứng dụng thực tế"
+            },
+            {
+                id: "c4",
+                name: "4. Tư duy phản biện",
+                maxScore: 25,
+                desc: "Ưu điểm, hạn chế, so sánh với tài liệu khác/thực tiễn CNTT; xác định đối tượng sinh viên hoặc môn học phù hợp"
+            },
+            {
+                id: "c5",
+                name: "5. Minh chứng và ví dụ",
+                maxScore: 10,
+                desc: "Dẫn chứng từ sách hoặc ví dụ thực tế để hỗ trợ nhận xét"
+            },
+            {
+                id: "c6",
+                name: "6. Hình thức trình bày",
+                maxScore: 10,
+                desc: "Bố cục, diễn đạt, chính tả, trích dẫn"
+            },
+            {
+                id: "c7",
+                name: "7. Độ dài và tính hoàn chỉnh",
+                maxScore: 5,
+                desc: "Tối thiểu 1.000 từ và có kết luận đầy đủ"
+            }
+        ];
+
+        const SAMPLE_BOOK_REVIEW = `BÀI THU HOẠCH ĐỌC SÁCH CHUYÊN NGÀNH CNTT
+Tên bài viết: Phân tích và Đánh giá Tác phẩm "Designing Data-Intensive Applications" trong Kỷ nguyên Dữ liệu lớn
+Họ và tên sinh viên: Nguyễn Văn An
+Mã số sinh viên: 21120001
+Lớp: K21-CNTT1, Khoa Công nghệ Thông tin
+
+1. GIỚI THIỆU SÁCH VÀ MỤC ĐÍCH ĐỌC
+Cuốn sách "Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems" được viết bởi tác giả Martin Kleppmann, xuất bản bởi Nhà xuất bản O'Reilly Media vào năm 2017. Cuốn sách thuộc lĩnh vực Kiến trúc Hệ thống Dữ liệu, Hệ quản trị Cơ sở dữ liệu và Hệ thống Phân tán trong Công nghệ Thông tin.
+
+Mục đích tôi chọn cuốn sách này nhằm trang bị nền tảng lý thuyết sâu sắc và tư duy thiết kế hệ thống có khả năng mở rộng cao (scalability), độ tin cậy (reliability) và dễ bảo trì (maintainability). Trong bối cảnh ngành CNTT hiện nay, các ứng dụng Web/Mobile không chỉ xử lý thuật toán phức tạp mà phải đối mặt với lượng dữ liệu khổng lồ (Big Data), việc hiểu rõ bản chất bên dưới các công cụ như MySQL, Redis, Kafka hay Cassandra là chìa khóa để trở thành một kỹ sư phần mềm chuyên nghiệp.
+
+2. TÓM TẮT NỘI DUNG NÒNG CỐT
+Cuốn sách được cấu trúc gồm 12 chương chia làm 3 phần chính:
+- Phần I: Foundations of Data Systems (Chương 1 - 4): Tác giả thiết lập các tiêu chuẩn cho hệ thống dữ liệu: Tính tin cậy, Tính mở rộng và Tính dễ bảo trì. Chương 2 và 3 đi sâu so sánh các mô hình dữ liệu (Relational, Document, Graph) và cấu trúc lưu trữ bên trong ổ đĩa như Log-Structured Merge-Trees (LSM-Tree) và B-Trees.
+- Phần II: Distributed Data (Chương 5 - 9): Đây là phần cốt lõi của cuốn sách, giải quyết các thách thức khi dữ liệu vượt quá khả năng lưu trữ của một máy đơn lẻ. Tác giả phân tích chi tiết về Replication (Sao chép: Single-leader, Multi-leader, Leaderless), Partitioning (Phân mảnh dữ liệu), Transactions (Giao dịch ACID/BASE, Concurrency control) và những khó khăn trong Hệ thống phân tán như lệch đồng hồ (clock drift), lỗi mạng (network partitions) và thuật toán đồng thuận (Consensus Algorithms như Raft, Paxos).
+- Phần III: Derived Data (Chương 10 - 12): Tập trung vào xử lý dữ liệu theo lô (Batch Processing với MapReduce, Spark) và xử lý luồng (Stream Processing với Apache Kafka, Flink), từ đó đưa ra định hướng xây dựng kiến trúc dữ liệu tương lai.
+
+3. PHÂN TÍCH VÀ ĐÁNH GIÁ CHUYÊN MÔN
+- Tính khoa học và độ sâu kiến thức: Tác giả Martin Kleppmann thể hiện tư duy vô cùng chặt chẽ khi không chỉ giới thiệu cách dùng công nghệ mà giải thích "Tại sao công nghệ đó lại hoạt động như vậy". Ví dụ, khi so sánh giữa B-Tree và LSM-Tree, tác giả phân tích rõ B-Tree tối ưu cho thao tác đọc ngẫu nhiên (Read-heavy) nhờ cấu trúc phân cấp cố định trang 4KB, trong khi LSM-Tree (dùng trong RocksDB, Cassandra) tối ưu vượt trội cho thao tác ghi (Write-heavy) nhờ cơ chế ghi nối tiếp vào MemTable và SSTables.
+- Tính cập nhật và thực tiễn: Dù xuất bản năm 2017, các nguyên lý trong sách vẫn là kim chỉ nam cho các kỹ sư backend hiện nay. Việc nắm vững nguyên lý CAP theorem, Eventual Consistency hay Distributed Transactions là điều bắt buộc khi triển khai Microservices.
+
+4. TƯ DUY PHẢN BIỆN VÀ SO SÁNH THỰC TẾ
+- Ưu điểm: Sách minh họa hình vẽ trực quan, không sa đàm vào cú pháp code cụ thể của một ngôn ngữ nào mà tập trung vào tư duy kiến trúc vĩnh cửu.
+- Hạn chế: Cuốn sách đòi hỏi người đọc phải có kiến thức nền tảng vững chắc về Mạng máy tính, Hệ điều hành và Cơ sở dữ liệu. Đối với sinh viên năm 1 hoặc năm 2, cuốn sách có thể tạo cảm giác quá tải kiến thức (information overload) vì lượng thuật ngữ chuyên ngành vô cùng dày đặc.
+- So sánh thực tiễn: So với giáo trình "Database System Concepts" của Silberschatz (vốn thiên về lý thuyết CSDL quan hệ truyền thống), tác phẩm của Kleppmann mang tính thực chiến cao hơn nhiều, giải quyết đúng các bài toán mà các công ty công nghệ lớn như Google, Netflix, Uber đang gặp phải.
+- Khuyến nghị đối tượng: Cuốn sách rất phù hợp cho sinh viên chuyên ngành Công nghệ Phần mềm, Hệ thống Thông tin từ năm 3 trở đi, hoặc làm tài liệu tham khảo cốt lõi cho môn học "Kiến trúc Phần mềm" và "Hệ thống Phân tán".
+
+5. MINH CHỨNG VÀ VÍ DỤ THỰC TẾ
+Để minh chứng cho tính ứng dụng của sách, ví dụ tại Chương 11 về Stream Processing: Tác giả phân tích cơ chế "Exactly-once semantics". Trong thực tế dự án thực tập của tôi tại công ty sản xuất phần mềm, khi triển khai hệ thống thanh toán điện tử, việc sử dụng Apache Kafka kết hợp idempotency key đã giúp ngăn chặn tình trạng bị trừ tiền hai lần khi gặp lỗi chập chờn mạng giữa Microservice Order và Microservice Payment – đúng như nguyên lý tác giả đã mô tả ở trang 465.
+
+6. HÌNH THỨC TRÌNH BÀY
+Bài thu hoạch được trình bày mạch lạc theo đúng bố cục 5 phần rõ ràng, các thuật ngữ tiếng Anh chuyên ngành như *Write-Ahead Log (WAL)*, *Two-Phase Commit (2PC)*, *SSTables* đều được chú thích thuật ngữ tiếng Việt chính xác. Không mắc lỗi chính tả, câu từ diễn đạt trôi chảy, chuyên nghiệp.
+
+7. KẾT LUẬN
+Tóm lại, "Designing Data-Intensive Applications" của Martin Kleppmann không chỉ là một cuốn sách đọc một lần rồi cất lên kệ, mà là một cuốn cẩm nang tra cứu hành nghề lâu dài cho bất kỳ ai muốn theo đuổi con đường Kỹ sư Kiến trúc Dữ liệu. Qua việc đọc và phân tích tác phẩm này, tôi đã nâng cao rõ rệt tư duy thiết kế hệ thống, hiểu được sự đánh đổi (trade-offs) giữa tính nhất quán và tính sẵn sàng trong môi trường phân tán. Đây chắc chắn là cuốn sách hay nhất về hạ tầng dữ liệu mà tôi từng đọc trong quá trình học đại học.`;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderModalRubric();
+            setupDragAndDrop();
+        });
+
+        // Toggle Rubric Modal
+        function toggleRubricModal() {
+            const modal = document.getElementById('rubricModal');
+            modal.classList.toggle('hidden');
+        }
+
+        // Render Rubric Modal Table
+        function renderModalRubric() {
+            const tbody = document.getElementById('modalRubricBody');
+            tbody.innerHTML = RUBRIC_CONFIG.map((item, index) => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 text-center font-semibold text-slate-500">${index + 1}</td>
+                    <td class="p-3 font-semibold text-slate-800">${item.name.replace(/^\d+\.\s*/, '')}</td>
+                    <td class="p-3 text-slate-600 leading-relaxed">${item.desc}</td>
+                    <td class="p-3 text-center font-bold text-blue-600">${item.maxScore}</td>
+                </tr>
+            `).join('');
+        }
+
+        function countWords(str) {
+            if (!str) return 0;
+            // Trim and split by whitespace/punctuation boundaries
+            const cleanedStr = str.trim().replace(/\s+/g, ' ');
+            if (!cleanedStr) return 0;
+            return cleanedStr.split(' ').length;
+        }
+
+        function updateWordCount() {
+            const text = document.getElementById('studentText').value;
+            const words = countWords(text);
+            document.getElementById('wordCountNum').innerText = words.toLocaleString('vi-VN');
+
+            const badge = document.getElementById('wordCountCheck');
+            if (words >= 1000) {
+                badge.className = "text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold flex items-center gap-1";
+                badge.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Đạt chuẩn ≥ 1.000 từ`;
+            } else {
+                badge.className = "text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium";
+                badge.innerText = `Chưa đạt 1.000 từ (${words}/1000)`;
+            }
+            lucide.createIcons();
+        }
+
+        function loadSampleText() {
+            document.getElementById('studentText').value = SAMPLE_BOOK_REVIEW;
+            updateWordCount();
+            showToast("Đã tải bài thu hoạch đọc sách mẫu!", "success");
+        }
+
+        function clearInput() {
+            document.getElementById('studentText').value = '';
+            updateWordCount();
+            showToast("Đã xóa nội dung bài làm", "info");
+        }
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.add('border-blue-500', 'bg-blue-50/50');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', handleDrop, false);
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function processFile(file) {
+            const extension = file.name.split('.').pop().toLowerCase();
+
+            if (extension === 'txt' || extension === 'md') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('studentText').value = e.target.result;
+                    updateWordCount();
+                    showToast(`Đã đọc tệp ${file.name}`, "success");
+                };
+                reader.readAsText(file);
+            } else if (extension === 'docx') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const arrayBuffer = e.target.result;
+                    if (window.mammoth) {
+                        mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                            .then(function(result) {
+                                document.getElementById('studentText').value = result.value;
+                                updateWordCount();
+                                showToast(`Đã chuyển đổi tệp Word: ${file.name}`, "success");
+                            })
+                            .catch(function(err) {
+                                showToast("Không thể đọc file Word này. Hãy thử lưu sang .txt", "error");
+                            });
+                    } else {
+                        showToast("Thư viện đọc file Word chưa tải xong", "error");
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                showToast("Chỉ hỗ trợ định dạng .txt, .docx, .md", "error");
+            }
+        }
+
+        async function startGrading() {
+            const studentText = document.getElementById('studentText').value.trim();
+            const wordCount = countWords(studentText);
+
+            if (!studentText) {
+                showToast("Vui lòng nhập hoặc tải bài thu hoạch của sinh viên!", "error");
+                return;
+            }
+
+            if (studentText.length < 100) {
+                showToast("Bài viết quá ngắn để tiến hành chấm điểm. Vui lòng nhập tối thiểu 100 ký tự.", "error");
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('resultContent').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('gradeBtn').disabled = true;
+            document.getElementById('gradeBtn').classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                // Construct Gemini API Prompt with explicit AI detection and penalty instructions
+                const systemPrompt = `Bạn là một Giảng viên Công nghệ Thông tin (CNTT) chấm bài thu hoạch đọc sách chuyên ngành một cách nghiêm túc, công bằng, tỉ mỉ và khách quan.
+
+NHIỆM VỤ ĐẶC BIỆT - PHÁT HIỆN AI & TRỪ ĐIỂM:
+Bạn nghi ngờ sinh viên sử dụng AI (ChatGPT, Claude, Gemini,...) để tạo hoặc viết hộ bài thu hoạch này. Hãy kiểm tra kỹ các dấu hiệu nhận biết văn phong AI tiêu biểu bao gồm:
+1. Văn phong khuôn mẫu, trung tính quá mức, sáo rỗng, dùng quá nhiều câu chuyển đoạn rập khuôn ("Tóm lại", "Như chúng ta đã biết", "Sự kết hợp hoàn hảo giữa...", "Cuốn sách này không chỉ... mà còn...").
+2. Thiếu trải nghiệm cá nhân thực tế hoặc ví dụ tự viết: Các ví dụ quá chung chung, không gắn liền với dự án cá nhân, môn học hay bài tập thực hành CNTT cụ thể.
+3. Bố cục đối xứng nhân tạo: Chia đều dung lượng một cách khiên cưỡng, dàn hàng danh sách liệt kê tròn trịa nhưng thiếu độ sâu kỹ thuật.
+4. Thuật ngữ CNTT liệt kê xuông mà không giải thích bản chất: Dùng nhiều từ khóa hot (Microservices, AI, Big Data, Blockchain...) chỉ để làm bóng đòn bài viết.
+5. Câu từ bóng bẩy, tung hô tác giả/cuốn sách thiếu phản biện thực chất.
+
+QUY TẮC TRỪ ĐIỂM NGHI VẤN AI:
+- Xác định Mức độ nghi vấn AI (aiGeneratedRisk): "Thấp" (Ít/không có dấu hiệu), "Trung bình" (Có vài đoạn chuẩn hóa dạng AI), "Cao" (Bài viết mang đậm dấu hiệu sinh ra từ AI).
+- Tính Điểm phạt AI (aiPenaltyScore): Từ 0 điểm (Thấp), 5–15 điểm (Trung bình), hoặc 15–30 điểm (Cao).
+- TRỪ ĐIỂM TRỰC TIẾP vào các tiêu chí tương ứng (đặc biệt là Tiêu chí 3: Phân tích & Đánh giá, Tiêu chí 4: Tư duy phản biện, Tiêu chí 5: Minh chứng & ví dụ, Tiêu chí 6: Hình thức trình bày).
+- Trong phần "comment" hoặc "evidence" của từng tiêu chí bị trừ điểm, phải chỉ rõ lý do: "[Nghi vấn AI] + giải thích cụ thể vì sao đoạn này mang dấu hiệu do AI viết".
+
+THANG ĐIỂM 100 VỚI 7 TIÊU CHÍ CHẨN THỰC:
+1. Giới thiệu sách (Tối đa 10 điểm): Đầy đủ tên sách, tác giả, nhà xuất bản, lĩnh vực CNTT liên quan, mục đích chọn sách.
+2. Tóm tắt nội dung (Tối đa 20 điểm): Tóm tắt chính xác các chương, ý tưởng cốt lõi, công nghệ hoặc phương pháp được đề cập.
+3. Phân tích và đánh giá (Tối đa 20 điểm): Tính khoa học, tính cập nhật, độ sâu kiến thức, tính ứng dụng thực tế.
+4. Tư duy phản biện (Tối đa 25 điểm): Ưu điểm, hạn chế, so sánh với tài liệu khác/thực tiễn CNTT; xác định đối tượng sinh viên hoặc môn học phù hợp.
+5. Minh chứng và ví dụ (Tối đa 10 điểm): Dẫn chứng từ sách hoặc ví dụ thực tế để hỗ trợ nhận xét.
+6. Hình thức trình bày (Tối đa 10 điểm): Bố cục, diễn đạt, chính tả, trích dẫn.
+7. Độ dài và tính hoàn chỉnh (Tối đa 5 điểm): Tối thiểu 1.000 từ và có kết luận đầy đủ. (Số từ hệ thống đếm thực tế của bài viết này là: ${wordCount} từ).
+
+NGUYÊN TẮC TỔNG ĐIỂM:
+- Tuyệt đối KHÔNG cho điểm nếu không có minh chứng cụ thể.
+- TỔNG ĐIỂM (totalScore) phải bằng ĐÚNG TỔNG SỐ ĐIỂM thành phần của 7 tiêu chí cộng lại sau khi đã áp dụng trừ điểm AI.`;
+
+                const userPrompt = `Hãy phân tích, kiểm tra dấu hiệu AI và chấm bài thu hoạch đọc sách chuyên ngành CNTT dưới đây:
+
+--- BẮT ĐẦU BÀI LÀM CỦA SINH VIÊN ---
+${studentText}
+--- KẾT THÚC BÀI LÀM CỦA SINH VIÊN ---`;
+
+                // API Payload with Structured JSON Response including AI Detection
+                const payload = {
+                    contents: [
+                        { parts: [{ text: userPrompt }] }
+                    ],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "measuredWordCount": { "type": "INTEGER" },
+                                "totalScore": { "type": "INTEGER" },
+                                "aiGeneratedRisk": { "type": "STRING", "description": "Thấp, Trung bình, hoặc Cao" },
+                                "aiPenaltyScore": { "type": "INTEGER", "description": "Tổng số điểm bị trừ do nghi vấn AI" },
+                                "aiSummary": { "type": "STRING", "description": "Tóm tắt nhận xét về khả năng sinh viên dùng AI viết bài" },
+                                "aiSignatures": {
+                                    "type": "ARRAY",
+                                    "items": { "type": "STRING" },
+                                    "description": "Danh sách các đoạn văn hoặc dấu hiệu rập khuôn tiêu biểu của AI"
+                                },
+                                "criteriaScores": {
+                                    "type": "ARRAY",
+                                    "items": {
+                                        "type": "OBJECT",
+                                        "properties": {
+                                            "criterionId": { "type": "STRING" },
+                                            "criterionName": { "type": "STRING" },
+                                            "score": { "type": "INTEGER" },
+                                            "maxScore": { "type": "INTEGER" },
+                                            "comment": { "type": "STRING" },
+                                            "evidence": { "type": "STRING" },
+                                            "improvement": { "type": "STRING" }
+                                        },
+                                        "propertyOrdering": ["criterionId", "criterionName", "score", "maxScore", "comment", "evidence", "improvement"]
+                                    }
+                                },
+                                "overallSummary": { "type": "STRING" },
+                                "strengths": {
+                                    "type": "ARRAY",
+                                    "items": { "type": "STRING" }
+                                },
+                                "weaknessesAndImprovements": {
+                                    "type": "ARRAY",
+                                    "items": { "type": "STRING" }
+                                }
+                            },
+                            "propertyOrdering": [
+                                "measuredWordCount",
+                                "totalScore",
+                                "aiGeneratedRisk",
+                                "aiPenaltyScore",
+                                "aiSummary",
+                                "aiSignatures",
+                                "criteriaScores",
+                                "overallSummary",
+                                "strengths",
+                                "weaknessesAndImprovements"
+                            ]
+                        }
+                    }
+                };
+
+                const apiKey = ""; // Canvas runtime environment automatically supplies the API Key
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                // Exponential backoff fetch implementation
+                const response = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    const gradingResult = JSON.parse(jsonText);
+                    renderGradingReport(gradingResult, wordCount);
+                    showToast("Đã hoàn tất chấm bài & Phân tích AI!", "success");
+                } else {
+                    throw new Error("Không nhận được phản hồi định dạng JSON từ Gemini AI.");
+                }
+
+            } catch (err) {
+                console.error("Grading error:", err);
+                showToast("Có lỗi xảy ra trong quá trình chấm bài: " + err.message, "error");
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('emptyState').classList.remove('hidden');
+            } finally {
+                document.getElementById('gradeBtn').disabled = false;
+                document.getElementById('gradeBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        async function fetchWithRetry(url, options, retries = 3, backoff = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const res = await fetch(url, options);
+                    if (res.ok) return res;
+                    if (res.status === 429 && i < retries - 1) {
+                        await new Promise(r => setTimeout(r, backoff * Math.pow(2, i)));
+                        continue;
+                    }
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                    await new Promise(r => setTimeout(r, backoff * Math.pow(2, i)));
+                }
+            }
+        }
+
+        function renderGradingReport(data, actualWordCount) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('resultContent').classList.remove('hidden');
+
+            // Recalculate total score from criteria to guarantee mathematical exactness
+            let computedTotal = 0;
+            if (data.criteriaScores && Array.isArray(data.criteriaScores)) {
+                computedTotal = data.criteriaScores.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+            } else {
+                computedTotal = data.totalScore || 0;
+            }
+
+            // Animate Total Score
+            document.getElementById('totalScoreNum').innerText = computedTotal;
+            document.getElementById('reportWordNum').innerText = actualWordCount.toLocaleString('vi-VN');
+
+            // Update AI Risk Badge
+            const aiRiskBadge = document.getElementById('aiRiskBadge');
+            const aiRiskText = document.getElementById('aiRiskText');
+            const aiRisk = data.aiGeneratedRisk || "Thấp";
+            const penalty = data.aiPenaltyScore || 0;
+
+            if (aiRisk === "Cao") {
+                aiRiskBadge.className = "text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1";
+                aiRiskText.innerText = `Nghi vấn AI: CAO (-${penalty}đ)`;
+            } else if (aiRisk === "Trung bình") {
+                aiRiskBadge.className = "text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1";
+                aiRiskText.innerText = `Nghi vấn AI: TRUNG BÌNH (-${penalty}đ)`;
+            } else {
+                aiRiskBadge.className = "text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1";
+                aiRiskText.innerText = `Nghi vấn AI: THẤP`;
+            }
+
+            // Render AI Detection Analysis Card
+            const aiCard = document.getElementById('aiDetectionCard');
+            const aiIconBox = document.getElementById('aiIconBox');
+            const aiTitle = document.getElementById('aiCardTitle');
+            const aiSummary = document.getElementById('aiSummaryText');
+            const aiPenaltyBadge = document.getElementById('aiPenaltyBadge');
+            const aiSigContainer = document.getElementById('aiSignaturesContainer');
+            const aiSigList = document.getElementById('aiSignaturesList');
+
+            aiCard.classList.remove('hidden');
+
+            if (aiRisk === "Cao" || aiRisk === "Trung bình" || penalty > 0) {
+                if (aiRisk === "Cao") {
+                    aiCard.className = "mb-6 p-4 rounded-xl border bg-rose-50/80 border-rose-200 text-rose-950";
+                    aiIconBox.className = "p-2 rounded-lg bg-rose-100 text-rose-600 shrink-0 mt-0.5";
+                    aiTitle.className = "font-bold text-xs uppercase tracking-wider flex items-center gap-2 text-rose-900";
+                    aiPenaltyBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-rose-200 text-rose-900 border border-rose-300";
+                } else {
+                    aiCard.className = "mb-6 p-4 rounded-xl border bg-amber-50/80 border-amber-200 text-amber-950";
+                    aiIconBox.className = "p-2 rounded-lg bg-amber-100 text-amber-700 shrink-0 mt-0.5";
+                    aiTitle.className = "font-bold text-xs uppercase tracking-wider flex items-center gap-2 text-amber-900";
+                    aiPenaltyBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900 border border-amber-300";
+                }
+                aiPenaltyBadge.innerText = `Đã trừ: -${penalty} điểm`;
+            } else {
+                aiCard.className = "mb-6 p-4 rounded-xl border bg-emerald-50/60 border-emerald-200 text-emerald-950";
+                aiIconBox.className = "p-2 rounded-lg bg-emerald-100 text-emerald-600 shrink-0 mt-0.5";
+                aiTitle.className = "font-bold text-xs uppercase tracking-wider flex items-center gap-2 text-emerald-900";
+                aiPenaltyBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300";
+                aiPenaltyBadge.innerText = `Không có điểm phạt AI`;
+            }
+
+            aiSummary.innerText = data.aiSummary || "Bài viết giữ văn phong tự nhiên, có dấu ấn suy nghĩ cá nhân của sinh viên.";
+
+            if (data.aiSignatures && data.aiSignatures.length > 0) {
+                aiSigContainer.classList.remove('hidden');
+                aiSigList.innerHTML = data.aiSignatures.map(sig => `
+                    <li class="text-slate-800 leading-relaxed font-mono text-[11px]">
+                        "${sig}"
+                    </li>
+                `).join('');
+            } else {
+                aiSigContainer.classList.add('hidden');
+            }
+
+            // Grade status badge & ring color styling
+            const ring = document.getElementById('scoreRing');
+            const badge = document.getElementById('gradeBadge');
+            const tagline = document.getElementById('evaluationTagline');
+
+            if (computedTotal >= 80) {
+                ring.className = "w-20 h-20 rounded-full border-4 border-emerald-500 flex flex-col items-center justify-center bg-slate-800/80 shadow-lg text-emerald-400";
+                badge.className = "text-xs font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+                badge.innerText = "Giỏi / Xuất sắc";
+                tagline.innerText = "Bài thu hoạch đạt chất lượng cao, lập luận chặt chẽ và sâu sắc.";
+            } else if (computedTotal >= 65) {
+                ring.className = "w-20 h-20 rounded-full border-4 border-blue-500 flex flex-col items-center justify-center bg-slate-800/80 shadow-lg text-blue-400";
+                badge.className = "text-xs font-bold uppercase px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30";
+                badge.innerText = "Khá / Đạt chuẩn";
+                tagline.innerText = "Bài làm đạt yêu cầu nhưng cần phân tích sâu và bổ sung minh chứng.";
+            } else if (computedTotal >= 50) {
+                ring.className = "w-20 h-20 rounded-full border-4 border-amber-500 flex flex-col items-center justify-center bg-slate-800/80 shadow-lg text-amber-400";
+                badge.className = "text-xs font-bold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30";
+                badge.innerText = "Trung bình";
+                tagline.innerText = "Còn nhiều hạn chế về phân tích chuyên môn và dẫn chứng thực tế.";
+            } else {
+                ring.className = "w-20 h-20 rounded-full border-4 border-rose-500 flex flex-col items-center justify-center bg-slate-800/80 shadow-lg text-rose-400";
+                badge.className = "text-xs font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30";
+                badge.innerText = "Chưa Đạt";
+                tagline.innerText = "Bài viết sơ sài hoặc bị ảnh hưởng nặng do sử dụng AI sáo rỗng.";
+            }
+
+            // Populate Criteria Table Rows
+            const tbody = document.getElementById('rubricTableBody');
+            tbody.innerHTML = '';
+
+            data.criteriaScores.forEach((item, index) => {
+                const max = item.maxScore || RUBRIC_CONFIG[index]?.maxScore || 10;
+                const ratio = item.score / max;
+                let scoreColorClass = "text-emerald-700 bg-emerald-50 border-emerald-200";
+                if (ratio < 0.6) {
+                    scoreColorClass = "text-rose-700 bg-rose-50 border-rose-200";
+                } else if (ratio < 0.8) {
+                    scoreColorClass = "text-amber-700 bg-amber-50 border-amber-200";
+                }
+
+                // Check if comment contains AI detection tags
+                const isAiFlagged = (item.comment && item.comment.includes("[Nghi vấn AI]")) || (item.evidence && item.evidence.includes("[Nghi vấn AI]"));
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-slate-50/80 transition align-top ${isAiFlagged ? 'bg-amber-50/30' : ''}`;
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-800 border-r border-slate-100">
+                        <div class="flex items-center gap-1.5">
+                            <span>${item.criterionName || RUBRIC_CONFIG[index]?.name}</span>
+                            ${isAiFlagged ? `<span class="px-1.5 py-0.5 text-[10px] bg-rose-100 text-rose-800 font-bold rounded" title="Có dấu hiệu nghi vấn AI">AI Alert</span>` : ''}
+                        </div>
+                        <div class="text-[11px] font-normal text-slate-500 mt-0.5">${RUBRIC_CONFIG[index]?.desc || ''}</div>
+                    </td>
+                    <td class="p-3 text-center border-r border-slate-100">
+                        <span class="inline-block px-2.5 py-1 rounded-lg border font-bold text-xs ${scoreColorClass}">
+                            ${item.score}/${max}
+                        </span>
+                    </td>
+                    <td class="p-3 space-y-2">
+                        <div class="text-slate-700 leading-relaxed font-medium">
+                            ${item.comment || 'Chưa có nhận xét'}
+                        </div>
+                        ${item.evidence ? `
+                            <div class="bg-blue-50/70 border-l-2 border-blue-500 p-2 text-[11px] text-blue-900 rounded-r">
+                                <strong>Minh chứng bài viết:</strong> "${item.evidence}"
+                            </div>
+                        ` : ''}
+                        ${item.improvement ? `
+                            <div class="text-[11px] text-slate-600 bg-slate-100 p-2 rounded flex items-start gap-1">
+                                <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5"></i>
+                                <span><strong>Gợi ý cải thiện:</strong> ${item.improvement}</span>
+                            </div>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Overall Summary
+            document.getElementById('overallSummaryText').innerText = data.overallSummary || "Bài viết được đánh giá tổng thể đầy đủ theo khung tiêu chí.";
+
+            // Strengths List
+            const strengthsUl = document.getElementById('strengthsList');
+            strengthsUl.innerHTML = '';
+            if (data.strengths && data.strengths.length > 0) {
+                data.strengths.forEach(s => {
+                    const li = document.createElement('li');
+                    li.innerText = s;
+                    strengthsUl.appendChild(li);
+                });
+            } else {
+                strengthsUl.innerHTML = '<li>Đạt yêu cầu cơ bản của các mục.</li>';
+            }
+
+            // Improvements List
+            const improvementsUl = document.getElementById('improvementsList');
+            improvementsUl.innerHTML = '';
+            if (data.weaknessesAndImprovements && data.weaknessesAndImprovements.length > 0) {
+                data.weaknessesAndImprovements.forEach(w => {
+                    const li = document.createElement('li');
+                    li.innerText = w;
+                    improvementsUl.appendChild(li);
+                });
+            } else {
+                improvementsUl.innerHTML = '<li>Tiếp tục phát huy phong độ trong các bài viết tiếp theo.</li>';
+            }
+
+            lucide.createIcons();
+        }
+
+        function copyReportToClipboard() {
+            const totalScore = document.getElementById('totalScoreNum').innerText;
+            const summary = document.getElementById('overallSummaryText').innerText;
+            const aiRiskText = document.getElementById('aiRiskText').innerText;
+            const aiSummary = document.getElementById('aiSummaryText').innerText;
+
+            let reportText = `=== BÁO CÁO CHẤM BÀI ĐỌC SÁCH CNTT & ĐÁNH GIÁ AI ===\n`;
+            reportText += `ĐIỂM TỔNG: ${totalScore}/100\n`;
+            reportText += `KIỂM TRA AI: ${aiRiskText}\n`;
+            reportText += `NHẬN XÉT AI: ${aiSummary}\n\n`;
+
+            const rows = document.querySelectorAll('#rubricTableBody tr');
+            rows.forEach(r => {
+                const cols = r.querySelectorAll('td');
+                if (cols.length >= 3) {
+                    const title = cols[0].querySelector('div')?.innerText || '';
+                    const score = cols[1].innerText.trim();
+                    const details = cols[2].innerText.replace(/\n+/g, ' ');
+                    reportText += `• ${title} [${score}]: ${details}\n`;
+                }
+            });
+
+            reportText += `\nNHẬN XÉT CHUNG:\n${summary}\n`;
+
+            // Copy to clipboard
+            const textarea = document.createElement('textarea');
+            textarea.value = reportText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            showToast("Đã sao chép báo cáo vào bộ nhớ tạm!", "success");
+        }
+
+        function showToast(message, type = "info") {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.innerText = message;
+
+            if (type === "success") {
+                toastIcon.setAttribute('data-lucide', 'check-circle-2');
+                toastIcon.className = "w-4 h-4 text-emerald-400";
+            } else if (type === "error") {
+                toastIcon.setAttribute('data-lucide', 'alert-triangle');
+                toastIcon.className = "w-4 h-4 text-rose-400";
+            } else {
+                toastIcon.setAttribute('data-lucide', 'info');
+                toastIcon.className = "w-4 h-4 text-blue-400";
+            }
+
+            lucide.createIcons();
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
