@@ -1,0 +1,995 @@
+```html
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>RAR 2 ZIP</title>
+
+    <!-- JSZip: tạo file ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Arial,
+                sans-serif;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #eef2ff 0%,
+                    #f8fafc 50%,
+                    #e0f2fe 100%
+                );
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 620px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.10);
+        }
+
+        .logo {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 18px;
+
+            background: #2563eb;
+            color: white;
+
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        h1 {
+            margin: 0;
+            text-align: center;
+            font-size: 30px;
+            color: #111827;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-top: 10px;
+            margin-bottom: 30px;
+
+            color: #6b7280;
+            font-size: 15px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+
+            padding: 45px 25px;
+
+            text-align: center;
+
+            background: #f8fafc;
+
+            cursor: pointer;
+
+            transition: all 0.2s ease;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .drop-icon {
+            font-size: 42px;
+            margin-bottom: 12px;
+        }
+
+        .drop-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .drop-description {
+            margin-top: 8px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-info {
+            display: none;
+
+            margin-top: 20px;
+            padding: 15px;
+
+            border-radius: 10px;
+
+            background: #f1f5f9;
+        }
+
+        .file-name {
+            font-weight: 600;
+            word-break: break-all;
+            color: #1e293b;
+        }
+
+        .file-size {
+            margin-top: 5px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .convert-btn {
+            width: 100%;
+
+            margin-top: 20px;
+            padding: 14px 20px;
+
+            border: none;
+            border-radius: 10px;
+
+            background: #2563eb;
+            color: white;
+
+            font-size: 16px;
+            font-weight: 600;
+
+            cursor: pointer;
+
+            transition: background 0.2s;
+        }
+
+        .convert-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .convert-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 25px;
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+
+            margin-bottom: 8px;
+
+            font-size: 14px;
+            color: #475569;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+
+            overflow: hidden;
+
+            border-radius: 20px;
+
+            background: #e2e8f0;
+        }
+
+        .progress-value {
+            width: 0%;
+            height: 100%;
+
+            border-radius: 20px;
+
+            background: #2563eb;
+
+            transition: width 0.2s;
+        }
+
+        .status {
+            display: none;
+
+            margin-top: 20px;
+            padding: 13px;
+
+            border-radius: 10px;
+
+            text-align: center;
+
+            font-size: 14px;
+        }
+
+        .status.success {
+            display: block;
+
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .status.error {
+            display: block;
+
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .download-btn {
+            display: none;
+
+            width: 100%;
+
+            margin-top: 12px;
+            padding: 14px;
+
+            border-radius: 10px;
+
+            background: #16a34a;
+            color: white;
+
+            text-align: center;
+            text-decoration: none;
+
+            font-weight: 600;
+        }
+
+        .download-btn:hover {
+            background: #15803d;
+        }
+
+        .footer {
+            margin-top: 25px;
+
+            text-align: center;
+
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        @media (max-width: 600px) {
+
+            .card {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 25px;
+            }
+
+            .drop-zone {
+                padding: 35px 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <div class="logo">
+            R2Z
+        </div>
+
+        <h1>RAR 2 ZIP</h1>
+
+        <div class="subtitle">
+            Chuyển đổi RAR sang ZIP trực tiếp trên trình duyệt
+        </div>
+
+        <!-- Drop zone -->
+        <div
+            class="drop-zone"
+            id="dropZone"
+        >
+
+            <div class="drop-icon">
+                📦
+            </div>
+
+            <div class="drop-title">
+                Kéo & thả file RAR vào đây
+            </div>
+
+            <div class="drop-description">
+                hoặc click để chọn file .rar
+            </div>
+
+            <input
+                type="file"
+                id="fileInput"
+                accept=".rar,application/x-rar-compressed"
+            >
+
+        </div>
+
+        <!-- File information -->
+        <div
+            class="file-info"
+            id="fileInfo"
+        >
+
+            <div
+                class="file-name"
+                id="fileName"
+            ></div>
+
+            <div
+                class="file-size"
+                id="fileSize"
+            ></div>
+
+        </div>
+
+        <!-- Convert button -->
+        <button
+            class="convert-btn"
+            id="convertBtn"
+            disabled
+        >
+            Chuyển sang ZIP
+        </button>
+
+        <!-- Progress -->
+        <div
+            class="progress-container"
+            id="progressContainer"
+        >
+
+            <div class="progress-text">
+
+                <span id="progressText">
+                    Đang xử lý...
+                </span>
+
+                <span id="progressPercent">
+                    0%
+                </span>
+
+            </div>
+
+            <div class="progress-bar">
+
+                <div
+                    class="progress-value"
+                    id="progressValue"
+                ></div>
+
+            </div>
+
+        </div>
+
+        <!-- Status -->
+        <div
+            class="status"
+            id="status"
+        ></div>
+
+        <!-- Download -->
+        <a
+            class="download-btn"
+            id="downloadBtn"
+            download
+        >
+            ⬇ Tải file ZIP
+        </a>
+
+        <div class="footer">
+            File được xử lý trực tiếp trên trình duyệt.
+            Không upload lên server.
+        </div>
+
+    </div>
+
+</div>
+
+
+<script type="module">
+
+    /*
+     * ==========================================================
+     * RAR 2 ZIP
+     * ==========================================================
+     *
+     * RAR:
+     *     Browser
+     *       ↓
+     *     WebAssembly / UnRAR
+     *       ↓
+     *     Extract files
+     *       ↓
+     *     JSZip
+     *       ↓
+     *     ZIP
+     *
+     * Không cần Flask / Python / Backend.
+     */
+
+
+    const dropZone = document.getElementById("dropZone");
+
+    const fileInput = document.getElementById("fileInput");
+
+    const fileInfo = document.getElementById("fileInfo");
+
+    const fileName = document.getElementById("fileName");
+
+    const fileSize = document.getElementById("fileSize");
+
+    const convertBtn = document.getElementById("convertBtn");
+
+    const progressContainer =
+        document.getElementById("progressContainer");
+
+    const progressValue =
+        document.getElementById("progressValue");
+
+    const progressText =
+        document.getElementById("progressText");
+
+    const progressPercent =
+        document.getElementById("progressPercent");
+
+    const status =
+        document.getElementById("status");
+
+    const downloadBtn =
+        document.getElementById("downloadBtn");
+
+
+    let selectedFile = null;
+
+
+    /*
+     * ==========================================================
+     * Chọn file
+     * ==========================================================
+     */
+
+    dropZone.addEventListener("click", () => {
+
+        fileInput.click();
+
+    });
+
+
+    fileInput.addEventListener("change", () => {
+
+        if (fileInput.files.length > 0) {
+
+            selectFile(fileInput.files[0]);
+
+        }
+
+    });
+
+
+    /*
+     * ==========================================================
+     * Drag & Drop
+     * ==========================================================
+     */
+
+    dropZone.addEventListener(
+        "dragover",
+        event => {
+
+            event.preventDefault();
+
+            dropZone.classList.add("dragover");
+
+        }
+    );
+
+
+    dropZone.addEventListener(
+        "dragleave",
+        () => {
+
+            dropZone.classList.remove("dragover");
+
+        }
+    );
+
+
+    dropZone.addEventListener(
+        "drop",
+        event => {
+
+            event.preventDefault();
+
+            dropZone.classList.remove("dragover");
+
+            const files = event.dataTransfer.files;
+
+            if (files.length > 0) {
+
+                selectFile(files[0]);
+
+            }
+
+        }
+    );
+
+
+    /*
+     * ==========================================================
+     * Nhận file
+     * ==========================================================
+     */
+
+    function selectFile(file) {
+
+        if (!file.name.toLowerCase().endsWith(".rar")) {
+
+            showError(
+                "Vui lòng chọn file có định dạng .RAR"
+            );
+
+            return;
+
+        }
+
+
+        selectedFile = file;
+
+
+        fileName.textContent = file.name;
+
+        fileSize.textContent =
+            formatFileSize(file.size);
+
+
+        fileInfo.style.display = "block";
+
+        convertBtn.disabled = false;
+
+
+        status.style.display = "none";
+
+        downloadBtn.style.display = "none";
+
+    }
+
+
+    /*
+     * ==========================================================
+     * Convert
+     * ==========================================================
+     */
+
+    convertBtn.addEventListener(
+        "click",
+        async () => {
+
+            if (!selectedFile) {
+
+                return;
+
+            }
+
+
+            try {
+
+                convertBtn.disabled = true;
+
+                progressContainer.style.display = "block";
+
+                status.style.display = "none";
+
+                downloadBtn.style.display = "none";
+
+
+                setProgress(
+                    5,
+                    "Đang đọc file RAR..."
+                );
+
+
+                /*
+                 * --------------------------------------------------
+                 * Load UnRAR WASM
+                 *
+                 * Thư viện này cung cấp UnRAR chạy trong browser.
+                 * --------------------------------------------------
+                 */
+
+                const {
+                    createExtractorFromData
+                } = await import(
+                    "https://cdn.jsdelivr.net/npm/node-unrar-js@2.0.2/esm/index.js"
+                );
+
+
+                setProgress(
+                    15,
+                    "Đang khởi tạo bộ giải nén..."
+                );
+
+
+                const buffer =
+                    await selectedFile.arrayBuffer();
+
+
+                setProgress(
+                    25,
+                    "Đang giải nén RAR..."
+                );
+
+
+                const extractor =
+                    await createExtractorFromData({
+                        data: buffer
+                    });
+
+
+                /*
+                 * Lấy danh sách file trong RAR
+                 */
+
+                const list =
+                    extractor.getFileList();
+
+
+                const files =
+                    list.fileHeaders || [];
+
+
+                if (files.length === 0) {
+
+                    throw new Error(
+                        "File RAR không chứa dữ liệu."
+                    );
+
+                }
+
+
+                /*
+                 * Extract toàn bộ file
+                 */
+
+                const extracted =
+                    extractor.extract({
+                        files: files.map(
+                            item => item.name
+                        )
+                    });
+
+
+                const extractedFiles =
+                    extracted.files || [];
+
+
+                if (extractedFiles.length === 0) {
+
+                    throw new Error(
+                        "Không thể giải nén file RAR."
+                    );
+
+                }
+
+
+                setProgress(
+                    55,
+                    "Đã giải nén. Đang tạo ZIP..."
+                );
+
+
+                /*
+                 * --------------------------------------------------
+                 * Tạo ZIP bằng JSZip
+                 * --------------------------------------------------
+                 */
+
+                const zip = new JSZip();
+
+
+                let count = 0;
+
+                for (
+                    const item
+                    of extractedFiles
+                ) {
+
+                    count++;
+
+
+                    const name =
+                        item.fileHeader.name;
+
+
+                    /*
+                     * Nếu là thư mục thì tạo folder
+                     */
+
+                    if (
+                        item.fileHeader.flags
+                        &&
+                        item.fileHeader.flags
+                            .directory
+                    ) {
+
+                        zip.folder(name);
+
+                        continue;
+
+                    }
+
+
+                    /*
+                     * Dữ liệu file
+                     */
+
+                    const data =
+                        item.extraction;
+
+
+                    if (!data) {
+
+                        continue;
+
+                    }
+
+
+                    zip.file(
+                        name,
+                        data
+                    );
+
+
+                    const percent =
+                        55 +
+                        Math.round(
+                            (count /
+                                extractedFiles.length)
+                            * 35
+                        );
+
+
+                    setProgress(
+                        percent,
+                        "Đang đóng gói ZIP..."
+                    );
+
+                }
+
+
+                setProgress(
+                    92,
+                    "Đang tạo file ZIP..."
+                );
+
+
+                const zipBlob =
+                    await zip.generateAsync({
+
+                        type: "blob",
+
+                        compression: "DEFLATE",
+
+                        compressionOptions: {
+
+                            level: 6
+
+                        }
+
+                    });
+
+
+                /*
+                 * Tên file ZIP
+                 */
+
+                const originalName =
+                    selectedFile.name;
+
+
+                const baseName =
+                    originalName
+                        .replace(
+                            /\.rar$/i,
+                            ""
+                        );
+
+
+                const zipName =
+                    baseName + ".zip";
+
+
+                /*
+                 * Tạo link download
+                 */
+
+                const url =
+                    URL.createObjectURL(
+                        zipBlob
+                    );
+
+
+                downloadBtn.href = url;
+
+                downloadBtn.download =
+                    zipName;
+
+
+                downloadBtn.style.display =
+                    "block";
+
+
+                setProgress(
+                    100,
+                    "Hoàn tất!"
+                );
+
+
+                showSuccess(
+                    `Đã chuyển đổi thành công: ${zipName}`
+                );
+
+
+            }
+            catch (error) {
+
+                console.error(error);
+
+                showError(
+                    "Không thể chuyển đổi file RAR. " +
+                    (error.message || "")
+                );
+
+            }
+            finally {
+
+                convertBtn.disabled =
+                    false;
+
+            }
+
+        }
+    );
+
+
+    /*
+     * ==========================================================
+     * Progress
+     * ==========================================================
+     */
+
+    function setProgress(
+        percent,
+        text
+    ) {
+
+        progressValue.style.width =
+            percent + "%";
+
+
+        progressPercent.textContent =
+            percent + "%";
+
+
+        progressText.textContent =
+            text;
+
+    }
+
+
+    /*
+     * ==========================================================
+     * Success
+     * ==========================================================
+     */
+
+    function showSuccess(message) {
+
+        status.textContent =
+            "✓ " + message;
+
+        status.className =
+            "status success";
+
+    }
+
+
+    /*
+     * ==========================================================
+     * Error
+     * ==========================================================
+     */
+
+    function showError(message) {
+
+        status.textContent =
+            "✕ " + message;
+
+        status.className =
+            "status error";
+
+        status.style.display =
+            "block";
+
+    }
+
+
+    /*
+     * ==========================================================
+     * Format size
+     * ==========================================================
+     */
+
+    function formatFileSize(bytes) {
+
+        if (bytes === 0) {
+
+            return "0 Bytes";
+
+        }
+
+
+        const units = [
+            "Bytes",
+            "KB",
+            "MB",
+            "GB",
+            "TB"
+        ];
+
+
+        const index =
+            Math.floor(
+                Math.log(bytes) /
+                Math.log(1024)
+            );
+
+
+        return (
+            (bytes /
+                Math.pow(
+                    1024,
+                    index
+                )
+            ).toFixed(2)
+            + " "
+            + units[index]
+        );
+
+    }
+
+</script>
+
+</body>
+</html>
+```
