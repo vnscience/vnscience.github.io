@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100 text-slate-800">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeLab Studio - Web Code Editor</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts - Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --editor-font-size: 14px;
+      --console-font-size: 12px;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Code Editor Container & Line Numbers Style */
+    .editor-wrapper {
+      position: relative;
+      display: flex;
+      height: 100%;
+      background-color: #ffffff;
+      overflow: hidden;
+    }
+    .line-numbers {
+      width: 44px;
+      padding: 12px 0;
+      text-align: right;
+      color: #94a3b8;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: var(--editor-font-size);
+      line-height: 1.5rem;
+      user-select: none;
+      background-color: #f8fafc;
+      border-right: 1px solid #e2e8f0;
+    }
+    .code-textarea {
+      flex: 1;
+      background: transparent;
+      color: #0f172a;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: var(--editor-font-size);
+      line-height: 1.5rem;
+      padding: 12px;
+      border: none;
+      outline: none;
+      resize: none;
+      white-space: pre;
+      overflow-wrap: normal;
+      overflow-x: auto;
+      tab-size: 2;
+    }
+    .code-textarea::selection {
+      background-color: #cbd5e1;
+    }
+
+    /* Horizontal Resizer Handler */
+    .gutter-horizontal {
+      cursor: col-resize;
+      width: 6px;
+      background-color: #e2e8f0;
+      transition: background-color 0.2s;
+    }
+    .gutter-horizontal:hover, .gutter-horizontal.active {
+      background-color: #6366f1;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .console-output-text {
+      font-size: var(--console-font-size);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden select-none">
+
+  <!-- Header Bar -->
+  <header class="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between shrink-0 gap-2 shadow-sm z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+        <i class="fa-solid font-bold fa-code text-base"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          CodeLab Studio
+          <span class="text-xs font-medium px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">Light Edition</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Actions Control Toolbar & Font Customizers -->
+    <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+      <!-- Font Size Editor Controls -->
+      <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-600">
+        <i class="fa-solid fa-font text-slate-400"></i>
+        <span>Code:</span>
+        <select id="selectEditorFontSize" class="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer">
+          <option value="12px">12px</option>
+          <option value="14px" selected>14px</option>
+          <option value="16px">16px</option>
+          <option value="18px">18px</option>
+          <option value="20px">20px</option>
+        </select>
+      </div>
+
+      <!-- Font Size Console Controls -->
+      <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-600">
+        <i class="fa-solid fa-terminal text-slate-400"></i>
+        <span>Console:</span>
+        <select id="selectConsoleFontSize" class="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer">
+          <option value="11px">11px</option>
+          <option value="12px" selected>12px</option>
+          <option value="14px">14px</option>
+          <option value="16px">16px</option>
+        </select>
+      </div>
+
+      <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+
+      <!-- Auto Run Toggle -->
+      <label class="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-slate-200/60 transition">
+        <input type="checkbox" id="autoRunToggle" checked class="accent-indigo-600 w-3.5 h-3.5 rounded cursor-pointer">
+        <span>Auto-Run</span>
+      </label>
+
+      <!-- Manual Run Button -->
+      <button id="btnRun" title="Run Code (Ctrl + Enter)" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+        <i class="fa-solid fa-play text-[10px]"></i>
+        <span>Run</span>
+      </button>
+
+      <!-- Clear All Code Button -->
+      <button id="btnClearCode" title="Clear all code in editors" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 active:bg-red-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 transition">
+        <i class="fa-solid fa-trash-can text-xs"></i>
+        <span>Clear All</span>
+      </button>
+
+      <!-- Reset Code Button -->
+      <button id="btnReset" title="Reset back to default template" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 transition">
+        <i class="fa-solid fa-rotate-right text-xs"></i>
+        <span>Reset</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Application Workspace -->
+  <main class="flex-1 flex overflow-hidden relative" id="workspace">
+
+    <!-- Left Pane: Code Editor Section -->
+    <section id="editorPane" class="w-1/2 flex flex-col min-w-[300px] bg-slate-50 border-r border-slate-200">
+      
+      <!-- Tab Controls for Editors -->
+      <div class="flex items-center justify-between bg-slate-200/70 border-b border-slate-200 px-2 pt-1.5">
+        <div class="flex items-center gap-1 overflow-x-auto">
+          <!-- HTML Tab -->
+          <button data-tab="html" class="tab-btn active flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-t-md transition border-t-2 border-indigo-600 bg-white text-indigo-600 shadow-sm">
+            <i class="fa-brands fa-html5 text-orange-600 text-sm"></i>
+            <span>index.html</span>
+          </button>
+          
+          <!-- CSS Tab -->
+          <button data-tab="css" class="tab-btn flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-t-md transition border-t-2 border-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50">
+            <i class="fa-brands fa-css3-alt text-blue-600 text-sm"></i>
+            <span>style.css</span>
+          </button>
+          
+          <!-- JS Tab -->
+          <button data-tab="js" class="tab-btn flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-t-md transition border-t-2 border-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50">
+            <i class="fa-brands fa-js text-amber-500 text-sm"></i>
+            <span>script.js</span>
+          </button>
+        </div>
+
+        <span class="text-[11px] text-slate-500 px-2 font-mono hidden sm:inline" id="cursorInfo">Line: 1 | Col: 1</span>
+      </div>
+
+      <!-- Code Input Area -->
+      <div class="flex-1 relative overflow-hidden">
+        
+        <!-- HTML Editor Panel -->
+        <div id="panel-html" class="tab-panel h-full">
+          <div class="editor-wrapper">
+            <div class="line-numbers" id="lineNum-html">1</div>
+            <textarea id="codeHTML" class="code-textarea" spellcheck="false" placeholder="Type your HTML code here..."></textarea>
+          </div>
+        </div>
+
+        <!-- CSS Editor Panel -->
+        <div id="panel-css" class="tab-panel h-full hidden">
+          <div class="editor-wrapper">
+            <div class="line-numbers" id="lineNum-css">1</div>
+            <textarea id="codeCSS" class="code-textarea" spellcheck="false" placeholder="Type your CSS code here..."></textarea>
+          </div>
+        </div>
+
+        <!-- JavaScript Editor Panel -->
+        <div id="panel-js" class="tab-panel h-full hidden">
+          <div class="editor-wrapper">
+            <div class="line-numbers" id="lineNum-js">1</div>
+            <textarea id="codeJS" class="code-textarea" spellcheck="false" placeholder="Type your JavaScript code here..."></textarea>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Resizer Handler Divider -->
+    <div id="resizer" class="gutter-horizontal"></div>
+
+    <!-- Right Pane: Live Preview & Console Section -->
+    <section id="previewPane" class="flex-1 flex flex-col min-w-[300px] bg-slate-100">
+      
+      <!-- Preview Sub-header -->
+      <div class="flex items-center justify-between bg-slate-200/80 border-b border-slate-200 px-3 py-1.5 text-xs text-slate-600">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-desktop text-indigo-600"></i>
+          <span class="font-semibold text-slate-700">Live Preview</span>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <span id="statusIndicator" class="flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Ready
+          </span>
+          <button id="btnClearConsole" title="Clear console logs" class="hover:text-slate-800 transition text-slate-500 px-1.5 py-0.5 rounded hover:bg-slate-300/50">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Preview Iframe Container -->
+      <div class="flex-1 bg-white relative">
+        <iframe id="previewIframe" class="w-full h-full border-none" sandbox="allow-scripts allow-modals allow-forms"></iframe>
+      </div>
+
+      <!-- Console Output Panel -->
+      <div class="h-36 bg-slate-900 border-t border-slate-200 flex flex-col text-slate-100">
+        <div class="bg-slate-800 px-3 py-1 text-[11px] font-semibold text-slate-300 border-b border-slate-700 flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-terminal text-indigo-400"></i>
+            Console Output
+          </span>
+          <span id="logCount" class="text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-300">0 logs</span>
+        </div>
+        <div id="consoleOutput" class="flex-1 p-2 font-code text-xs overflow-y-auto space-y-1 console-output-text">
+          <div class="text-slate-400 italic text-[11px]">No console logs recorded yet...</div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Reset Confirmation Modal -->
+  <div id="resetModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white border border-slate-200 rounded-xl p-5 max-w-sm w-full shadow-2xl">
+      <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+        Confirm Reset
+      </h3>
+      <p class="text-xs text-slate-600 mb-5 leading-relaxed">
+        This action will overwrite your current code with the default starter template. Are you sure you want to continue?
+      </p>
+      <div class="flex justify-end gap-2">
+        <button id="btnCancelReset" class="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Cancel</button>
+        <button id="btnConfirmReset" class="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition">Confirm Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear All Code Modal -->
+  <div id="clearModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white border border-slate-200 rounded-xl p-5 max-w-sm w-full shadow-2xl">
+      <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+        <i class="fa-solid fa-trash-can text-red-500"></i>
+        Clear All Code
+      </h3>
+      <p class="text-xs text-slate-600 mb-5 leading-relaxed">
+        Are you sure you want to completely clear all HTML, CSS, and JavaScript code from the editors?
+      </p>
+      <div class="flex justify-end gap-2">
+        <button id="btnCancelClear" class="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Cancel</button>
+        <button id="btnConfirmClear" class="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Default Starter Code Templates in English */
+    const DEFAULT_CODE = {
+      html: `<div class="card">
+  <h1>Hello World! 👋</h1>
+  <p>Welcome to CodeLab Studio - an interactive web editor for practicing HTML, CSS, and JavaScript.</p>
+  <button id="btnClick">Click Me!</button>
+  <p id="message" class="hidden-msg">🎉 You triggered JavaScript successfully!</p>
+</div>`,
+      css: `body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #e0e7ff 0%, #fae8ff 100%);
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #1e293b;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  max-width: 380px;
+  width: 90%;
+}
+
+h1 {
+  color: #4f46e5;
+  font-size: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+p {
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+button {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background: #4338ca;
+  transform: translateY(-2px);
+}
+
+.hidden-msg {
+  margin-top: 15px;
+  font-weight: bold;
+  color: #059669;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.3s ease;
+}
+
+.hidden-msg.show {
+  opacity: 1;
+  transform: scale(1);
+}`,
+      js: `// Obtain DOM element references
+const btn = document.getElementById('btnClick');
+const message = document.getElementById('message');
+
+console.log('🚀 Application initialized successfully!');
+
+// Add button click listener
+btn.addEventListener('click', () => {
+  message.classList.toggle('show');
+  console.log('👉 Button was clicked!');
+});`
+    };
+
+    /* DOM Elements Reference */
+    const codeHTML = document.getElementById('codeHTML');
+    const codeCSS = document.getElementById('codeCSS');
+    const codeJS = document.getElementById('codeJS');
+    
+    const lineNumHTML = document.getElementById('lineNum-html');
+    const lineNumCSS = document.getElementById('lineNum-css');
+    const lineNumJS = document.getElementById('lineNum-js');
+    
+    const previewIframe = document.getElementById('previewIframe');
+    const consoleOutput = document.getElementById('consoleOutput');
+    const logCountEl = document.getElementById('logCount');
+    const autoRunToggle = document.getElementById('autoRunToggle');
+    const btnRun = document.getElementById('btnRun');
+    const btnReset = document.getElementById('btnReset');
+    const btnClearCode = document.getElementById('btnClearCode');
+    const btnClearConsole = document.getElementById('btnClearConsole');
+    
+    const resetModal = document.getElementById('resetModal');
+    const btnCancelReset = document.getElementById('btnCancelReset');
+    const btnConfirmReset = document.getElementById('btnConfirmReset');
+
+    const clearModal = document.getElementById('clearModal');
+    const btnCancelClear = document.getElementById('btnCancelClear');
+    const btnConfirmClear = document.getElementById('btnConfirmClear');
+    
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+    const cursorInfo = document.getElementById('cursorInfo');
+
+    /* Font Size Controls for Code Editor & Console */
+    const selectEditorFontSize = document.getElementById('selectEditorFontSize');
+    const selectConsoleFontSize = document.getElementById('selectConsoleFontSize');
+
+    selectEditorFontSize.addEventListener('change', (e) => {
+      document.documentElement.style.setProperty('--editor-font-size', e.target.value);
+    });
+
+    selectConsoleFontSize.addEventListener('change', (e) => {
+      document.documentElement.style.setProperty('--console-font-size', e.target.value);
+    });
+
+    let debounceTimer = null;
+    let logCounter = 0;
+
+    /* Tab Switching Logic */
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        
+        tabBtns.forEach(b => {
+          b.classList.remove('active', 'border-indigo-600', 'bg-white', 'text-indigo-600', 'shadow-sm');
+          b.classList.add('border-transparent', 'text-slate-600', 'hover:text-slate-900');
+        });
+
+        btn.classList.add('active', 'border-indigo-600', 'bg-white', 'text-indigo-600', 'shadow-sm');
+        btn.classList.remove('border-transparent', 'text-slate-600', 'hover:text-slate-900');
+
+        tabPanels.forEach(panel => panel.classList.add('hidden'));
+        document.getElementById(`panel-${tab}`).classList.remove('hidden');
+      });
+    });
+
+    /* Line Number & Editor Event Handlers */
+    function updateLineNumbers(textarea, lineNumEl) {
+      const lines = textarea.value.split('\n').length;
+      let lineNumbersHTML = '';
+      for (let i = 1; i <= lines; i++) {
+        lineNumbersHTML += i + '<br>';
+      }
+      lineNumEl.innerHTML = lineNumbersHTML;
+    }
+
+    function syncScroll(textarea, lineNumEl) {
+      lineNumEl.scrollTop = textarea.scrollTop;
+    }
+
+    function updateCursorPosition(textarea) {
+      const pos = textarea.selectionStart;
+      const text = textarea.value.substring(0, pos);
+      const lines = text.split('\n');
+      const row = lines.length;
+      const col = lines[lines.length - 1].length + 1;
+      cursorInfo.textContent = `Line: ${row} | Col: ${col}`;
+    }
+
+    // Attach listeners to editors
+    const editors = [
+      { textarea: codeHTML, lineNum: lineNumHTML },
+      { textarea: codeCSS, lineNum: lineNumCSS },
+      { textarea: codeJS, lineNum: lineNumJS }
+    ];
+
+    editors.forEach(({ textarea, lineNum }) => {
+      textarea.addEventListener('input', () => {
+        updateLineNumbers(textarea, lineNum);
+        handleAutoRun();
+      });
+
+      textarea.addEventListener('scroll', () => syncScroll(textarea, lineNum));
+      textarea.addEventListener('keyup', () => updateCursorPosition(textarea));
+      textarea.addEventListener('click', () => updateCursorPosition(textarea));
+
+      // Handle Tab Key Indentation
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+
+          textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+          textarea.selectionStart = textarea.selectionEnd = start + 2;
+
+          updateLineNumbers(textarea, lineNum);
+          handleAutoRun();
+        }
+
+        // Ctrl + Enter to manual run
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          runCode();
+        }
+      });
+    });
+
+    /* Console Log Capturing Script */
+    const consoleInterceptorScript = `
+      <script>
+        (function() {
+          function sendToParent(type, args) {
+            try {
+              const message = Array.from(args).map(arg => {
+                if (typeof arg === 'object') {
+                  try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+                }
+                return String(arg);
+              }).join(' ');
+
+              window.parent.postMessage({
+                source: 'preview-console',
+                type: type,
+                content: message
+              }, '*');
+            } catch (err) {}
+          }
+
+          const originalLog = console.log;
+          const originalWarn = console.warn;
+          const originalError = console.error;
+
+          console.log = function(...args) {
+            sendToParent('log', args);
+            originalLog.apply(console, args);
+          };
+
+          console.warn = function(...args) {
+            sendToParent('warn', args);
+            originalWarn.apply(console, args);
+          };
+
+          console.error = function(...args) {
+            sendToParent('error', args);
+            originalError.apply(console, args);
+          };
+
+          window.onerror = function(msg, url, line, col, error) {
+            sendToParent('error', [\`JS Error: \${msg} (Line \${line})\`]);
+            return false;
+          };
+        })();
+      <\/script>
+    `;
+
+    /* Render Code into Iframe Preview */
+    function runCode() {
+      const html = codeHTML.value;
+      const css = codeCSS.value;
+      const js = codeJS.value;
+
+      clearConsoleOutput();
+
+      const combinedSource = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>${css}</style>
+          ${consoleInterceptorScript}
+        </head>
+        <body>
+          ${html}
+          <script>
+            try {
+              ${js}
+            } catch(err) {
+              console.error('Error executing JavaScript:', err.message);
+            }
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      previewIframe.srcdoc = combinedSource;
+    }
+
+    /* Auto Run Handler with Debounce */
+    function handleAutoRun() {
+      if (!autoRunToggle.checked) return;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        runCode();
+      }, 600);
+    }
+
+    /* Console Panel Output Handler */
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.source === 'preview-console') {
+        appendConsoleLog(event.data.type, event.data.content);
+      }
+    });
+
+    function appendConsoleLog(type, message) {
+      if (logCounter === 0) {
+        consoleOutput.innerHTML = '';
+      }
+      logCounter++;
+      logCountEl.textContent = `${logCounter} log${logCounter > 1 ? 's' : ''}`;
+
+      const logRow = document.createElement('div');
+      logRow.className = 'flex items-start gap-2 text-xs py-0.5 border-b border-slate-900/50';
+
+      let icon = '<i class="fa-solid fa-circle-info text-blue-400 text-[10px] mt-0.5"></i>';
+      let textColor = 'text-slate-300';
+
+      if (type === 'warn') {
+        icon = '<i class="fa-solid fa-triangle-exclamation text-amber-400 text-[10px] mt-0.5"></i>';
+        textColor = 'text-amber-300';
+      } else if (type === 'error') {
+        icon = '<i class="fa-solid fa-circle-xmark text-red-400 text-[10px] mt-0.5"></i>';
+        textColor = 'text-red-400';
+      }
+
+      logRow.innerHTML = `
+        <span>${icon}</span>
+        <span class="${textColor} break-all">${escapeHTML(message)}</span>
+      `;
+
+      consoleOutput.appendChild(logRow);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    function clearConsoleOutput() {
+      logCounter = 0;
+      logCountEl.textContent = '0 logs';
+      consoleOutput.innerHTML = '<div class="text-slate-500 italic text-[11px]">No console logs recorded yet...</div>';
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* Draggable Resizer Handler */
+    const resizer = document.getElementById('resizer');
+    const editorPane = document.getElementById('editorPane');
+    const workspace = document.getElementById('workspace');
+
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      resizer.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      previewIframe.style.pointerEvents = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const containerRect = workspace.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      
+      if (newWidth > 200 && newWidth < containerRect.width - 200) {
+        const percentage = (newWidth / containerRect.width) * 100;
+        editorPane.style.width = `${percentage}%`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('active');
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+        previewIframe.style.pointerEvents = 'auto';
+      }
+    });
+
+    /* Reset Code Logic */
+    function loadDefaultCode() {
+      codeHTML.value = DEFAULT_CODE.html;
+      codeCSS.value = DEFAULT_CODE.css;
+      codeJS.value = DEFAULT_CODE.js;
+
+      editors.forEach(({ textarea, lineNum }) => {
+        updateLineNumbers(textarea, lineNum);
+      });
+
+      runCode();
+    }
+
+    /* Clear All Code Logic */
+    function clearAllCode() {
+      codeHTML.value = '';
+      codeCSS.value = '';
+      codeJS.value = '';
+
+      editors.forEach(({ textarea, lineNum }) => {
+        updateLineNumbers(textarea, lineNum);
+      });
+
+      runCode();
+    }
+
+    /* Modal Event Bindings */
+    btnReset.addEventListener('click', () => resetModal.classList.remove('hidden'));
+    btnCancelReset.addEventListener('click', () => resetModal.classList.add('hidden'));
+    btnConfirmReset.addEventListener('click', () => {
+      resetModal.classList.add('hidden');
+      loadDefaultCode();
+    });
+
+    btnClearCode.addEventListener('click', () => clearModal.classList.remove('hidden'));
+    btnCancelClear.addEventListener('click', () => clearModal.classList.add('hidden'));
+    btnConfirmClear.addEventListener('click', () => {
+      clearModal.classList.add('hidden');
+      clearAllCode();
+    });
+
+    btnRun.addEventListener('click', runCode);
+    btnClearConsole.addEventListener('click', clearConsoleOutput);
+
+    /* Initial Startup */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDefaultCode();
+    });
+  </script>
+</body>
+</html>
