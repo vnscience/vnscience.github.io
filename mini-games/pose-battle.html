@@ -435,7 +435,7 @@
           <div id="result-teamA-name" class="text-xs font-bold text-cyan-400 uppercase font-orbitron">TEAM ALPHA</div>
           <div id="result-playerA-name" class="text-sm font-bold text-white truncate my-1">Alex Johnson</div>
           <div id="result-scoreA" class="text-4xl font-black text-cyan-400 font-orbitron text-glow-cyan">92</div>
-          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">ACCURACY SCORE</div>
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">POSE MATCH SCORE</div>
         </div>
 
         <!-- Team B Score Card -->
@@ -443,7 +443,7 @@
           <div id="result-teamB-name" class="text-xs font-bold text-pink-400 uppercase font-orbitron">TEAM BETA</div>
           <div id="result-playerB-name" class="text-sm font-bold text-white truncate my-1">Taylor Smith</div>
           <div id="result-scoreB" class="text-4xl font-black text-pink-400 font-orbitron text-glow-pink">84</div>
-          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">ACCURACY SCORE</div>
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">POSE MATCH SCORE</div>
         </div>
       </div>
 
@@ -541,6 +541,14 @@
     let canvasElement = null;
     let canvasCtx = null;
     let animationFrameId = null;
+    let cameraInitPromise = null;
+    let lastDetectionAt = 0;
+    let playerCenters = [null, null];
+    const MIN_CONFIDENCE = 0.4;
+    const ROUND_MS = 5000;
+    const SAMPLE_MS = 110;
+    let lastSampleAt = 0;
+    let lastFrameAt = 0;
 
     // Sound Synthesizer (Web Audio API)
     let audioCtx = null;
@@ -568,7 +576,8 @@
       p1SkeletonLandmarks: null,
       p2SkeletonLandmarks: null,
       countdownTimer: null,
-      roundDurationTimer: null
+      roundDurationTimer: null,
+      timerStartedAt: 0
     };
 
     // =========================================================================
@@ -823,50 +832,77 @@
     }
 
     // Calculate Pose Similarity Score (0 - 100%)
-    function calculatePoseSimilarity(detectedKeypoints, targetPose) {
+    // Visibility-aware, direction-aware, non-inflated pose scoring.
+    // The value is a game similarity score, not a calibrated AI accuracy probability.
+    function poseScoreDetails(detectedKeypoints, targetPose) {
       const kp = getKeypointMap(detectedKeypoints);
       const target = targetPose.targetAngles;
-
-      // Calculate Detected Angles
-      const detectedAngles = {
-        leftElbow: calculateAngle(kp.left_shoulder, kp.left_elbow, kp.left_wrist),
-        rightElbow: calculateAngle(kp.right_shoulder, kp.right_elbow, kp.right_wrist),
-        leftShoulder: calculateAngle(kp.left_hip, kp.left_shoulder, kp.left_elbow),
-        rightShoulder: calculateAngle(kp.right_hip, kp.right_shoulder, kp.right_elbow),
-        leftHip: calculateAngle(kp.left_shoulder, kp.left_hip, kp.left_knee),
-        rightHip: calculateAngle(kp.right_shoulder, kp.right_hip, kp.right_knee),
-        leftKnee: calculateAngle(kp.left_hip, kp.left_knee, kp.left_ankle),
-        rightKnee: calculateAngle(kp.right_hip, kp.right_knee, kp.right_ankle)
+      const specs = {
+        leftElbow: ['left_shoulder','left_elbow','left_wrist'],
+        rightElbow: ['right_shoulder','right_elbow','right_wrist'],
+        leftShoulder: ['left_hip','left_shoulder','left_elbow'],
+        rightShoulder: ['right_hip','right_shoulder','right_elbow'],
+        leftHip: ['left_shoulder','left_hip','left_knee'],
+        rightHip: ['right_shoulder','right_hip','right_knee'],
+        leftKnee: ['left_hip','left_knee','left_ankle'],
+        rightKnee: ['right_hip','right_knee','right_ankle']
       };
+      let weightedTotal = 0, availableWeight = 0, totalWeight = 0;
+      const weights = {leftElbow:1, rightElbow:1, leftShoulder:1.4, rightShoulder:1.4,
+        leftHip:1.15,rightHip:1.15,leftKnee:1,rightKnee:1};
+      for (const [joint, names] of Object.entries(specs)) {
+        const w = weights[joint]; totalWeight += w;
+        const pts = names.map(n => kp[n]);
+        if (!pts.every(pt => pt && Number.isFinite(pt.x) && Number.isFinite(pt.y) &&
+            (pt.score ?? 0) >= MIN_CONFIDENCE)) continue;
+        const ang = calculateAngle(...pts);
+        if (ang === null || !Number.isFinite(ang)) continue;
+        // Wider angular tolerance than before; penalize genuine mismatch smoothly.
+        const diff = Math.abs(ang - target[joint]);
+        const jointScore = Math.max(0, 1 - Math.pow(diff / 65, 1.35));
+        weightedTotal += w * jointScore; availableWeight += w;
+      }
+      const coverage = availableWeight / totalWeight;
+      if (coverage < 0.55) return {score:0, coverage, valid:false};
+      let score = 100 * (weightedTotal / availableWeight) * Math.pow(coverage, 1.7);
 
-      let totalScoreAcc = 0;
-      let validJointCount = 0;
-
-      for (const joint in target) {
-        const detectedAngle = detectedAngles[joint];
-        if (detectedAngle !== null && !isNaN(detectedAngle)) {
-          const targetAngle = target[joint];
-          const angleDiff = Math.abs(detectedAngle - targetAngle);
-          
-          // Convert angle difference to 0-100 joint accuracy (tolerance: 45deg)
-          let jointScore = Math.max(0, 100 - (angleDiff / 45) * 100);
-          totalScoreAcc += jointScore;
-          validJointCount++;
+      // Angles alone cannot distinguish a raised vs lowered arm or both legs in the air.
+      // Compare the orientation of forearms/upper arms in the camera image.
+      const directional = [];
+      const shoulderY = (kp.left_shoulder?.y + kp.right_shoulder?.y) / 2;
+      const hipY = (kp.left_hip?.y + kp.right_hip?.y) / 2;
+      const shoulderSpan = Math.abs(kp.left_shoulder?.x - kp.right_shoulder?.x) || 1;
+      const reliable = (...names) => names.every(n => kp[n] && kp[n].score >= MIN_CONFIDENCE);
+      const arms = ['left','right'];
+      for (const side of arms) {
+        if (!reliable(side+'_shoulder',side+'_wrist')) continue;
+        const sh = kp[side+'_shoulder'], wr = kp[side+'_wrist'];
+        const dy = (sh.y - wr.y) / Math.max(shoulderSpan, 30);
+        if (['victory','star','superman','hands_up','one_leg_up'].includes(targetPose.id)) {
+          directional.push(dy > 0.3 ? 1 : Math.max(0, (dy + 0.15) / 0.45));
+        } else if (['t_pose','warrior'].includes(targetPose.id)) {
+          directional.push(Math.max(0, 1 - Math.abs(dy) / 0.75));
         }
       }
-
-      if (validJointCount === 0) return 0;
-      const rawScore = totalScoreAcc / validJointCount;
-
-      // Soft clamp score range
-      return Math.min(100, Math.max(10, Math.round(rawScore)));
+      if (targetPose.id === 'one_hand_up' || targetPose.id === 'side_pose') {
+        const dy = arms.map(side => reliable(side+'_shoulder',side+'_wrist') ?
+          (kp[side+'_shoulder'].y-kp[side+'_wrist'].y)/Math.max(shoulderSpan,30) : null);
+        if (dy.every(v => v !== null)) {
+          directional.push((Math.max(...dy) > 0.4 && Math.min(...dy) < 0.25) ? 1 : 0);
+        }
+      }
+      if (directional.length) score *= (0.45 + 0.55 * directional.reduce((a,b)=>a+b,0)/directional.length);
+      return {score: Math.round(Math.max(0,Math.min(100,score))), coverage, valid:true};
+    }
+    function calculatePoseSimilarity(detectedKeypoints, targetPose) {
+      return poseScoreDetails(detectedKeypoints,targetPose).score;
     }
 
-    // Average top 30% scores collected during the 5s window
+        // Average top 30% scores collected during the 5s window
     function computeTopScoreAverage(scoresArray) {
       if (!scoresArray || scoresArray.length === 0) return 0;
       const sorted = [...scoresArray].sort((a, b) => b - a);
-      const topCount = Math.max(1, Math.ceil(sorted.length * 0.3));
+      const topCount = Math.max(1, Math.ceil(sorted.length * 0.5));
       const topSlice = sorted.slice(0, topCount);
       const sum = topSlice.reduce((a, b) => a + b, 0);
       return Math.round(sum / topSlice.length);
@@ -925,80 +961,87 @@
     // 6. CAMERA & POSE DETECTION INITIALIZATION
     // =========================================================================
     async function initCameraAndDetector() {
-      videoElement = document.getElementById('webcam');
-      canvasElement = document.getElementById('stage-canvas');
-      canvasCtx = canvasElement.getContext('2d');
-
-      // Initialize Webcam
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: false
-        });
-        videoElement.srcObject = stream;
-        await new Promise((resolve) => {
-          videoElement.onloadedmetadata = () => {
-            videoElement.play();
-            canvasElement.width = videoElement.videoWidth || 1280;
-            canvasElement.height = videoElement.videoHeight || 720;
-            resolve();
-          };
-        });
-      } catch (err) {
-        showCustomModal('Camera Access Error', 'Unable to access camera. Please allow camera permissions in your browser and refresh!');
-        updateHUDStatus('Error: Camera Access Denied');
-        return false;
+      if (cameraInitPromise) return cameraInitPromise;
+      cameraInitPromise = (async () => {
+        videoElement = document.getElementById('webcam');
+        canvasElement = document.getElementById('stage-canvas');
+        canvasCtx = canvasElement.getContext('2d');
+        if (!navigator.mediaDevices?.getUserMedia) {
+          showCustomModal('Camera unavailable','Use HTTPS or localhost, and a browser with webcam support.');
+          return false;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},audio:false
+          });
+          videoElement.srcObject = stream;
+          await videoElement.play();
+          if (!videoElement.videoWidth) await new Promise((resolve,reject)=>{
+            const timer=setTimeout(()=>reject(new Error('Camera timeout')),10000);
+            videoElement.addEventListener('loadedmetadata',()=>{clearTimeout(timer);resolve();},{once:true});
+          });
+          canvasElement.width=videoElement.videoWidth || 1280;
+          canvasElement.height=videoElement.videoHeight || 720;
+          updateHUDStatus('Loading AI pose model...');
+          await tf.setBackend('webgl');
+          await tf.ready();
+          poseDetector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet,{
+            modelType:poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,
+            enableSmoothing:true,minPoseScore:0.2
+          });
+          updateHUDStatus('Camera ready — position your full body in frame');
+          return true;
+        } catch(err) {
+          console.error('Camera/model setup failed',err);
+          showCustomModal('Camera / AI error', `Cannot initialize camera or AI model: ${err.message}. Check HTTPS, permission, network and WebGL support.`);
+          updateHUDStatus('Camera / AI unavailable');
+          stopCamera();
+          return false;
+        }
+      })();
+      const success=await cameraInitPromise;
+      if (!success) cameraInitPromise=null;
+      return success;
+    }
+    function stopCamera() {
+      if (animationFrameId != null) cancelAnimationFrame(animationFrameId);
+      animationFrameId=null;
+      if (videoElement?.srcObject) {
+        videoElement.srcObject.getTracks().forEach(t=>t.stop());
+        videoElement.srcObject=null;
       }
-
-      // Initialize MoveNet MultiPose AI Model
-      try {
-        updateHUDStatus('Loading AI Pose Model...');
-        await tf.ready();
-        poseDetector = await poseDetection.createDetector(
-          poseDetection.SupportedModels.MoveNet,
-          {
-            modelType: poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,
-            enableSmoothing: true
-          }
-        );
-        updateHUDStatus('Ready to play!');
-        return true;
-      } catch (err) {
-        console.error('TFJS Detector error:', err);
-        showCustomModal('AI Model Error', 'Failed to initialize MoveNet pose detection model. Please check network connection!');
-        updateHUDStatus('Error: Model Load Failed');
-        return false;
-      }
+      if (poseDetector) { poseDetector.dispose(); poseDetector=null; }
+      cameraInitPromise=null;
+    }
+    function clearRoundTimers() {
+      clearInterval(roundLiveState.countdownTimer);
+      clearInterval(roundLiveState.roundDurationTimer);
+      roundLiveState.countdownTimer=null;
+      roundLiveState.roundDurationTimer=null;
+      roundLiveState.isScoring=false;
+      document.getElementById('countdown-overlay').classList.add('hidden');
     }
 
-    function startStageLoop() {
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      
+        function startStageLoop() {
+      if (animationFrameId != null) cancelAnimationFrame(animationFrameId);
+      let running=true;
       async function processStageFrame() {
-        if (poseDetector && videoElement && videoElement.readyState >= 2) {
-          try {
-            const poses = await poseDetector.estimatePoses(videoElement, {
-              maxPoses: 2,
-              flipHorizontal: false
-            });
-
-            // Clear Canvas
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-            // Process detected players & render skeletons
+        if (!running || !poseDetector || !videoElement?.srcObject) return;
+        try {
+          if (videoElement.readyState >= 2) {
+            // Render the actual webcam frame under the skeleton overlay.
+            canvasCtx.drawImage(videoElement,0,0,canvasElement.width,canvasElement.height);
+            const poses=await poseDetector.estimatePoses(videoElement,{maxPoses:2,flipHorizontal:false});
+            lastFrameAt=performance.now();
             assignAndProcessPlayers(poses);
-
-          } catch (e) {
-            console.error('Frame estimation error:', e);
           }
-        }
-        animationFrameId = requestAnimationFrame(processStageFrame);
+        } catch(e) { console.warn('Pose frame estimation error',e); }
+        if (poseDetector && videoElement?.srcObject) animationFrameId=requestAnimationFrame(processStageFrame);
       }
-
       processStageFrame();
     }
 
-    // =========================================================================
+        // =========================================================================
     // 7. SKELETON DRAWING & TARGET SVG RENDERING
     // =========================================================================
     const SKELETON_CONNECTIONS = [
@@ -1098,93 +1141,55 @@
     // =========================================================================
     // 8. PLAYER IDENTIFICATION & SKELETON ASSIGNMENT (SOLO & TEAM MODES)
     // =========================================================================
+    function personCenter(pose) {
+      const pts=pose.keypoints.filter(k=>k.score>=MIN_CONFIDENCE && Number.isFinite(k.x));
+      if (pts.length<7) return null;
+      const torso=pts.filter(k=>['left_shoulder','right_shoulder','left_hip','right_hip'].includes(k.name));
+      const src=torso.length>=2?torso:pts;
+      return src.reduce((sum,k)=>sum+k.x,0)/src.length;
+    }
     function assignAndProcessPlayers(poses) {
-      const badgeText = document.getElementById('detection-text');
-      const badgeDot = document.getElementById('detection-dot');
-
-      if (poses.length === 0) {
-        badgeText.innerText = 'Please step in front of camera';
-        badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 animate-ping';
-        roundLiveState.p1SkeletonLandmarks = null;
-        roundLiveState.p2SkeletonLandmarks = null;
-        return;
-      }
-
-      if (gameState.mode === 'SINGLE_PLAYER') {
-        // Single Player Mode: Handle solo player
-        badgeText.innerText = 'Player detected! Ready to pose.';
-        badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
-
-        const p1 = poses[0];
-        roundLiveState.p1SkeletonLandmarks = p1.keypoints;
-        roundLiveState.p2SkeletonLandmarks = null;
-
-        if (showSkeleton) {
-          drawSkeletonOnCanvas(p1.keypoints, '#06b6d4', 'PLAYER 1');
-        }
-
-        if (roundLiveState.isScoring && gameState.status === 'PLAYING') {
-          const currentTargetPose = gameState.rounds[gameState.currentRoundIndex]?.pose || POSE_LIBRARY[0];
-          const scoreP1 = calculatePoseSimilarity(p1.keypoints, currentTargetPose);
-          roundLiveState.scoresA.push(scoreP1);
-          roundLiveState.currentScoreA = Math.round(scoreP1);
-          updateLiveScoreHUD();
-        }
-        return;
-      }
-
-      // Team Battle Mode (2 Players)
-      if (poses.length === 1) {
-        badgeText.innerText = 'Waiting for Player 2... (1 player in frame)';
-        badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping';
-      } else if (poses.length === 2) {
-        badgeText.innerText = 'Both players detected! Ready to battle.';
-        badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+      const badgeText=document.getElementById('detection-text');
+      const badgeDot=document.getElementById('detection-dot');
+      const valid=poses.map(p=>({pose:p,x:personCenter(p)})).filter(p=>p.x!==null);
+      const now=performance.now();
+      let p1=null,p2=null;
+      if (gameState.mode==='SINGLE_PLAYER') {
+        if (valid.length===1) p1=valid[0].pose;
+        badgeText.textContent=p1?'Player detected':'Exactly one visible player required';
       } else {
-        badgeText.innerText = `Warning: ${poses.length} people detected (Only 2 allowed)`;
-        badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping';
-      }
-
-      const mappedPoses = poses.map(p => {
-        const keypoints = p.keypoints;
-        const validKps = keypoints.filter(k => k.score > 0.2);
-        const avgX = validKps.reduce((acc, k) => acc + k.x, 0) / (validKps.length || 1);
-        const visualX = isMirrored ? (canvasElement.width - avgX) : avgX;
-        return { pose: p, visualX: visualX };
-      });
-
-      mappedPoses.sort((a, b) => a.visualX - b.visualX);
-
-      const p1 = mappedPoses[0]?.pose || null;
-      const p2 = mappedPoses.length > 1 ? mappedPoses[mappedPoses.length - 1].pose : null;
-
-      roundLiveState.p1SkeletonLandmarks = p1 ? p1.keypoints : null;
-      roundLiveState.p2SkeletonLandmarks = p2 ? p2.keypoints : null;
-
-      if (showSkeleton) {
-        if (p1) drawSkeletonOnCanvas(p1.keypoints, '#06b6d4', 'PLAYER 1 (A)');
-        if (p2) drawSkeletonOnCanvas(p2.keypoints, '#ec4899', 'PLAYER 2 (B)');
-      }
-
-      if (roundLiveState.isScoring && gameState.status === 'PLAYING') {
-        const currentTargetPose = gameState.rounds[gameState.currentRoundIndex]?.pose || POSE_LIBRARY[0];
-        
-        if (p1) {
-          const scoreP1 = calculatePoseSimilarity(p1.keypoints, currentTargetPose);
-          roundLiveState.scoresA.push(scoreP1);
-          roundLiveState.currentScoreA = Math.round(scoreP1);
+        // Players are assigned to fixed LEFT/RIGHT physical zones (mirrored display).
+        // A missing player cannot move the remaining player to the opposite team.
+        const midpoint=canvasElement.width/2;
+        for (const item of valid) {
+          const screenX=isMirrored?canvasElement.width-item.x:item.x;
+          if (screenX<midpoint && !p1) p1=item.pose;
+          else if (screenX>=midpoint && !p2) p2=item.pose;
         }
-        if (p2) {
-          const scoreP2 = calculatePoseSimilarity(p2.keypoints, currentTargetPose);
-          roundLiveState.scoresB.push(scoreP2);
-          roundLiveState.currentScoreB = Math.round(scoreP2);
-        }
-
-        updateLiveScoreHUD();
+        badgeText.textContent=(p1&&p2)?'Both players detected':
+          (!p1&&!p2?'Step into camera view':!p1?'Team A: stand on screen LEFT':'Team B: stand on screen RIGHT');
       }
+      roundLiveState.p1SkeletonLandmarks=p1?.keypoints||null;
+      roundLiveState.p2SkeletonLandmarks=p2?.keypoints||null;
+      badgeDot.className=`w-2.5 h-2.5 rounded-full ${gameState.mode==='SINGLE_PLAYER'?(p1?'bg-emerald-400':'bg-red-500'):(p1&&p2?'bg-emerald-400':'bg-yellow-400')}`;
+      if(p1) drawSkeletonOnCanvas(p1.keypoints,'#06b6d4','PLAYER 1 (A)');
+      if(p2) drawSkeletonOnCanvas(p2.keypoints,'#ec4899','PLAYER 2 (B)');
+      if (!roundLiveState.isScoring || gameState.status!=='PLAYING' || now-lastSampleAt<SAMPLE_MS) return;
+      lastSampleAt=now;
+      const target=gameState.rounds[gameState.currentRoundIndex]?.pose;
+      if (!target) return;
+      const addScore=(pose,arr,key)=>{
+        const details=pose?poseScoreDetails(pose.keypoints,target):null;
+        const score=details?.valid?details.score:0;
+        arr.push(score);
+        roundLiveState[key]=score;
+      };
+      addScore(p1,roundLiveState.scoresA,'currentScoreA');
+      if(gameState.mode==='TEAM_BATTLE') addScore(p2,roundLiveState.scoresB,'currentScoreB');
+      updateLiveScoreHUD();
     }
 
-    function updateLiveScoreHUD() {
+        function updateLiveScoreHUD() {
       const p1Val = document.getElementById('live-p1-score-val');
       const p1Progress = document.getElementById('live-p1-progress');
       p1Val.innerText = roundLiveState.currentScoreA;
@@ -1265,6 +1270,7 @@
 
       gameState.currentRoundIndex = 0;
       gameState.scoresHistory = [];
+      gameState.lifetimeRecorded=false;
       gameState.status = 'READY';
 
       saveGameState();
@@ -1305,6 +1311,7 @@
       document.getElementById('target-pose-name').innerText = pose.name;
       renderTargetPoseSVG(pose);
 
+      clearRoundTimers();
       // Reset Live Scoring State
       roundLiveState.isScoring = false;
       roundLiveState.scoresA = [];
@@ -1317,10 +1324,8 @@
       document.getElementById('btn-start-round').classList.remove('hidden');
       updateHUDStatus('Press START ROUND to begin 3-second countdown');
 
-      if (!poseDetector) {
-        initCameraAndDetector().then((success) => {
-          if (success) startStageLoop();
-        });
+      if (!poseDetector && !cameraInitPromise) {
+        initCameraAndDetector().then(success=>{if(success && gameState.status==='READY') startStageLoop();});
       }
     }
 
@@ -1328,7 +1333,9 @@
     // 10. COUNTDOWN & ACTIVE ROUND PLAYING
     // =========================================================================
     function startRoundCountdown() {
-      if (gameState.status === 'COUNTDOWN' || gameState.status === 'PLAYING') return;
+      if (gameState.status !== 'READY' || !poseDetector || performance.now()-lastFrameAt>2000) {
+        showCustomModal('Not ready','Camera and pose detection must be running before starting.');return;
+      }
 
       if (gameState.mode === 'SINGLE_PLAYER') {
         if (!roundLiveState.p1SkeletonLandmarks) {
@@ -1373,30 +1380,28 @@
     }
 
     function startActiveScoringPhase() {
-      gameState.status = 'PLAYING';
-      roundLiveState.isScoring = true;
-      roundLiveState.scoresA = [];
-      roundLiveState.scoresB = [];
-
-      updateHUDStatus('🔥 SCORING POSE ACCURACY (5S)...');
-
-      let remainingTime = 5;
-      roundLiveState.roundDurationTimer = setInterval(() => {
-        remainingTime--;
-        if (remainingTime <= 0) {
-          clearInterval(roundLiveState.roundDurationTimer);
-          finishActiveRound();
-        } else {
-          playBeepSound(400, 0.1);
-        }
-      }, 1000);
+      gameState.status='PLAYING';
+      roundLiveState.isScoring=true;
+      roundLiveState.scoresA=[];
+      roundLiveState.scoresB=[];
+      roundLiveState.currentScoreA=0;
+      roundLiveState.currentScoreB=0;
+      lastSampleAt=0;
+      roundLiveState.timerStartedAt=performance.now();
+      updateHUDStatus('Scoring for 5 seconds — keep entire body visible');
+      roundLiveState.roundDurationTimer=setInterval(()=>{
+        const elapsed=performance.now()-roundLiveState.timerStartedAt;
+        const remain=Math.max(0,Math.ceil((ROUND_MS-elapsed)/1000));
+        updateHUDStatus(`Pose scoring — ${remain}s left`);
+        if (elapsed>=ROUND_MS) { clearInterval(roundLiveState.roundDurationTimer);finishActiveRound(); }
+      },50);
     }
 
-    // =========================================================================
+        // =========================================================================
     // 11. ROUND COMPLETION & SCORE RECORDING
     // =========================================================================
     function finishActiveRound() {
-      roundLiveState.isScoring = false;
+      clearRoundTimers();
       gameState.status = 'ROUND_RESULT';
 
       const finalScoreA = computeTopScoreAverage(roundLiveState.scoresA);
@@ -1457,7 +1462,7 @@
 
         winnerTextEl.innerText = rating;
         winnerTextEl.className = 'text-2xl sm:text-3xl font-black text-cyan-400 font-orbitron text-glow-cyan uppercase';
-        winnerSubEl.innerText = `${result.playerA} achieved ${result.scoreA} accuracy points!`;
+        winnerSubEl.innerText = `${result.playerA} achieved ${result.scoreA} pose-match points!`;
         crownIcon.className = 'text-5xl text-yellow-400 mb-2 animate-bounce';
       } else {
         cardP2.classList.remove('hidden');
@@ -1509,21 +1514,51 @@
       }
     }
 
+    function resetCurrentGameAndReplay() {
+      clearRoundTimers();
+      gameState.currentRoundIndex=0;
+      gameState.scoresHistory=[];
+      gameState.lifetimeRecorded=false;
+      gameState.status='READY';
+      saveGameState();
+      showScreen('screen-game');
+      initStageForCurrentRound();
+    }
+
+    function createNewGameSetup() {
+      clearRoundTimers();
+      stopCamera();
+      roundLiveState.p1SkeletonLandmarks=null;
+      roundLiveState.p2SkeletonLandmarks=null;
+      playerCenters=[null,null];
+      gameState.status='SETUP';
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      document.getElementById('resume-banner').classList.add('hidden');
+      showScreen('screen-setup');
+    }
+
     function restartCurrentRound() {
-      if (gameState.scoresHistory.length > 0) {
-        gameState.scoresHistory.pop();
-      }
+      clearRoundTimers();
+      if (gameState.scoresHistory.at(-1)?.roundNumber === gameState.rounds[gameState.currentRoundIndex]?.roundNumber) gameState.scoresHistory.pop();
       gameState.status = 'READY';
       saveGameState();
       showScreen('screen-game');
       initStageForCurrentRound();
     }
 
+    function escapeHTML(input) {
+      return String(input??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
     function showFinalLeaderboardScreen() {
       gameState.status = 'FINAL_RESULT';
       saveGameState();
 
-      recordMatchToLifetimeLeaderboard();
+      if (!gameState.lifetimeRecorded) {
+        recordMatchToLifetimeLeaderboard();
+        gameState.lifetimeRecorded=true;
+        saveGameState();
+      }
 
       showScreen('screen-final-result');
 
@@ -1540,7 +1575,7 @@
         tableHead.innerHTML = `
           <th class="p-3">Round</th>
           <th class="p-3 text-cyan-400">Player</th>
-          <th class="p-3 text-center">Accuracy Score</th>
+          <th class="p-3 text-center">Pose Match Score</th>
           <th class="p-3 text-right">Rating</th>
         `;
 
@@ -1554,7 +1589,7 @@
           tr.className = 'hover:bg-slate-900/50 transition';
           tr.innerHTML = `
             <td class="p-3 font-bold font-mono">Round ${res.roundNumber}</td>
-            <td class="p-3 text-cyan-300 font-semibold">${res.playerA}</td>
+            <td class="p-3 text-cyan-300 font-semibold">${escapeHTML(res.playerA)}</td>
             <td class="p-3 text-center font-bold font-mono text-xl text-yellow-400">${res.scoreA}</td>
             <td class="p-3 text-right">${ratingBadge}</td>
           `;
@@ -1587,16 +1622,16 @@
           if (res.winner === 'TEAM_B') roundsWonB++;
 
           let winnerBadge = `<span class="text-yellow-400 font-bold">DRAW</span>`;
-          if (res.winner === 'TEAM_A') winnerBadge = `<span class="text-cyan-400 font-bold">${res.teamA}</span>`;
-          if (res.winner === 'TEAM_B') winnerBadge = `<span class="text-pink-400 font-bold">${res.teamB}</span>`;
+          if (res.winner === 'TEAM_A') winnerBadge = `<span class="text-cyan-400 font-bold">${escapeHTML(res.teamA)}</span>`;
+          if (res.winner === 'TEAM_B') winnerBadge = `<span class="text-pink-400 font-bold">${escapeHTML(res.teamB)}</span>`;
 
           const tr = document.createElement('tr');
           tr.className = 'hover:bg-slate-900/50 transition';
           tr.innerHTML = `
             <td class="p-3 font-bold font-mono">Round ${res.roundNumber}</td>
-            <td class="p-3 text-cyan-300 font-semibold">${res.playerA} (${res.scoreA}pts)</td>
+            <td class="p-3 text-cyan-300 font-semibold">${escapeHTML(res.playerA)} (${res.scoreA}pts)</td>
             <td class="p-3 text-center font-bold font-mono">${res.scoreA} - ${res.scoreB}</td>
-            <td class="p-3 text-pink-300 font-semibold">${res.playerB} (${res.scoreB}pts)</td>
+            <td class="p-3 text-pink-300 font-semibold">${escapeHTML(res.playerB)} (${res.scoreB}pts)</td>
             <td class="p-3 text-right">${winnerBadge}</td>
           `;
           tbody.appendChild(tr);
@@ -1789,8 +1824,8 @@
 
           html += `<tr class="hover:bg-slate-800/40 transition">
             <td class="p-2.5 font-mono">${rankBadge}</td>
-            <td class="p-2.5 font-bold text-white">${item.player}</td>
-            <td class="p-2.5 text-slate-400">${item.pose}</td>
+            <td class="p-2.5 font-bold text-white">${escapeHTML(item.player)}</td>
+            <td class="p-2.5 text-slate-400">${escapeHTML(item.pose)}</td>
             <td class="p-2.5 text-right font-mono font-bold text-cyan-400 text-sm">${item.score}%</td>
           </tr>`;
         });
@@ -1815,7 +1850,7 @@
 
         lb.teamStats.forEach((t) => {
           html += `<tr class="hover:bg-slate-800/40 transition">
-            <td class="p-2.5 font-bold text-yellow-400 font-orbitron">${t.team}</td>
+            <td class="p-2.5 font-bold text-yellow-400 font-orbitron">${escapeHTML(t.team)}</td>
             <td class="p-2.5 text-center font-bold text-emerald-400 font-mono">${t.wins}</td>
             <td class="p-2.5 text-center font-mono text-slate-400">${t.matches}</td>
             <td class="p-2.5 text-right font-mono font-bold text-cyan-400 text-sm">${t.avgAccuracy}%</td>
@@ -1836,12 +1871,12 @@
             <div>
               <div class="text-[10px] text-slate-500 font-mono mb-0.5">${m.date} | ${isSolo ? 'SOLO PRACTICE' : 'TEAM MATCH'} (${m.rounds} Rounds)</div>
               <div class="font-bold text-white">
-                ${isSolo ? m.teamA : `${m.teamA} vs ${m.teamB}`}
+                ${isSolo ? m.teamA : `${escapeHTML(m.teamA)} vs ${escapeHTML(m.teamB)}`}
               </div>
             </div>
             <div class="text-right">
               <span class="inline-block px-2 py-0.5 rounded font-bold font-orbitron text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                ${isSolo ? `${m.scoreA}% ACCURACY` : `WINNER: ${m.winner}`}
+                ${isSolo ? `${m.scoreA}% ACCURACY` : `WINNER: ${escapeHTML(m.winner)}`}
               </span>
             </div>
           </div>`;
@@ -1874,7 +1909,7 @@
         const data = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (data) {
           const parsed = JSON.parse(data);
-          if (parsed && parsed.rounds && parsed.rounds.length > 0) {
+          if (parsed && parsed.rounds && parsed.rounds.length > 0 && parsed.status !== 'FINAL_RESULT') {
             document.getElementById('resume-banner').classList.remove('hidden');
           }
         }
@@ -1886,6 +1921,8 @@
         const data = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (data) {
           gameState = JSON.parse(data);
+          if (!Array.isArray(gameState.rounds) || !gameState.rounds.length || !Array.isArray(gameState.scoresHistory)) throw new Error('Invalid save');
+          if (['PLAYING','COUNTDOWN'].includes(gameState.status)) gameState.status='READY';
           document.getElementById('resume-banner').classList.add('hidden');
 
           if (gameState.status === 'FINAL_RESULT') {
@@ -1911,6 +1948,7 @@
     // 13. UI CONTROLS, MODALS & KEYBOARD SHORTCUTS
     // =========================================================================
     function showScreen(screenId) {
+      if (screenId !== 'screen-game') clearRoundTimers();
       ['screen-setup', 'screen-game', 'screen-round-result', 'screen-final-result'].forEach(id => {
         const el = document.getElementById(id);
         if (id === screenId) {
@@ -1962,8 +2000,9 @@
 
     // Global Hotkey Listeners
     window.addEventListener('keydown', (e) => {
-      // Ignore key events if typing in form inputs
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      // Never intercept typing, buttons, dialogs or held-down shortcut keys.
+      if (e.repeat || ['INPUT','TEXTAREA','SELECT','BUTTON'].includes(e.target.tagName) || e.target.isContentEditable) return;
+      if (!document.getElementById('custom-modal').classList.contains('hidden') && e.code !== 'Escape') return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -1976,7 +2015,7 @@
           advanceToNextRound();
         }
       } else if (e.code === 'KeyR') {
-        if (gameState.status === 'ROUND_RESULT' || gameState.status === 'PLAYING') {
+        if (gameState.status === 'ROUND_RESULT' || gameState.status === 'PLAYING' || gameState.status === 'COUNTDOWN') {
           restartCurrentRound();
         }
       } else if (e.code === 'Escape') {
@@ -1987,6 +2026,7 @@
     // Window load handler
     window.onload = () => {
       checkSavedGameState();
+      window.addEventListener('pagehide',stopCamera);
     };
   </script>
 </body>
