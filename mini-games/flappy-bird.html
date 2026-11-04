@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flappy Bird Classic Retro Edition</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Pixel style -->
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Press Start 2P', cursive, monospace;
+            touch-action: manipulation;
+            background-color: #1a1a2e;
+            overflow: hidden;
+        }
+        .font-vt {
+            font-family: 'VT323', monospace;
+        }
+        /* Custom retro button shadow */
+        .btn-retro {
+            box-shadow: inset -4px -4px 0px 0px #1b5e20, inset 4px 4px 0px 0px #81c784;
+            transition: transform 0.05s, box-shadow 0.05s;
+        }
+        .btn-retro:active {
+            transform: translate(2px, 2px);
+            box-shadow: inset -2px -2px 0px 0px #1b5e20, inset 2px 2px 0px 0px #81c784;
+        }
+        .btn-orange {
+            background-color: #f57c00;
+            box-shadow: inset -4px -4px 0px 0px #e65100, inset 4px 4px 0px 0px #ffb74d;
+        }
+        .btn-orange:active {
+            transform: translate(2px, 2px);
+            box-shadow: inset -2px -2px 0px 0px #e65100, inset 2px 2px 0px 0px #ffb74d;
+        }
+        /* Screen shake animation */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, 0px) rotate(-1deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            60% { transform: translate(-1px, 1px) rotate(0deg); }
+            80% { transform: translate(2px, 1px) rotate(1deg); }
+            100% { transform: translate(0px, 0px) rotate(0deg); }
+        }
+        .shake {
+            animation: shake 0.25s ease-in-out;
+        }
+        /* Pulse score animation */
+        @keyframes scorePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); color: #ffe082; }
+            100% { transform: scale(1); }
+        }
+        .score-anim {
+            animation: scorePulse 0.2s ease-out;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex items-center justify-center p-0 m-0 bg-slate-900 select-none">
+
+    <!-- Container wrapper with aspect ratio constraint -->
+    <div id="game-container" class="relative w-full h-full max-w-[480px] max-h-[854px] bg-sky-300 overflow-hidden shadow-2xl md:rounded-2xl border-0 md:border-4 border-slate-700 flex flex-col items-center justify-center">
+
+        <!-- Canvas for rendering -->
+        <canvas id="gameCanvas" class="w-full h-full block cursor-pointer"></canvas>
+
+        <!-- SOUND TOGGLE BUTTON (Top Right) -->
+        <button id="soundBtn" class="absolute top-4 right-4 z-30 bg-yellow-400 text-amber-900 p-3 rounded-xl border-2 border-amber-950 shadow-md hover:bg-yellow-300 transition-colors focus:outline-none" title="Toggle Sound">
+            <i id="soundIcon" class="fas fa-volume-up text-xl"></i>
+        </button>
+
+        <!-- PAUSE BUTTON (Top Left - visible only during play) -->
+        <button id="pauseBtn" class="hidden absolute top-4 left-4 z-30 bg-yellow-400 text-amber-900 p-3 rounded-xl border-2 border-amber-950 shadow-md hover:bg-yellow-300 transition-colors focus:outline-none">
+            <i id="pauseIcon" class="fas fa-pause text-xl"></i>
+        </button>
+
+        <!-- HUD SCORE DISPLAY (Playing mode) -->
+        <div id="hudScore" class="hidden absolute top-10 z-20 pointer-events-none text-center">
+            <span id="currentScore" class="text-5xl text-white font-bold drop-shadow-[0_4px_0_rgba(0,0,0,0.8)] tracking-wider">0</span>
+        </div>
+
+        <!-- 1. START MENU OVERLAY -->
+        <div id="startMenu" class="absolute inset-0 z-20 flex flex-col items-center justify-between py-12 px-6 bg-black/20 backdrop-blur-[1px]">
+            <!-- Title Header -->
+            <div class="text-center mt-6">
+                <h1 class="text-4xl sm:text-5xl font-black text-yellow-300 drop-shadow-[0_5px_0_rgba(0,0,0,1)] tracking-wider uppercase leading-snug">
+                    Flappy<br><span class="text-emerald-400">Bird</span>
+                </h1>
+                <p class="text-xs text-amber-100 font-bold mt-2 drop-shadow-[0_2px_0_rgba(0,0,0,1)] tracking-widest">RETRO PIXEL EDITION</p>
+            </div>
+
+            <!-- Animated instructions & Flappy Icon -->
+            <div class="flex flex-col items-center gap-4 my-auto">
+                <div class="w-16 h-16 bg-amber-400 rounded-full border-4 border-black flex items-center justify-center animate-bounce shadow-lg relative">
+                    <div class="absolute w-4 h-4 bg-white rounded-full top-2 right-3 border-2 border-black">
+                        <div class="w-1.5 h-1.5 bg-black rounded-full absolute top-1 right-1"></div>
+                    </div>
+                    <div class="absolute w-6 h-4 bg-orange-500 rounded-r-full bottom-3 -right-2 border-2 border-black"></div>
+                    <div class="absolute w-7 h-4 bg-white/80 rounded-full bottom-2 left-1 border-2 border-black"></div>
+                </div>
+                
+                <div class="bg-black/60 border-2 border-white/80 rounded-xl p-4 text-center text-white space-y-2 max-w-[260px]">
+                    <p class="text-xs text-yellow-300 font-bold uppercase"><i class="fas fa-hand-pointer mr-1"></i> TAP / CLICK</p>
+                    <p class="text-xs text-emerald-300 font-bold uppercase"><i class="fas fa-keyboard mr-1"></i> PRESS SPACE</p>
+                    <p class="text-[10px] text-gray-300 mt-1">Fly through pipe gaps to score points!</p>
+                </div>
+            </div>
+
+            <!-- High score & Start Button -->
+            <div class="w-full flex flex-col items-center gap-4 mb-2">
+                <div class="text-white text-xs bg-black/70 px-4 py-2 rounded-full border border-yellow-400/50">
+                    <i class="fas fa-trophy text-yellow-400 mr-2"></i>BEST SCORE: <span id="startBestScore" class="text-yellow-300 font-bold text-sm">0</span>
+                </div>
+
+                <button id="playBtn" class="btn-retro w-48 py-4 bg-emerald-500 text-white font-black text-xl rounded-2xl border-4 border-black uppercase tracking-wider hover:bg-emerald-400 active:scale-95 transition-all">
+                    <i class="fas fa-play mr-2"></i> PLAY NOW
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. GAME OVER OVERLAY -->
+        <div id="gameOverMenu" class="hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+            <div class="bg-amber-100 border-4 border-amber-950 rounded-2xl p-6 w-full max-w-[320px] text-amber-950 shadow-2xl flex flex-col items-center space-y-5 relative">
+                
+                <!-- Game Over Title Banner -->
+                <div class="bg-red-500 border-4 border-black text-white py-2 px-6 rounded-xl font-extrabold text-xl tracking-wider drop-shadow-md -mt-10 uppercase">
+                    GAME OVER
+                </div>
+
+                <!-- Score Board -->
+                <div class="w-full bg-amber-200/80 border-2 border-amber-900/40 rounded-xl p-4 space-y-3">
+                    <div class="flex justify-between items-center border-b border-amber-900/20 pb-2">
+                        <span class="text-xs font-bold text-amber-900">SCORE:</span>
+                        <span id="finalScore" class="text-2xl font-bold text-black">0</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-900">BEST SCORE:</span>
+                        <span id="bestScore" class="text-2xl font-bold text-amber-700">0</span>
+                    </div>
+
+                    <!-- New record badge -->
+                    <div id="newRecordBadge" class="hidden bg-yellow-400 border border-black text-red-700 text-[10px] font-black py-1 px-2 rounded-md text-center tracking-widest animate-pulse">
+                        <i class="fas fa-star mr-1"></i> NEW RECORD! <i class="fas fa-star ml-1"></i>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col w-full gap-3 pt-2">
+                    <button id="restartBtn" class="btn-retro w-full py-3 bg-emerald-500 text-white font-bold text-sm rounded-xl border-2 border-black uppercase tracking-wider hover:bg-emerald-400">
+                        <i class="fas fa-redo mr-2"></i> REPLAY
+                    </button>
+                    <button id="homeBtn" class="btn-orange w-full py-3 text-white font-bold text-sm rounded-xl border-2 border-black uppercase tracking-wider hover:opacity-90">
+                        <i class="fas fa-home mr-2"></i> HOME
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. PAUSE OVERLAY -->
+        <div id="pauseMenu" class="hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/50 backdrop-blur-xs">
+            <div class="bg-amber-100 border-4 border-black rounded-2xl p-6 text-center space-y-4 max-w-[260px] shadow-2xl">
+                <h2 class="text-2xl font-extrabold text-amber-900">PAUSED</h2>
+                <p class="text-xs text-amber-800">Tap resume to keep flying!</p>
+                <button id="resumeBtn" class="btn-retro w-full py-3 bg-emerald-500 text-white font-bold rounded-xl border-2 border-black uppercase text-xs">
+                    <i class="fas fa-play mr-1"></i> RESUME
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. GAME OVER OVERLAY -->
+        <div id="gameOverMenu" class="hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+            <div class="bg-amber-100 border-4 border-amber-950 rounded-2xl p-6 w-full max-w-[320px] text-amber-950 shadow-2xl flex flex-col items-center space-y-5 relative">
+                
+                <!-- Game Over Title Banner -->
+                <div class="bg-red-500 border-4 border-black text-white py-2 px-6 rounded-xl font-extrabold text-xl tracking-wider drop-shadow-md -mt-10 uppercase">
+                    GAME OVER
+                </div>
+
+                <!-- Score Board -->
+                <div class="w-full bg-amber-200/80 border-2 border-amber-900/40 rounded-xl p-4 space-y-3">
+                    <div class="flex justify-between items-center border-b border-amber-900/20 pb-2">
+                        <span class="text-xs font-bold text-amber-900">ĐIỂM SỐ:</span>
+                        <span id="finalScore" class="text-2xl font-bold text-black">0</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-900">KỶ LỤC:</span>
+                        <span id="bestScore" class="text-2xl font-bold text-amber-700">0</span>
+                    </div>
+
+                    <!-- New record badge -->
+                    <div id="newRecordBadge" class="hidden bg-yellow-400 border border-black text-red-700 text-[10px] font-black py-1 px-2 rounded-md text-center tracking-widest animate-pulse">
+                        <i class="fas fa-star mr-1"></i> KỶ LỤC MỚI! <i class="fas fa-star ml-1"></i>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col w-full gap-3 pt-2">
+                    <button id="restartBtn" class="btn-retro w-full py-3 bg-emerald-500 text-white font-bold text-sm rounded-xl border-2 border-black uppercase tracking-wider hover:bg-emerald-400">
+                        <i class="fas fa-redo mr-2"></i> CHƠI LẠI
+                    </button>
+                    <button id="homeBtn" class="btn-orange w-full py-3 text-white font-bold text-sm rounded-xl border-2 border-black uppercase tracking-wider hover:opacity-90">
+                        <i class="fas fa-home mr-2"></i> TRANG CHỦ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. PAUSE OVERLAY -->
+        <div id="pauseMenu" class="hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/50 backdrop-blur-xs">
+            <div class="bg-amber-100 border-4 border-black rounded-2xl p-6 text-center space-y-4 max-w-[260px] shadow-2xl">
+                <h2 class="text-2xl font-extrabold text-amber-900">TẠM DỪNG</h2>
+                <p class="text-xs text-amber-800">Nhấn tiếp tục để bay tiếp!</p>
+                <button id="resumeBtn" class="btn-retro w-full py-3 bg-emerald-500 text-white font-bold rounded-xl border-2 border-black uppercase text-xs">
+                    <i class="fas fa-play mr-1"></i> TIẾP TỤC
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MAIN GAME ENGINE JAVASCRIPT -->
+    <script>
+        /**
+         * FLAPPY BIRD - COMPLETE GAME ENGINE & AUDIO SYNTHESIZER
+         * Built with HTML5 Canvas & Web Audio API
+         */
+
+        // ==========================================
+        // 1. SOUND SYNTHESIZER (WEB AUDIO API)
+        // ==========================================
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+                this.initialized = false;
+            }
+
+            init() {
+                if (this.initialized) return;
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                    this.initialized = true;
+                } catch (e) {
+                    console.warn("Web Audio API not supported", e);
+                }
+            }
+
+            ensureContext() {
+                if (!this.initialized) this.init();
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggleMute() {
+                this.muted = !this.muted;
+                return this.muted;
+            }
+
+            // Flap wings sound (Quick pitch bend up)
+            playFlap() {
+                if (this.muted) return;
+                this.ensureContext();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.1);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            // Score sound (2-tone chime)
+            playScore() {
+                if (this.muted) return;
+                this.ensureContext();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                
+                // Note 1
+                const osc1 = this.ctx.createOscillator();
+                const gain1 = this.ctx.createGain();
+                osc1.type = 'triangle';
+                osc1.frequency.setValueAtTime(523.25, now); // C5
+                gain1.gain.setValueAtTime(0.2, now);
+                gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc1.connect(gain1);
+                gain1.connect(this.ctx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.12);
+
+                // Note 2
+                const osc2 = this.ctx.createOscillator();
+                const gain2 = this.ctx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(880, now + 0.08); // A5
+                gain2.gain.setValueAtTime(0.3, now + 0.08);
+                gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc2.connect(gain2);
+                gain2.connect(this.ctx.destination);
+                osc2.start(now + 0.08);
+                osc2.stop(now + 0.3);
+            }
+
+            // Hit sound (Thud sound)
+            playHit() {
+                if (this.muted) return;
+                this.ensureContext();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            // Die sound (Falling pitch)
+            playDie() {
+                if (this.muted) return;
+                this.ensureContext();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(350, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.4);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.4);
+            }
+
+            // Button click sound
+            playButton() {
+                if (this.muted) return;
+                this.ensureContext();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.05);
+
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+        }
+
+        const sound = new SoundEngine();
+
+        // ==========================================
+        // 2. GAME ENGINE DECLARATIONS & STATE
+        // ==========================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('game-container');
+
+        // UI Elements
+        const startMenu = document.getElementById('startMenu');
+        const gameOverMenu = document.getElementById('gameOverMenu');
+        const pauseMenu = document.getElementById('pauseMenu');
+        const hudScore = document.getElementById('hudScore');
+        const currentScoreEl = document.getElementById('currentScore');
+        const finalScoreEl = document.getElementById('finalScore');
+        const bestScoreEl = document.getElementById('bestScore');
+        const startBestScoreEl = document.getElementById('startBestScore');
+        const newRecordBadge = document.getElementById('newRecordBadge');
+
+        const playBtn = document.getElementById('playBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const homeBtn = document.getElementById('homeBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const soundBtn = document.getElementById('soundBtn');
+        const soundIcon = document.getElementById('soundIcon');
+
+        // States: 'START', 'PLAYING', 'PAUSED', 'GAMEOVER'
+        let gameState = 'START';
+        let animationFrameId = null;
+        let lastTime = 0;
+
+        // Dimensions
+        let width = 360;
+        let height = 640;
+
+        // Game Variables
+        let score = 0;
+        let bestScore = parseInt(localStorage.getItem('flappy_best_score') || '0', 10);
+
+        // Physics constants
+        const GRAVITY = 0.38;
+        const JUMP = -7.2;
+        let pipeSpeed = 2.2;
+        const PIPE_SPAWN_INTERVAL = 1500; // ms
+        let lastPipeSpawn = 0;
+        const PIPE_GAP = 140; // Pixel gap between top & bottom pipe
+
+        // Environmental entities
+        let bird;
+        let pipes = [];
+        let particles = [];
+        let clouds = [];
+        let groundOffset = 0;
+
+        // ==========================================
+        // 3. CANVAS RESIZE HANDLER
+        // ==========================================
+        function resizeCanvas() {
+            const rect = container.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Update high score display on load
+        startBestScoreEl.textContent = bestScore;
+
+        // ==========================================
+        // 4. GAME OBJECT CLASSES
+        // ==========================================
+
+        class Bird {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = width * 0.28;
+                this.y = height * 0.45;
+                this.radius = 14;
+                this.velocity = 0;
+                this.rotation = 0;
+                this.wingAngle = 0;
+                this.wingSpeed = 0.2;
+            }
+
+            flap() {
+                this.velocity = JUMP;
+                sound.playFlap();
+                // Spawn air particles at feet
+                for (let i = 0; i < 5; i++) {
+                    particles.push(new Particle(this.x - 5, this.y + 10, '#ffffff', (Math.random() - 0.5) * 2, Math.random() * 2 + 1, 3, 15));
+                }
+            }
+
+            update() {
+                this.velocity += GRAVITY;
+                this.y += this.velocity;
+
+                // Rotation based on velocity
+                if (this.velocity < 0) {
+                    this.rotation = Math.max(-0.4, this.rotation - 0.08);
+                } else {
+                    this.rotation = Math.min(Math.PI / 2, this.rotation + 0.06);
+                }
+
+                // Wing animation frame
+                this.wingAngle += this.wingSpeed;
+
+                // Top constraint
+                if (this.y - this.radius <= 0) {
+                    this.y = this.radius;
+                    this.velocity = 0;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Body (Yellow Pixel Circle)
+                ctx.fillStyle = '#ffca28'; // Bright yellow
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#000';
+                ctx.stroke();
+
+                // Belly (White outline)
+                ctx.fillStyle = '#fff8e1';
+                ctx.beginPath();
+                ctx.arc(-2, 3, this.radius - 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eye
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(6, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Pupil
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(7.5, -5, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Beak
+                ctx.fillStyle = '#f57c00'; // Orange
+                ctx.beginPath();
+                ctx.moveTo(8, 0);
+                ctx.lineTo(17, 3);
+                ctx.lineTo(8, 7);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Wing (Flapping motion)
+                const wingY = Math.sin(this.wingAngle) * 4;
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.ellipse(-6, 2 + wingY, 7, 4, Math.PI / 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Pipe {
+            constructor() {
+                this.x = width + 60;
+                this.width = 54;
+                this.passed = false;
+                
+                const groundHeight = 80;
+                const minPipeHeight = 60;
+                const availableSpace = height - groundHeight - PIPE_GAP - (minPipeHeight * 2);
+                
+                this.topHeight = minPipeHeight + Math.random() * availableSpace;
+                this.bottomY = this.topHeight + PIPE_GAP;
+                this.bottomHeight = height - groundHeight - this.bottomY;
+            }
+
+            update() {
+                this.x -= pipeSpeed;
+            }
+
+            draw() {
+                // Pipe Colors
+                const pipeGreen = '#2e7d32';
+                const pipeLightGreen = '#4caf50';
+                const pipeDarkGreen = '#1b5e20';
+                const capHeight = 24;
+                const capOutset = 4;
+
+                // --- TOP PIPE ---
+                // Main Shaft
+                let grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+                grad.addColorStop(0, pipeDarkGreen);
+                grad.addColorStop(0.25, pipeLightGreen);
+                grad.addColorStop(0.75, pipeGreen);
+                grad.addColorStop(1, pipeDarkGreen);
+
+                ctx.fillStyle = grad;
+                ctx.fillRect(this.x, 0, this.width, this.topHeight - capHeight);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2.5;
+                ctx.strokeRect(this.x, 0, this.width, this.topHeight - capHeight);
+
+                // Top Pipe Cap
+                ctx.fillRect(this.x - capOutset, this.topHeight - capHeight, this.width + capOutset * 2, capHeight);
+                ctx.strokeRect(this.x - capOutset, this.topHeight - capHeight, this.width + capOutset * 2, capHeight);
+
+                // --- BOTTOM PIPE ---
+                // Bottom Shaft
+                ctx.fillRect(this.x, this.bottomY + capHeight, this.width, this.bottomHeight - capHeight);
+                ctx.strokeRect(this.x, this.bottomY + capHeight, this.width, this.bottomHeight - capHeight);
+
+                // Bottom Pipe Cap
+                ctx.fillRect(this.x - capOutset, this.bottomY, this.width + capOutset * 2, capHeight);
+                ctx.strokeRect(this.x - capOutset, this.bottomY, this.width + capOutset * 2, capHeight);
+            }
+
+            collidesWith(bird) {
+                // Circle-AABB collision detection
+                const radius = bird.radius - 2; // Slightly lenient hit box
+
+                // Top pipe bounding boxes
+                const topCapRect = { x: this.x - 4, y: 0, w: this.width + 8, h: this.topHeight };
+                // Bottom pipe bounding boxes
+                const bottomCapRect = { x: this.x - 4, y: this.bottomY, w: this.width + 8, h: this.bottomHeight };
+
+                return (
+                    checkCircleRectCollision(bird.x, bird.y, radius, topCapRect) ||
+                    checkCircleRectCollision(bird.x, bird.y, radius, bottomCapRect)
+                );
+            }
+        }
+
+        class Cloud {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * (height * 0.4);
+                this.speed = 0.3 + Math.random() * 0.4;
+                this.scale = 0.6 + Math.random() * 0.6;
+            }
+
+            update() {
+                this.x -= this.speed;
+                if (this.x < -100) {
+                    this.x = width + 50;
+                    this.y = Math.random() * (height * 0.4);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.scale, this.scale);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.beginPath();
+                ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                ctx.arc(15, -10, 18, 0, Math.PI * 2);
+                ctx.arc(35, -5, 15, 0, Math.PI * 2);
+                ctx.arc(45, 5, 18, 0, Math.PI * 2);
+                ctx.arc(20, 10, 22, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, vx, vy, size, life) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.vx = vx || (Math.random() - 0.5) * 4;
+                this.vy = vy || (Math.random() - 0.5) * 4;
+                this.size = size || Math.random() * 4 + 2;
+                this.life = life || 20;
+                this.maxLife = this.life;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+        // Helper: Circle to Rectangle Collision
+        function checkCircleRectCollision(cx, cy, radius, rect) {
+            const closestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
+            const closestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
+
+            const distX = cx - closestX;
+            const distY = cy - closestY;
+
+            return (distX * distX + distY * distY) < (radius * radius);
+        }
+
+        // Spawn hit explosion particles
+        function triggerHitParticles(x, y) {
+            const colors = ['#ff5722', '#ffeb3b', '#4caf50', '#ffffff'];
+            for (let i = 0; i < 25; i++) {
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                particles.push(new Particle(x, y, color, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, Math.random() * 5 + 2, 30));
+            }
+        }
+
+        // ==========================================
+        // 5. INITIALIZATION & INIT INSTANCES
+        // ==========================================
+        bird = new Bird();
+
+        // Populate initial clouds
+        for (let i = 0; i < 4; i++) {
+            clouds.push(new Cloud());
+        }
+
+        // ==========================================
+        // 6. RENDER ENVIRONMENT (BACKGROUND & GROUND)
+        // ==========================================
+        function drawBackground() {
+            // Sky Gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+            skyGrad.addColorStop(0, '#4fc3f7'); // Light sky blue
+            skyGrad.addColorStop(0.7, '#e0f7fa');
+            skyGrad.addColorStop(1, '#81c784'); // Hills transition
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw Clouds
+            clouds.forEach(c => {
+                c.update();
+                c.draw();
+            });
+
+            // Distant Hills (Parallax background)
+            ctx.fillStyle = '#81c784';
+            ctx.beginPath();
+            ctx.moveTo(0, height - 80);
+            for (let i = 0; i <= width; i += 40) {
+                ctx.lineTo(i, height - 95 + Math.sin(i * 0.02) * 8);
+            }
+            ctx.lineTo(width, height - 80);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawGround() {
+            const groundHeight = 80;
+            const y = height - groundHeight;
+
+            if (gameState === 'PLAYING') {
+                groundOffset = (groundOffset + pipeSpeed) % 24;
+            }
+
+            // Top Grass Border
+            ctx.fillStyle = '#558b2f';
+            ctx.fillRect(0, y, width, 14);
+            ctx.fillStyle = '#7cb342';
+            ctx.fillRect(0, y + 3, width, 4);
+
+            // Dirt Body
+            ctx.fillStyle = '#d7ccc8';
+            ctx.fillRect(0, y + 14, width, groundHeight - 14);
+
+            // Pixel Stripe Pattern on Dirt
+            ctx.fillStyle = '#bcaaa4';
+            for (let x = -groundOffset; x < width + 24; x += 24) {
+                ctx.beginPath();
+                ctx.moveTo(x, y + 14);
+                ctx.lineTo(x + 12, y + 14);
+                ctx.lineTo(x, y + groundHeight);
+                ctx.lineTo(x - 12, y + groundHeight);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Top Border line
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+        }
+
+        // ==========================================
+        // 7. MAIN GAME LOOP
+        // ==========================================
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const delta = timestamp - lastTime;
+            lastTime = timestamp;
+
+            // Clear Screen
+            ctx.clearRect(0, 0, width, height);
+
+            // Render World
+            drawBackground();
+
+            if (gameState === 'START') {
+                // Gentle floating bird animation in menu
+                bird.y = (height * 0.45) + Math.sin(timestamp * 0.005) * 8;
+                bird.wingAngle += 0.15;
+                bird.draw();
+                drawGround();
+            } 
+            else if (gameState === 'PLAYING' || gameState === 'PAUSED') {
+                if (gameState === 'PLAYING') {
+                    // Spawn Pipes
+                    if (timestamp - lastPipeSpawn > PIPE_SPAWN_INTERVAL) {
+                        pipes.push(new Pipe());
+                        lastPipeSpawn = timestamp;
+                    }
+
+                    // Update Bird
+                    bird.update();
+
+                    // Update & Check Pipes
+                    for (let i = pipes.length - 1; i >= 0; i--) {
+                        const pipe = pipes[i];
+                        pipe.update();
+
+                        // Collision Check
+                        if (pipe.collidesWith(bird)) {
+                            triggerGameOver();
+                            break;
+                        }
+
+                        // Score Check
+                        if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+                            pipe.passed = true;
+                            score++;
+                            currentScoreEl.textContent = score;
+                            currentScoreEl.classList.add('score-anim');
+                            setTimeout(() => currentScoreEl.classList.remove('score-anim'), 200);
+                            sound.playScore();
+
+                            // Increase speed gradually every 5 points
+                            if (score % 5 === 0 && pipeSpeed < 4.5) {
+                                pipeSpeed += 0.2;
+                            }
+                        }
+
+                        // Remove Off-screen Pipes
+                        if (pipe.x < -80) {
+                            pipes.splice(i, 1);
+                        }
+                    }
+
+                    // Ground Collision Check
+                    if (bird.y + bird.radius >= height - 80) {
+                        triggerGameOver();
+                    }
+
+                    // Update Particles
+                    for (let i = particles.length - 1; i >= 0; i--) {
+                        particles[i].update();
+                        if (particles[i].life <= 0) {
+                            particles.splice(i, 1);
+                        }
+                    }
+                }
+
+                // Render Pipes
+                pipes.forEach(p => p.draw());
+
+                // Render Ground
+                drawGround();
+
+                // Render Particles
+                particles.forEach(p => p.draw());
+
+                // Render Bird
+                bird.draw();
+            } 
+            else if (gameState === 'GAMEOVER') {
+                // Bird falls to ground on gameover
+                if (bird.y + bird.radius < height - 80) {
+                    bird.velocity += GRAVITY;
+                    bird.y += bird.velocity;
+                    bird.rotation = Math.PI / 2;
+                }
+
+                pipes.forEach(p => p.draw());
+                drawGround();
+                particles.forEach(p => p.draw());
+                bird.draw();
+            }
+
+            // Loop next frame
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // ==========================================
+        // 8. GAME STATE CONTROLLERS
+        // ==========================================
+        function startGame() {
+            sound.playButton();
+            gameState = 'PLAYING';
+            score = 0;
+            pipeSpeed = 2.2;
+            pipes = [];
+            particles = [];
+            bird.reset();
+            currentScoreEl.textContent = '0';
+
+            // UI Transitions
+            startMenu.classList.add('hidden');
+            gameOverMenu.classList.add('hidden');
+            pauseMenu.classList.add('hidden');
+            hudScore.classList.remove('hidden');
+            pauseBtn.classList.remove('hidden');
+
+            lastPipeSpawn = performance.now();
+        }
+
+        function triggerGameOver() {
+            if (gameState === 'GAMEOVER') return;
+
+            sound.playHit();
+            setTimeout(() => sound.playDie(), 150);
+
+            gameState = 'GAMEOVER';
+
+            // Screen shake effect
+            container.classList.add('shake');
+            setTimeout(() => container.classList.remove('shake'), 300);
+
+            // Trigger hit particles
+            triggerHitParticles(bird.x, bird.y);
+
+            // Update scores
+            let isNewRecord = false;
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('flappy_best_score', bestScore.toString());
+                isNewRecord = true;
+            }
+
+            finalScoreEl.textContent = score;
+            bestScoreEl.textContent = bestScore;
+            startBestScoreEl.textContent = bestScore;
+
+            if (isNewRecord && score > 0) {
+                newRecordBadge.classList.remove('hidden');
+            } else {
+                newRecordBadge.classList.add('hidden');
+            }
+
+            // UI Updates
+            pauseBtn.classList.add('hidden');
+            hudScore.classList.add('hidden');
+            
+            setTimeout(() => {
+                gameOverMenu.classList.remove('hidden');
+            }, 400);
+        }
+
+        function togglePause() {
+            if (gameState === 'PLAYING') {
+                sound.playButton();
+                gameState = 'PAUSED';
+                pauseMenu.classList.remove('hidden');
+                pauseIcon.className = 'fas fa-play text-xl';
+            } else if (gameState === 'PAUSED') {
+                sound.playButton();
+                gameState = 'PLAYING';
+                pauseMenu.classList.add('hidden');
+                pauseIcon.className = 'fas fa-pause text-xl';
+            }
+        }
+
+        function returnToHome() {
+            sound.playButton();
+            gameState = 'START';
+            gameOverMenu.classList.add('hidden');
+            pauseMenu.classList.add('hidden');
+            hudScore.classList.add('hidden');
+            pauseBtn.classList.add('hidden');
+            startMenu.classList.remove('hidden');
+            bird.reset();
+        }
+
+        // ==========================================
+        // 9. INPUT LISTENERS (TOUCH, MOUSE, KEYBOARD)
+        // ==========================================
+        function handleAction(e) {
+            // Prevent default zooming or scrolling on touch
+            if (e && e.type === 'touchstart') {
+                e.preventDefault();
+            }
+
+            if (gameState === 'PLAYING') {
+                bird.flap();
+            } else if (gameState === 'START') {
+                // Prevent auto-start if clicking buttons directly
+                if (e && e.target && e.target.closest('button')) return;
+                startGame();
+            }
+        }
+
+        // Global canvas user tap/click
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) handleAction(e);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            handleAction(e);
+        }, { passive: false });
+
+        // Spacebar / Arrow Up key handlers
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (gameState === 'PAUSED') return;
+                handleAction();
+            }
+            if (e.code === 'KeyP') {
+                togglePause();
+            }
+        });
+
+        // UI Buttons
+        playBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startGame();
+        });
+
+        restartBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startGame();
+        });
+
+        homeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            returnToHome();
+        });
+
+        pauseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePause();
+        });
+
+        resumeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePause();
+        });
+
+        soundBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isMuted = sound.toggleMute();
+            if (isMuted) {
+                soundIcon.className = 'fas fa-volume-mute text-xl text-red-700';
+            } else {
+                soundIcon.className = 'fas fa-volume-up text-xl text-amber-900';
+                sound.playButton();
+            }
+        });
+
+        // Initialize animation loop
+        window.onload = function() {
+            animationFrameId = requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
