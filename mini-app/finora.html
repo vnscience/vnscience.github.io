@@ -233,7 +233,7 @@ h2{font-size:16px;letter-spacing:-.25px;margin:0;font-weight:750}
         <button type="button" data-type="income" onclick="setType('income')">＋ Thu nhập</button>
       </div>
       <div class="form-grid">
-        <div class="field full"><label for="amount">Số tiền (VNĐ) *</label><input class="amount-input" id="amount" name="amount" type="number" inputmode="numeric" min="1" step="1000" placeholder="0" required></div>
+        <div class="field full"><label for="amount">Số tiền (VNĐ) *</label><input class="amount-input" id="amount" name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 1.500.000" aria-describedby="amountHint" required><div class="sub" id="amountHint">Nhập số tiền bằng đồng · Tự động phân tách hàng nghìn</div></div>
         <div class="field full"><label for="name">Nội dung *</label><input id="name" name="name" type="text" maxlength="90" placeholder="Ví dụ: Ăn trưa, cà phê..." required></div>
         <div class="field"><label for="category">Danh mục</label><select id="category" name="category"></select></div>
         <div class="field"><label for="date">Ngày giao dịch</label><input id="date" name="date" type="date" required></div>
@@ -255,7 +255,7 @@ const CAT_META={
  'Lương':['💼','#eaf1ff'],'Thưởng':['🎁','#fff3df'],'Kinh doanh':['📈','#eaf8f1'],
  'Đầu tư':['💹','#f1edff'],'Quà tặng':['🎀','#fff0f4'],'Khác':['✦','#f1f3f7']
 };
-const money=n=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(Number(n)||0);
+const money=n=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(Number(n)||0);\nconst parseVND=value=>{const digits=String(value??'').replace(/[^0-9]/g,'');return digits?Number(digits):0};\nconst formatVNDInput=value=>{const digits=String(value??'').replace(/[^0-9]/g,'').replace(/^0+(?=\\d)/,'');return digits.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.')};\nfunction bindAmountInput(){const el=document.getElementById('amount');el.addEventListener('input',()=>{const before=el.value,caret=el.selectionStart??before.length,digitsBefore=before.slice(0,caret).replace(/[^0-9]/g,'').length;el.value=formatVNDInput(before);let pos=0,count=0;while(pos<el.value.length&&count<digitsBefore){if(/[0-9]/.test(el.value[pos]))count++;pos++}el.setSelectionRange(pos,pos)});el.addEventListener('paste',()=>setTimeout(()=>{el.value=formatVNDInput(el.value)},0));}
 const num=n=>Number(n)||0;
 const pad=n=>String(n).padStart(2,'0');
 const localDate=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -374,7 +374,7 @@ function exportCSV(){
  download(`finora-giao-dich-${selectedMonth}.csv`,csv,'text/csv;charset=utf-8');
 }
 function exportJSON(){download(`finora-sao-luu-${localDate()}.json`,JSON.stringify(db,null,2),'application/json')}
-initMonthPicker();setType('expense');render();
+initMonthPicker();setType('expense');bindAmountInput();render();
 window.addEventListener('resize',()=>{if(document.getElementById('dashboardPage').classList.contains('active'))renderWeeklyChart()});
 </script>
 </body>
