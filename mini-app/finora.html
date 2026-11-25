@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Finora — Quản lý chi tiêu</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com"> 
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -73,10 +73,25 @@
               <div id="monthIncome" class="text-sm md:text-base font-bold tabular-nums truncate mt-0.5">0 ₫</div>
             </div>
             <div class="bg-white/15 border border-white/15 rounded-2xl px-3.5 py-2.5">
-              <div class="text-[11px] text-white/80">Số dư còn lại</div>
-              <div id="monthBalance" class="text-sm md:text-base font-bold tabular-nums truncate mt-0.5">0 ₫</div>
+              <div class="text-[11px] text-white/80">Tổng số dư các ví</div>
+              <div id="totalWalletBalance" class="text-sm md:text-base font-bold tabular-nums truncate mt-0.5">0 ₫</div>
             </div>
           </div>
+        </div>
+
+        <!-- Khu vực Ví & Nguồn tiền -->
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between px-0.5">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Ví & Nguồn tiền</h2>
+              <p class="text-[11px] text-slate-400">Số dư lũy kế thực tế từng túi · Chạm để lọc</p>
+            </div>
+            <button onclick="openWalletModal()" class="inline-flex items-center gap-1 text-xs font-bold text-brand bg-brand-soft hover:bg-indigo-100 px-3 py-1.5 rounded-xl transition active:scale-95">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Thêm túi</span>
+            </button>
+          </div>
+          <div id="walletList" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 md:mx-0 md:px-0"></div>
         </div>
 
         <!-- Summary Cards -->
@@ -171,6 +186,9 @@
           <select id="categoryFilter" class="flex-1 md:flex-none h-11 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-brand shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px] bg-[right_10px_center] bg-no-repeat">
             <option value="all">Mọi danh mục</option>
           </select>
+          <select id="walletFilter" class="flex-1 md:flex-none h-11 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-brand shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px] bg-[right_10px_center] bg-no-repeat">
+            <option value="all">Mọi nguồn tiền</option>
+          </select>
         </div>
 
         <div class="bg-white border border-slate-200/80 rounded-3xl px-4 py-2 shadow-sm">
@@ -229,9 +247,10 @@
       </div>
 
       <form id="entryForm" novalidate class="space-y-3.5">
-        <div class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl">
-          <button type="button" data-type="expense" onclick="setType('expense')" class="type-btn py-2.5 rounded-lg text-xs font-bold bg-white text-rose-600 shadow-xs transition">− Khoản chi</button>
-          <button type="button" data-type="income" onclick="setType('income')" class="type-btn py-2.5 rounded-lg text-xs font-bold text-slate-500 transition">＋ Khoản thu</button>
+        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+          <button type="button" data-type="expense" onclick="setType('expense')" class="type-btn py-2 rounded-lg text-xs font-bold bg-white text-rose-600 shadow-xs transition">− Chi tiêu</button>
+          <button type="button" data-type="income" onclick="setType('income')" class="type-btn py-2 rounded-lg text-xs font-bold text-slate-500 transition">＋ Thu nhập</button>
+          <button type="button" data-type="transfer" onclick="setType('transfer')" class="type-btn py-2 rounded-lg text-xs font-bold text-slate-500 transition">⇄ Chuyển ví</button>
         </div>
 
         <div>
@@ -251,12 +270,24 @@
           <input id="name" type="text" maxlength="90" placeholder="Ví dụ: Cà phê sáng, Tiền nhà..." required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base md:text-sm outline-none focus:border-brand focus:ring-2 focus:ring-indigo-500/15">
         </div>
 
+        <!-- Chọn Nguồn tiền / Ví -->
+        <div class="grid grid-cols-2 gap-3" id="walletFieldRow">
+          <div id="fromWalletBox" class="col-span-2">
+            <label for="walletId" id="walletLabel" class="block text-xs font-semibold text-slate-600 mb-1">Nguồn tiền</label>
+            <select id="walletId" class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-base md:text-sm outline-none focus:border-brand"></select>
+          </div>
+          <div id="toWalletBox" class="hidden">
+            <label for="toWalletId" class="block text-xs font-semibold text-slate-600 mb-1">Đến ví</label>
+            <select id="toWalletId" class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-base md:text-sm outline-none focus:border-brand"></select>
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
-          <div>
+          <div id="categoryFieldBox">
             <label for="category" class="block text-xs font-semibold text-slate-600 mb-1">Danh mục</label>
             <select id="category" class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-base md:text-sm outline-none focus:border-brand"></select>
           </div>
-          <div>
+          <div id="dateFieldBox">
             <label for="date" class="block text-xs font-semibold text-slate-600 mb-1">Ngày giao dịch</label>
             <input id="date" type="date" required class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-base md:text-sm outline-none focus:border-brand">
           </div>
@@ -275,9 +306,74 @@
     </div>
   </div>
 
+  <!-- Modal Thêm / Quản lý Túi tiền -->
+  <div id="walletModal" role="dialog" aria-modal="true" class="hidden fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-xs items-end md:items-center justify-center md:p-4">
+    <div class="w-full max-w-md bg-white rounded-t-3xl md:rounded-3xl px-5 pt-3 sheet-safe md:pb-6 max-h-[92dvh] overflow-y-auto shadow-2xl">
+      <div class="w-10 h-1 rounded-full bg-slate-300 mx-auto mb-3 md:hidden"></div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="walletModalTitle" class="text-lg font-bold text-slate-900">Thêm túi tiền mới</h2>
+        <button onclick="closeWalletModal()" aria-label="Đóng" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 grid place-items-center active:scale-95">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="walletForm" novalidate class="space-y-3.5">
+        <div>
+          <label for="walletName" class="block text-xs font-semibold text-slate-600 mb-1">Tên nguồn tiền / Ví *</label>
+          <input id="walletName" type="text" maxlength="30" placeholder="Ví dụ: Techcombank, ZaloPay, Quỹ đen..." required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base md:text-sm outline-none focus:border-brand">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="walletIcon" class="block text-xs font-semibold text-slate-600 mb-1">Biểu tượng</label>
+            <select id="walletIcon" class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-base md:text-sm outline-none focus:border-brand">
+              <option value="💵">💵 Tiền mặt</option>
+              <option value="🟣">🟣 MoMo</option>
+              <option value="🟠">🟠 ShopeePay</option>
+              <option value="🏦">🏦 Ngân hàng</option>
+              <option value="💳">💳 Thẻ tín dụng</option>
+              <option value="🔵">🔵 ZaloPay</option>
+              <option value="🐷">🐷 Heo đất / Quỹ</option>
+              <option value="💎">💎 Đầu tư</option>
+            </select>
+          </div>
+          <div>
+            <label for="walletColor" class="block text-xs font-semibold text-slate-600 mb-1">Màu nhận diện</label>
+            <select id="walletColor" class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-base md:text-sm outline-none focus:border-brand">
+              <option value="#10b981">Xanh lá (Tiền mặt)</option>
+              <option value="#d82d8b">Hồng tím (MoMo)</option>
+              <option value="#ee4d2d">Cam đỏ (ShopeePay)</option>
+              <option value="#2563eb">Xanh dương (Bank)</option>
+              <option value="#7c3aed">Tím (Quỹ riêng)</option>
+              <option value="#f59e0b">Vàng hổ phách</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="walletInitial" class="block text-xs font-semibold text-slate-600 mb-1">Số dư ban đầu (VNĐ)</label>
+          <input id="walletInitial" type="text" inputmode="numeric" autocomplete="off" placeholder="0" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xl font-bold tabular-nums outline-none focus:border-brand">
+          <p class="text-[11px] text-slate-400 mt-1">Số dư thực tế = Số dư ban đầu + Thu − Chi</p>
+        </div>
+
+        <div class="flex gap-2.5 pt-2">
+          <button type="button" id="deleteWalletBtn" onclick="deleteCurrentWallet()" class="hidden px-4 py-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm font-bold active:scale-95 transition">Xóa túi</button>
+          <button type="submit" class="flex-1 py-3.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold shadow-lg shadow-indigo-500/25 active:scale-95 transition">Lưu nguồn tiền</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 <script>
-const KEY = 'finora_personal_finance_v2';
-const LEGACY_KEY = 'finora_personal_finance_v1';
+const KEY = 'finora_personal_finance_v3';
+const LEGACY_KEYS = ['finora_personal_finance_v2', 'finora_personal_finance_v1'];
+
+const DEFAULT_WALLETS = [
+  { id: 'w_cash', name: 'Tiền mặt', icon: '💵', color: '#10b981', initialBalance: 0 },
+  { id: 'w_momo', name: 'MoMo', icon: '🟣', color: '#d82d8b', initialBalance: 0 },
+  { id: 'w_shopeepay', name: 'ShopeePay', icon: '🟠', color: '#ee4d2d', initialBalance: 0 },
+  { id: 'w_bank', name: 'Ngân hàng', icon: '🏦', color: '#2563eb', initialBalance: 0 }
+];
 
 const EXPENSE_CATS = ['Ăn uống', 'Di chuyển', 'Nhà ở', 'Mua sắm', 'Giải trí', 'Sức khỏe', 'Học tập', 'Hóa đơn', 'Gia đình', 'Khác'];
 const INCOME_CATS = ['Lương', 'Thưởng', 'Kinh doanh', 'Đầu tư', 'Quà tặng', 'Khác'];
@@ -311,27 +407,45 @@ function showToast(msg) {
 
 function loadDB() {
   try {
-    const rawStr = localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY);
-    if (!rawStr) return { transactions: [] };
+    let rawStr = localStorage.getItem(KEY);
+    if (!rawStr) {
+      for (const oldKey of LEGACY_KEYS) {
+        if (localStorage.getItem(oldKey)) { rawStr = localStorage.getItem(oldKey); break; }
+      }
+    }
+    if (!rawStr) return { wallets: structuredClone(DEFAULT_WALLETS), transactions: [] };
     const raw = JSON.parse(rawStr);
-    if (raw && Array.isArray(raw.transactions)) {
-      const migrated = {
-        transactions: raw.transactions.map(x => ({
+    const wallets = (Array.isArray(raw.wallets) && raw.wallets.length)
+      ? raw.wallets.map(w => ({
+          id: String(w.id),
+          name: String(w.name || 'Ví'),
+          icon: w.icon || '💳',
+          color: w.color || '#4f46e5',
+          initialBalance: Number(w.initialBalance) || 0
+        }))
+      : structuredClone(DEFAULT_WALLETS);
+
+    const defaultWalletId = wallets[0].id;
+    const transactions = Array.isArray(raw.transactions)
+      ? raw.transactions.map(x => ({
           id: x.id || String(Date.now() + Math.random()),
-          type: x.type === 'income' ? 'income' : 'expense',
+          type: ['income', 'expense', 'transfer'].includes(x.type) ? x.type : 'expense',
           name: String(x.name || 'Giao dịch'),
           amount: Math.max(0, Number(x.amount) || 0),
-          category: x.category || 'Khác',
+          category: x.type === 'transfer' ? 'Chuyển ví' : (x.category || 'Khác'),
+          walletId: wallets.some(w => w.id === x.walletId) ? x.walletId : defaultWalletId,
+          toWalletId: x.type === 'transfer' && wallets.some(w => w.id === x.toWalletId) ? x.toWalletId : null,
           date: x.date || localDate(),
           note: String(x.note || ''),
           createdAt: x.createdAt || Date.now()
         }))
-      };
-      if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify(migrated));
-      return migrated;
-    }
+      : [];
+
+    const migrated = { wallets, transactions };
+    if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify(migrated));
+    return migrated;
   } catch (e) { console.error(e); }
-  return { transactions: [] };
+  return { wallets: structuredClone(DEFAULT_WALLETS), transactions: [] };
 }
 
 let db = loadDB();
@@ -339,6 +453,29 @@ let activeType = 'expense';
 let selectedMonth = monthOf(localDate());
 let editingId = null;
 let deleteConfirm = false;
+let editingWalletId = null;
+let deleteWalletConfirm = false;
+
+function getWallet(id) {
+  return db.wallets.find(w => w.id === id) || db.wallets[0] || { id: 'w_cash', name: 'Tiền mặt', icon: '💵', color: '#10b981', initialBalance: 0 };
+}
+
+// Tính số dư lũy kế thực tế của từng ví
+function calcWalletBalances() {
+  const balances = {};
+  db.wallets.forEach(w => { balances[w.id] = Number(w.initialBalance) || 0; });
+  db.transactions.forEach(t => {
+    if (t.type === 'income') {
+      if (balances[t.walletId] !== undefined) balances[t.walletId] += t.amount;
+    } else if (t.type === 'expense') {
+      if (balances[t.walletId] !== undefined) balances[t.walletId] -= t.amount;
+    } else if (t.type === 'transfer') {
+      if (balances[t.walletId] !== undefined) balances[t.walletId] -= t.amount;
+      if (t.toWalletId && balances[t.toWalletId] !== undefined) balances[t.toWalletId] += t.amount;
+    }
+  });
+  return balances;
+}
 
 function save() {
   try {
@@ -347,6 +484,7 @@ function save() {
     showToast('Không thể lưu vào bộ nhớ trình duyệt');
   }
   initMonthPicker();
+  initWalletSelectors();
   render();
 }
 
@@ -375,9 +513,67 @@ function initMonthPicker() {
 }
 
 function initCategoryFilter() {
-  const allCats = [...new Set([...EXPENSE_CATS, ...INCOME_CATS])];
+  const allCats = [...new Set([...EXPENSE_CATS, ...INCOME_CATS, 'Chuyển ví'])];
   const sel = document.getElementById('categoryFilter');
   sel.innerHTML = `<option value="all">Mọi danh mục</option>` + allCats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+}
+
+function initWalletSelectors() {
+  const opts = db.wallets.map(w => `<option value="${esc(w.id)}">${w.icon} ${esc(w.name)}</option>`).join('');
+  document.getElementById('walletId').innerHTML = opts;
+  document.getElementById('toWalletId').innerHTML = opts;
+
+  const filterSel = document.getElementById('walletFilter');
+  const prevVal = filterSel.value;
+  filterSel.innerHTML = `<option value="all">Mọi nguồn tiền</option>` + opts;
+  if (db.wallets.some(w => w.id === prevVal)) filterSel.value = prevVal;
+}
+
+// Modal Thêm / Sửa Giao dịch
+function setType(type) {
+  activeType = type;
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    const isAct = btn.dataset.type === type;
+    let activeClass = 'text-slate-500';
+    if (isAct) {
+      if (type === 'expense') activeClass = 'bg-white text-rose-600 shadow-xs';
+      else if (type === 'income') activeClass = 'bg-white text-emerald-600 shadow-xs';
+      else activeClass = 'bg-white text-brand shadow-xs';
+    }
+    btn.className = `type-btn py-2 rounded-lg text-xs font-bold transition ${activeClass}`;
+  });
+
+  const fromBox = document.getElementById('fromWalletBox');
+  const toBox = document.getElementById('toWalletBox');
+  const catBox = document.getElementById('categoryFieldBox');
+  const dateBox = document.getElementById('dateFieldBox');
+  const walletLabel = document.getElementById('walletLabel');
+
+  if (type === 'transfer') {
+    walletLabel.textContent = 'Từ ví';
+    fromBox.classList.remove('col-span-2');
+    toBox.classList.remove('hidden');
+    catBox.classList.add('hidden');
+    dateBox.classList.add('col-span-2');
+    // Tự chọn ví đích khác ví nguồn nếu có
+    const fromVal = document.getElementById('walletId').value;
+    const altWallet = db.wallets.find(w => w.id !== fromVal);
+    if (altWallet && document.getElementById('toWalletId').value === fromVal) {
+      document.getElementById('toWalletId').value = altWallet.id;
+    }
+  } else {
+    walletLabel.textContent = type === 'income' ? 'Nhận vào ví' : 'Thanh toán từ ví';
+    fromBox.classList.add('col-span-2');
+    toBox.classList.add('hidden');
+    catBox.classList.remove('hidden');
+    dateBox.classList.remove('col-span-2');
+
+    const cats = type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
+    const catSel = document.getElementById('category');
+    const current = catSel.value;
+    catSel.innerHTML = cats.map(c => `<option value="${esc(c)}">${(CAT_META[c]?.[0] || '')} ${esc(c)}</option>`).join('');
+    if (cats.includes(current)) catSel.value = current;
+  }
 }
 
 // Modal Thêm / Sửa
@@ -408,6 +604,7 @@ function openEntry(txId = null) {
   deleteConfirm = false;
   const delBtn = document.getElementById('deleteTxBtn');
   delBtn.textContent = 'Xóa';
+  initWalletSelectors();
 
   if (txId) {
     const tx = db.transactions.find(t => t.id === txId);
@@ -416,7 +613,12 @@ function openEntry(txId = null) {
     setType(tx.type);
     document.getElementById('amount').value = formatVNDInput(tx.amount);
     document.getElementById('name').value = tx.name;
-    document.getElementById('category').value = tx.category;
+    document.getElementById('walletId').value = tx.walletId;
+    if (tx.type === 'transfer' && tx.toWalletId) {
+      document.getElementById('toWalletId').value = tx.toWalletId;
+    } else {
+      document.getElementById('category').value = tx.category;
+    }
     document.getElementById('date').value = tx.date;
     document.getElementById('note').value = tx.note || '';
     delBtn.classList.remove('hidden');
@@ -425,6 +627,8 @@ function openEntry(txId = null) {
     setType('expense');
     document.getElementById('amount').value = '';
     document.getElementById('name').value = '';
+    const activeFilterWallet = document.getElementById('walletFilter').value;
+    if (activeFilterWallet !== 'all') document.getElementById('walletId').value = activeFilterWallet;
     document.getElementById('date').value = selectedMonth === monthOf(localDate()) ? localDate() : `${selectedMonth}-01`;
     document.getElementById('note').value = '';
     delBtn.classList.add('hidden');
@@ -457,8 +661,92 @@ function deleteCurrentTx() {
   showToast('Đã xóa giao dịch');
 }
 
+// Quản lý Túi tiền / Ví
+function openWalletModal(walletId = null) {
+  editingWalletId = walletId;
+  deleteWalletConfirm = false;
+  const delBtn = document.getElementById('deleteWalletBtn');
+  delBtn.textContent = 'Xóa túi';
+
+  if (walletId) {
+    const w = getWallet(walletId);
+    document.getElementById('walletModalTitle').textContent = 'Chỉnh sửa nguồn tiền';
+    document.getElementById('walletName').value = w.name;
+    document.getElementById('walletIcon').value = w.icon;
+    document.getElementById('walletColor').value = w.color;
+    document.getElementById('walletInitial').value = w.initialBalance ? formatVNDInput(w.initialBalance) : '';
+    if (db.wallets.length > 1) delBtn.classList.remove('hidden');
+    else delBtn.classList.add('hidden');
+  } else {
+    document.getElementById('walletModalTitle').textContent = 'Thêm túi tiền mới';
+    document.getElementById('walletName').value = '';
+    document.getElementById('walletIcon').value = '🏦';
+    document.getElementById('walletColor').value = '#2563eb';
+    document.getElementById('walletInitial').value = '';
+    delBtn.classList.add('hidden');
+  }
+
+  const modal = document.getElementById('walletModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => document.getElementById('walletName').focus(), 80);
+}
+
+function closeWalletModal() {
+  const modal = document.getElementById('walletModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  editingWalletId = null;
+}
+
+function deleteCurrentWallet() {
+  if (!editingWalletId || db.wallets.length <= 1) return;
+  const btn = document.getElementById('deleteWalletBtn');
+  if (!deleteWalletConfirm) {
+    deleteWalletConfirm = true;
+    btn.textContent = 'Xác nhận xóa?';
+    return;
+  }
+  const fallbackId = db.wallets.find(w => w.id !== editingWalletId).id;
+  db.transactions.forEach(t => {
+    if (t.walletId === editingWalletId) t.walletId = fallbackId;
+    if (t.toWalletId === editingWalletId) t.toWalletId = fallbackId;
+  });
+  db.wallets = db.wallets.filter(w => w.id !== editingWalletId);
+  closeWalletModal();
+  save();
+  showToast('Đã xóa nguồn tiền & chuyển giao dịch về ví chính');
+}
+
+function filterByWallet(walletId) {
+  document.getElementById('walletFilter').value = walletId;
+  document.getElementById('typeFilter').value = 'all';
+  document.getElementById('categoryFilter').value = 'all';
+  go('transactionsPage');
+  render();
+}
+
 // Render HTML giao dịch
 function renderTxItem(tx) {
+  const wFrom = getWallet(tx.walletId);
+  if (tx.type === 'transfer') {
+    const wTo = getWallet(tx.toWalletId);
+    return `
+      <div onclick="openEntry('${esc(tx.id)}')" class="flex items-center gap-3 py-3 px-1.5 -mx-1.5 rounded-2xl hover:bg-slate-50 active:bg-slate-100 cursor-pointer transition">
+        <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-brand grid place-items-center text-lg shrink-0">⇄</div>
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-semibold text-slate-900 truncate">${esc(tx.name)}</div>
+          <div class="flex items-center gap-1.5 text-xs text-slate-400 truncate mt-0.5">
+            <span class="font-medium text-slate-600">${wFrom.icon} ${esc(wFrom.name)} → ${wTo.icon} ${esc(wTo.name)}</span>
+            <span>· ${dateLabel(tx.date)}</span>
+          </div>
+        </div>
+        <div class="text-sm font-bold tabular-nums shrink-0 text-brand">
+          ${money(tx.amount)}
+        </div>
+      </div>`;
+  }
+
   const [ico, bg] = CAT_META[tx.category] || ['✦', '#f1f3f7'];
   const isInc = tx.type === 'income';
   return `
@@ -466,7 +754,10 @@ function renderTxItem(tx) {
       <div style="background:${bg}" class="w-11 h-11 rounded-2xl grid place-items-center text-lg shrink-0">${ico}</div>
       <div class="min-w-0 flex-1">
         <div class="text-sm font-semibold text-slate-900 truncate">${esc(tx.name)}</div>
-        <div class="text-xs text-slate-400 truncate mt-0.5">${esc(tx.category)} · ${dateLabel(tx.date)}${tx.note ? ` · ${esc(tx.note)}` : ''}</div>
+        <div class="flex items-center gap-1.5 text-xs text-slate-400 truncate mt-0.5">
+          <span style="color:${wFrom.color}" class="font-semibold">${wFrom.icon} ${esc(wFrom.name)}</span>
+          <span>· ${esc(tx.category)} · ${dateLabel(tx.date)}</span>
+        </div>
       </div>
       <div class="text-sm font-bold tabular-nums shrink-0 ${isInc ? 'text-emerald-600' : 'text-rose-600'}">
         ${isInc ? '+' : '−'}${money(tx.amount)}
@@ -477,18 +768,38 @@ function renderTxItem(tx) {
 // Render chính
 function render() {
   const today = localDate();
+  const balances = calcWalletBalances();
+  const totalNetWorth = Object.values(balances).reduce((s, v) => s + v, 0);
+
+  // Render danh sách thẻ Ví ngang
+  const walletListEl = document.getElementById('walletList');
+  walletListEl.innerHTML = db.wallets.map(w => {
+    const bal = balances[w.id] || 0;
+    return `
+      <div onclick="filterByWallet('${esc(w.id)}')" class="min-w-[148px] md:min-w-[165px] bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-sm hover:border-brand/50 active:scale-[0.98] cursor-pointer transition shrink-0 relative group">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="w-8 h-8 rounded-xl grid place-items-center text-base" style="background:${w.color}18">${w.icon}</span>
+          <button type="button" onclick="event.stopPropagation(); openWalletModal('${esc(w.id)}')" aria-label="Sửa ví" class="w-7 h-7 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 grid place-items-center">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+        </div>
+        <div class="text-xs font-semibold text-slate-500 truncate">${esc(w.name)}</div>
+        <div class="text-sm font-extrabold tabular-nums truncate mt-0.5 ${bal < 0 ? 'text-rose-600' : 'text-slate-900'}">${money(bal)}</div>
+      </div>`;
+  }).join('');
+
   const monthTxs = db.transactions
     .filter(t => monthOf(t.date) === selectedMonth)
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
 
   const totalExp = monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const totalInc = monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const balance = totalInc - totalExp;
-  const saveRate = totalInc > 0 ? Math.max(0, Math.round((balance / totalInc) * 100)) : 0;
+  const monthNet = totalInc - totalExp;
+  const saveRate = totalInc > 0 ? Math.max(0, Math.round((monthNet / totalInc) * 100)) : 0;
 
   document.getElementById('monthExpense').textContent = money(totalExp);
   document.getElementById('monthIncome').textContent = money(totalInc);
-  document.getElementById('monthBalance').textContent = money(balance);
+  document.getElementById('totalWalletBalance').textContent = money(totalNetWorth);
   document.getElementById('savingsRateBadge').textContent = `Tiết kiệm: ${saveRate}%`;
 
   // Chi hôm nay & Trung bình ngày
@@ -555,10 +866,12 @@ function renderAllTransactions(monthTxs) {
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
   const typeF = document.getElementById('typeFilter').value;
   const catF = document.getElementById('categoryFilter').value;
+  const walletF = document.getElementById('walletFilter').value;
 
   const filtered = monthTxs.filter(t => {
     if (typeF !== 'all' && t.type !== typeF) return false;
     if (catF !== 'all' && t.category !== catF) return false;
+    if (walletF !== 'all' && t.walletId !== walletF && t.toWalletId !== walletF) return false;
     if (q && !t.name.toLowerCase().includes(q) && !t.note.toLowerCase().includes(q) && !t.category.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -569,12 +882,20 @@ function renderAllTransactions(monthTxs) {
     return;
   }
 
-  // Gom nhóm theo ngày
+  // Gom nhóm theo ngày (Tính biến động ròng theo ví đang lọc nếu có)
   const groups = {};
   filtered.forEach(t => { (groups[t.date] ||= []).push(t); });
 
   container.innerHTML = Object.entries(groups).map(([date, items]) => {
-    const dayNet = items.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+    const dayNet = items.reduce((s, t) => {
+      if (t.type === 'income') return s + t.amount;
+      if (t.type === 'expense') return s - t.amount;
+      if (t.type === 'transfer' && walletF !== 'all') {
+        if (t.toWalletId === walletF) return s + t.amount;
+        if (t.walletId === walletF) return s - t.amount;
+      }
+      return s;
+    }, 0);
     return `
       <div class="py-2">
         <div class="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase tracking-wider py-2 border-b border-slate-100">
@@ -643,11 +964,16 @@ function drawChart() {
 // Xuất / Nhập dữ liệu
 function exportCSV() {
   if (!db.transactions.length) return showToast('Chưa có dữ liệu để xuất');
-  const header = ['Ngày', 'Loại', 'Danh mục', 'Nội dung', 'Số tiền (VNĐ)', 'Ghi chú'];
-  const rows = db.transactions.map(t => [
-    t.date, t.type === 'income' ? 'Thu nhập' : 'Chi tiêu',
-    `"${t.category}"`, `"${t.name.replace(/"/g, '""')}"`, t.amount, `"${(t.note || '').replace(/"/g, '""')}"`
-  ]);
+  const header = ['Ngày', 'Loại', 'Nguồn tiền', 'Ví nhận', 'Danh mục', 'Nội dung', 'Số tiền (VNĐ)', 'Ghi chú'];
+  const rows = db.transactions.map(t => {
+    const wFrom = getWallet(t.walletId).name;
+    const wTo = t.type === 'transfer' && t.toWalletId ? getWallet(t.toWalletId).name : '';
+    const typeLabel = t.type === 'income' ? 'Thu nhập' : (t.type === 'transfer' ? 'Chuyển ví' : 'Chi tiêu');
+    return [
+      t.date, typeLabel, `"${wFrom}"`, `"${wTo}"`,
+      `"${t.category}"`, `"${t.name.replace(/"/g, '""')}"`, t.amount, `"${(t.note || '').replace(/"/g, '""')}"`
+    ];
+  });
   const csv = '\uFEFF' + [header.join(','), ...rows.map(r => r.join(','))].join('\n');
   downloadFile(csv, `finora_${localDate()}.csv`, 'text/csv;charset=utf-8;');
   showToast('Đã tải xuống file Excel (CSV)');
@@ -666,6 +992,7 @@ function importJSON(e) {
     try {
       const parsed = JSON.parse(ev.target.result);
       if (!parsed || !Array.isArray(parsed.transactions)) throw new Error();
+      if (Array.isArray(parsed.wallets) && parsed.wallets.length) db.wallets = parsed.wallets;
       db.transactions = parsed.transactions;
       save();
       showToast(`Đã khôi phục ${db.transactions.length} giao dịch`);
@@ -690,24 +1017,33 @@ document.getElementById('amount').addEventListener('input', e => {
   e.target.value = formatVNDInput(e.target.value);
 });
 
+document.getElementById('walletInitial').addEventListener('input', e => {
+  e.target.value = formatVNDInput(e.target.value);
+});
+
 document.getElementById('entryForm').addEventListener('submit', e => {
   e.preventDefault();
   const amount = parseVND(document.getElementById('amount').value);
   const name = document.getElementById('name').value.trim();
-  const category = document.getElementById('category').value;
+  const walletId = document.getElementById('walletId').value;
+  const toWalletId = activeType === 'transfer' ? document.getElementById('toWalletId').value : null;
+  const category = activeType === 'transfer' ? 'Chuyển ví' : document.getElementById('category').value;
   const date = document.getElementById('date').value;
   const note = document.getElementById('note').value.trim();
 
   if (amount <= 0) return showToast('Vui lòng nhập số tiền hợp lệ');
   if (!name) return showToast('Vui lòng nhập nội dung giao dịch');
   if (!date) return showToast('Vui lòng chọn ngày');
+  if (activeType === 'transfer' && walletId === toWalletId) return showToast('Ví nhận phải khác ví chuyển');
+
+  const payload = { type: activeType, amount, name, walletId, toWalletId, category, date, note };
 
   if (editingId) {
     const idx = db.transactions.findIndex(t => t.id === editingId);
-    if (idx !== -1) db.transactions[idx] = { ...db.transactions[idx], type: activeType, amount, name, category, date, note };
+    if (idx !== -1) db.transactions[idx] = { ...db.transactions[idx], ...payload };
     showToast('Đã cập nhật giao dịch');
   } else {
-    db.transactions.push({ id: String(Date.now()), type: activeType, amount, name, category, date, note, createdAt: Date.now() });
+    db.transactions.push({ id: String(Date.now()), ...payload, createdAt: Date.now() });
     showToast('Đã lưu giao dịch mới');
   }
 
@@ -716,8 +1052,34 @@ document.getElementById('entryForm').addEventListener('submit', e => {
   save();
 });
 
+document.getElementById('walletForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = document.getElementById('walletName').value.trim();
+  const icon = document.getElementById('walletIcon').value;
+  const color = document.getElementById('walletColor').value;
+  const initialBalance = parseVND(document.getElementById('walletInitial').value);
+
+  if (!name) return showToast('Vui lòng nhập tên nguồn tiền');
+
+  if (editingWalletId) {
+    const idx = db.wallets.findIndex(w => w.id === editingWalletId);
+    if (idx !== -1) db.wallets[idx] = { ...db.wallets[idx], name, icon, color, initialBalance };
+    showToast('Đã cập nhật nguồn tiền');
+  } else {
+    db.wallets.push({ id: 'w_' + Date.now(), name, icon, color, initialBalance });
+    showToast(`Đã thêm túi "${name}"`);
+  }
+
+  closeWalletModal();
+  save();
+});
+
 document.getElementById('entryModal').addEventListener('click', e => {
   if (e.target.id === 'entryModal') closeEntry();
+});
+
+document.getElementById('walletModal').addEventListener('click', e => {
+  if (e.target.id === 'walletModal') closeWalletModal();
 });
 
 document.getElementById('monthPicker').addEventListener('change', e => {
@@ -725,8 +1087,17 @@ document.getElementById('monthPicker').addEventListener('change', e => {
   render();
 });
 
-['searchInput', 'typeFilter', 'categoryFilter'].forEach(id => {
+['searchInput', 'typeFilter', 'categoryFilter', 'walletFilter'].forEach(id => {
   document.getElementById(id).addEventListener('input', render);
+});
+
+window.addEventListener('storage', e => {
+  if (e.key === KEY) {
+    db = loadDB();
+    initMonthPicker();
+    initWalletSelectors();
+    render();
+  }
 });
 
 window.addEventListener('resize', drawChart);
@@ -734,6 +1105,7 @@ window.addEventListener('resize', drawChart);
 // Khởi chạy
 initMonthPicker();
 initCategoryFilter();
+initWalletSelectors();
 render();
 </script>
 </body>
